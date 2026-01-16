@@ -7,7 +7,12 @@ const routes=[
     {
         path:'/home',
         component:()=>import('../views/home.vue')
-    }
+    },
+    {
+        path:'/notice',
+        component:()=>import('../views/notice.vue')
+    },
+    
 ]
 
 const router=createRouter({

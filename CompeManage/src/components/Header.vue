@@ -23,8 +23,9 @@ import { BellFilled, Setting } from '@element-plus/icons-vue';
     align-items: center;
     padding:0 20px;
     background-color: #13C2C2;
+    height:60px;
     .header-title{
-        margin:10px;
+        /* margin:10px; */
         color:#ffffff;
     }
     .header-dashboard{
