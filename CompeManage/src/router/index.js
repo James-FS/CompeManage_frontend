@@ -38,6 +38,24 @@ const routes = [
                 meta: { title: '登录' }
             }
         ]
+    },
+    {
+        path:'/notice',
+        component: EmptyLayout,
+        children:[
+            {
+                path: '',
+                name: 'Notice',
+                component: () => import('@/views/notice/notice.vue'),
+                meta: { title: '通知' }
+            },
+            {
+                path: 'list',
+                name: 'NoticeList',
+                component: () => import('@/views/notice/list.vue'),
+                meta: { title: '通知列表' }
+            }
+        ]
     }
 ]
 

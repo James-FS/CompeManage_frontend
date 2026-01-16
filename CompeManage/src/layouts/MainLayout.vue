@@ -1,9 +1,12 @@
 <script setup>
 import Sidebar from '@/components/Sidebar.vue';
+import Header from '@/components/Header.vue';
 </script>
 
 <template>
+  <Header />
   <div class="main-layout">
+    
     <!-- 侧边导航栏 -->
     <aside class="sidebar">
       <Sidebar />
