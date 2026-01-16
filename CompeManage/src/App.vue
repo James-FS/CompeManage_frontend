@@ -1,15 +1,10 @@
 <script setup>
-  import Header from './components/Header.vue';
+// 根组件，无需额外逻辑
 </script>
 
 <template>
-    <Header />
-    <router-view></router-view>
+  <router-view />
 </template>
-
-<style scoped>
-  
-</style>
 
 <style>
   html, body, #app {
