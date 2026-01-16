@@ -1,13 +1,25 @@
-<script setup></script>
+<script setup>
+  import Header from './components/Header.vue';
+</script>
 
 <template>
-  <h1>You did it!</h1>
-  <p>
-    Visit <a href="https://vuejs.org/" target="_blank" rel="noopener">vuejs.org</a> to read the
-    documentation
-  </p>
+    <Header />
+    <router-view></router-view>
 </template>
 
 <style scoped>
   
+</style>
+
+<style>
+  html, body, #app {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+#app {
+    display: flex;
+    flex-direction: column;
+    gap:10px;
+}
 </style>
