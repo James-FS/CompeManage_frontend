@@ -26,7 +26,7 @@ import Header from '@/components/Header.vue';
 <style scoped lang="scss">
 .main-layout {
   display: flex;
-  height: 100vh;
+  height: calc(100vh - 60px);
   width: 100%;
 
   .sidebar {
@@ -42,12 +42,6 @@ import Header from '@/components/Header.vue';
     overflow: hidden;
     background-color: var(--background-color);
 
-    .breadcrumb-wrapper {
-      padding: 16px 20px;
-      background-color: #f5f7fa;
-      border-bottom: 1px solid #ebeef5;
-      flex-shrink: 0;
-    }
 
     .content {
       flex: 1;
