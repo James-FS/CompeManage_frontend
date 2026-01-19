@@ -26,7 +26,7 @@ import Header from '@/components/Header.vue';
 <style scoped lang="scss">
 .main-layout {
   display: flex;
-  height: 98vh;//TODO:调整为100vh时，侧边栏会出现滚动条，待解决
+  height: calc(100vh - 60px);
   width: 100%;
 
   .sidebar {

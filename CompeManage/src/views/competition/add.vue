@@ -3,9 +3,9 @@
 </script>
 
 <template>
-    <view class="home-container">
+    <div class="home-container">
 
-    </view>
+    </div>
 </template>
 
 <style scoped lang="scss">

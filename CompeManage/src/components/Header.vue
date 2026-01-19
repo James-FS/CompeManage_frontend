@@ -5,12 +5,12 @@ import { BellFilled, Setting } from '@element-plus/icons-vue';
 
 <template>
     <div class="header-container">
-        <h1 class="header-title">
+        <el-text  size="large" class="header-title">
             学科竞赛管理系统
-        </h1>
+        </el-text>
         <div class="header-dashboard">
-            <el-icon :size="24"><BellFilled /></el-icon>
-            <el-icon :size="24"><Setting /></el-icon>
+            <el-icon :size="20"><BellFilled /></el-icon>
+            <el-icon :size="20"><Setting /></el-icon>
         </div>
     </div>
 </template>
@@ -25,8 +25,8 @@ import { BellFilled, Setting } from '@element-plus/icons-vue';
     background-color: #13C2C2;
     height:60px;
     .header-title{
-        /* margin:10px; */
         color:#ffffff;
+        font-weight:600;
     }
     .header-dashboard{
         display: flex;
