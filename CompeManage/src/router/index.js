@@ -25,6 +25,19 @@ const routes = [
                 meta: { title: '竞赛管理' }
             },
         ]
+
+    },
+    {
+        path: '/competition',
+        component: MainLayout,
+        children: [
+            {
+                path:'register',
+                name:'CompetitionRegister',
+                component: () => import('@/views/competition/register.vue'),
+                meta: { title: '赛事报名' }
+            },
+        ]
     },
     //不需要侧边导航栏的页面
     {
