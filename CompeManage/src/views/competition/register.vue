@@ -202,7 +202,7 @@ let total = ref(5000)
             </el-button>
 
             <el-button
-              :type="item.status === 0 ? '' : 'primary'"
+              :type="item.status === 0 ? 'info' : 'primary'"
               :disabled="item.status === 3"
               
               class="primary-btn"
@@ -424,6 +424,7 @@ let total = ref(5000)
 }
 
 .pagination-container{
-    
+    display: flex;
+    justify-content: center;
 }
 </style>
