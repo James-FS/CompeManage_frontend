@@ -1,83 +1,269 @@
 <script setup>
-import { ElTable,ElTableColumn } from 'element-plus';
-import { ref } from 'vue';
-let noticeList=ref([{ id: 1, title: '关于举办广州大学第二十届ACM大学生程序设计竞赛的通知', date: '2026-01-16', dept: '教务处', tag: '置顶', tagType: 'danger' },
-    { id: 2, title: '第十五届“蓝桥杯”全国软件和信息技术专业人才大赛报名通知', date: '2026-02-10', dept: '计算机学院', tag: '热点', tagType: 'warning' },
-    { id: 3, title: '2026年大学生创新创业训练计划项目申报指南', date: '2026-03-05', dept: '创新创业学院', tag: '通知', tagType: 'info' },
-    { id: 4, title: '关于开展2026年度学科竞赛获奖统计工作的通知', date: '2026-03-12', dept: '教务处', tag: '', tagType: '' },
-    { id: 5, title: '2026年全国大学生英语竞赛(NECCS)报名通知', date: '2026-04-01', dept: '外国语学院', tag: '', tagType: '' },]);
+import { ElTable, ElTableColumn, ElPagination,ElTag, ElInput, ElDatePicker, ElButton, ElIcon } from 'element-plus'
+import { Search, Refresh } from '@element-plus/icons-vue';
+import { ref, reactive } from 'vue'
+let currentPage = ref(1)
+let pageSize = ref(10)
+let total = ref(5000)
+const searchForm = reactive({
+    keyword: '',
+    dateRange: [] // 这是一个数组 [开始日期, 结束日期]
+});
+let noticeList = ref([
+  {
+    id: 1,
+    title: '关于举办广州大学第二十届ACM大学生程序设计竞赛的通知',
+    date: '2026-01-16',
+    dept: '教务处',
+    tag: '置顶',
+    tagType: 'danger',
+  },
+  {
+    id: 6,
+    title: '关于举办广州大学第二十届ACM大学生程序设计竞赛的通知',
+    date: '2026-01-16',
+    dept: '教务处',
+    tag: '置顶',
+    tagType: 'danger',
+  },
+  {
+    id: 7,
+    title: '关于举办广州大学第二十届ACM大学生程序设计竞赛的通知',
+    date: '2026-01-16',
+    dept: '教务处',
+    tag: '置顶',
+    tagType: 'danger',
+  },
+  {
+    id: 8,
+    title: '关于举办广州大学第二十届ACM大学生程序设计竞赛的通知',
+    date: '2026-01-16',
+    dept: '教务处',
+    tag: '置顶',
+    tagType: 'danger',
+  },
+  {
+    id: 9,
+    title: '关于举办广州大学第二十届ACM大学生程序设计竞赛的通知',
+    date: '2026-01-16',
+    dept: '教务处',
+    tag: '置顶',
+    tagType: 'danger',
+  },
+  {
+    id: 2,
+    title: '第十五届“蓝桥杯”全国软件和信息技术专业人才大赛报名通知',
+    date: '2026-02-10',
+    dept: '计算机学院',
+    tag: '热点',
+    tagType: 'warning',
+  },
+  {
+    id: 3,
+    title: '2026年大学生创新创业训练计划项目申报指南',
+    date: '2026-03-05',
+    dept: '创新创业学院',
+    tag: '通知',
+    tagType: 'info',
+  },
+  {
+    id: 4,
+    title: '关于开展2026年度学科竞赛获奖统计工作的通知',
+    date: '2026-03-12',
+    dept: '教务处',
+    tag: '',
+    tagType: '',
+  },
+  {
+    id: 5,
+    title: '2026年全国大学生英语竞赛(NECCS)报名通知',
+    date: '2026-04-01',
+    dept: '外国语学院',
+    tag: '',
+    tagType: '',
+  },
+])
+
+function ResetFilter(){
+    searchForm.keyword = '';
+    searchForm.dateRange = [];
+    
+}
 </script>
 
 <template>
-    <div class="page-container">
-        <div class="list-container">
-            <div class="list-header">
-                <div class="header-title">
-                    赛事通知列表
-                </div>
-            </div>
-            <div class="list-body">
-                <el-table :data="noticeList"
-                style="width: 100%;"
-                :header-cell-style="{ background: '#f8fafc', color: '#64748b', height: '50px' }"
-                class="list-table"
-                >
-                <el-table-column
-                    prop="title"
-                    label="通知标题"
-                    min-width="400"
-                />
-                <el-table-column
-                    prop="date"
-                    label="发布日期"
-                    width="180"
-                    align="right"
-                />
-                </el-table>
-            </div>
+  <div class="page-container">
+    <div class="list-container">
+      <div class="list-header">
+        <div class="header-title">赛事通知列表</div>
+        <div class="header-filter">
+            <el-input 
+                        v-model="searchForm.keyword" 
+                        placeholder="请输入通知标题" 
+                        class="search-input"
+                        clearable
+                        
+            />
+            <el-date-picker
+                        v-model="searchForm.dateRange"
+                        type="daterange"
+                        range-separator="至"
+                        start-placeholder="开始日期"
+                        end-placeholder="结束日期"
+                        format="YYYY-MM-DD"
+                        value-format="YYYY-MM-DD"
+                        class="date-input"
+            />
+
+            <el-button type="primary" :icon="Search" >查询</el-button>
+            <el-button :icon="Refresh" @click="ResetFilter">重置</el-button>
         </div>
+      </div>
+      <div class="list-body">
+        <el-table
+          :data="noticeList"
+          :header-cell-style="{ 
+              background: '#f8fafc', 
+              color: '#64748b', 
+              height: '54px', 
+              fontSize: '14px',
+              fontWeight: '600' 
+          }"
+          class="list-table"
+        >
+          <el-table-column label="通知标题" min-width="400">
+            <template #default="scope">
+                <span class="table-title">{{ scope.row.title }}</span>
+            </template>
+          </el-table-column>
+
+          <el-table-column prop="dept" label="发布部门" width="180" align="center">
+             <template #default="scope">
+                <span class="table-dept">{{ scope.row.dept }}</span>
+             </template>
+          </el-table-column>
+
+          <el-table-column prop="date" label="发布日期" width="150" align="right">
+             <template #default="scope">
+                <span class="table-date">{{ scope.row.date }}</span>
+             </template>
+          </el-table-column>
+        </el-table>
+        <div class="pagination-container">
+          <el-pagination
+            background
+            layout="sizes,jumper,prev, pager, next"
+            v-model:page-size="pageSize"
+            v-model:current-page="currentPage"
+            :total="total"
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
+          />
+        </div>
+      </div>
     </div>
+  </div>
 </template>
 
 <style scoped lang="scss">
 .page-container {
-    width: 100%;
-    min-height: 100%; 
-    box-sizing: border-box;
-    padding: 20px 40px; 
-    background-color: #f0fdfa; /* 基础底色 */
-    /* 两个巨大的径向渐变光晕 */
-    background-image: 
-        radial-gradient(at 0% 0%, rgba(19, 194, 194, 0.15) 0px, transparent 50%),
-        radial-gradient(at 100% 100%, rgba(59, 130, 246, 0.1) 0px, transparent 50%);
-        
-    /* 这种背景通常不需要 repeat，覆盖全屏即可 */
-    background-repeat: no-repeat;
-    background-attachment: fixed; /* 滚动时背景不动，很高级 */
-    .list-container{
+  width: 100%;
+  min-height: 100%;
+  box-sizing: border-box;
+  padding: 20px 40px;
+  background-color: #f0fdfa; /* 基础底色 */
+  /* 两个巨大的径向渐变光晕 */
+  background-image:
+    radial-gradient(at 0% 0%, rgba(19, 194, 194, 0.15) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(59, 130, 246, 0.1) 0px, transparent 50%);
+
+  /* 这种背景通常不需要 repeat，覆盖全屏即可 */
+  background-repeat: no-repeat;
+  background-attachment: fixed; /* 滚动时背景不动，很高级 */
+  .list-container {
+    display: flex;
+    flex-direction: column;
+    height: 85vh;
+    align-items: stretch;
+    background-color: #fff;
+    border-radius: 16px;
+    padding: 30px;
+    // min-height: 900px;
+    max-width: 1440px;
+    margin:0 auto;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+    border-bottom: 1px solid #f0f0f0;
+    .list-header {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: center;
+      border-left: 4px solid #13c2c2;
+      padding-left: 12px;
+      margin-bottom: 40px;
+      .header-title {
+        font-size: 20px;
+        font-weight: 600;
+        color: #333;
+      }
+      .header-filter{
         display: flex;
-        flex-direction: column;
-        height: 70%;
-        align-items: stretch;
-        background-color: #fff;
-        border-radius: 16px;
-        padding:30px;
-        min-height: 600px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
-        .list-header{
-            display: flex;
-            flex-direction: row;
-            justify-content: flex-start;
-            align-items: center;
-            border-left: 4px solid #13C2C2;
-            padding-left: 12px;
-            margin-bottom: 30px;
-            .header-title{
-                font-size:20px;
-                font-weight:600;
-                color:#333;
-            }
+        gap:12px;
+        .date-input{
+            width:280px;
         }
+        .search-input{
+            width:280px;
+        }
+      }
     }
+    .list-body {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      overflow: hidden;
+      .pagination-container {
+        margin-top: auto;
+        display: flex;
+        justify-content: center;
+      }
+    }
+  }
+}
+
+.list-table {
+  width: 100%;
+  max-height: 600px;
+  margin-bottom:15px;
+  :deep(.el-table__row) {
+    height: 60px; 
+    font-size: 14px; /* 默认字号 */
+    color: #606266;  /* 默认文字颜色 */
+  }
+
+  :deep(.el-table__body tr:hover > td) {
+    background-color: #f0fdfa !important; 
+  }
+  .table-title {
+    color: #303133;     
+    font-size: 15px;     
+    font-weight: 500;    
+    cursor: pointer;
+    transition: color 0.2s;
+
+    &:hover {
+        color: #13c2c2;  /* 鼠标放上去变品牌色 */
+    }
+  }
+
+  .table-dept {
+    color: #606266;
+
+  }
+
+  .table-date {
+    color: #909399;         
+    font-family: Menlo, Monaco, Consolas, monospace; /* 稍微带点代码感/数字感的字体 */
+  }
 }
 </style>
