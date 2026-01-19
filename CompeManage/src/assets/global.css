@@ -1,3 +1,12 @@
 :root{
-    --background-color:#F5F7FA;    
+    --background-color:#F5F7FA;
+    --primary-color:#13C2C2;
+    --text-primary:#303133;
+    --text-secondary:#909399;
+    --table-text:#606266;
+    --primary-title:22px;
+    --card-title:18px;
+    --table-title:15px;
+    --card-weight:600;
+    
 }
