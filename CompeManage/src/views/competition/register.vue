@@ -236,7 +236,7 @@ let total = ref(5000)
   flex-direction: column;
   background-color: var(--background-color);
   padding: 20px;
-  min-height: 100%;
+  
 }
 .filter-panel {
   box-sizing: border-box;

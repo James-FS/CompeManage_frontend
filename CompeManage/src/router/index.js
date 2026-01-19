@@ -19,10 +19,16 @@ const routes = [
                 meta: { title: '首页' }
             },
             {
-                path: 'competition',
-                name: 'Competition',
+                path: 'competition/list',
+                name: 'CompetitionList',
                 component: () => import('@/views/competition/list.vue'),
-                meta: { title: '竞赛管理' }
+                meta: { title: '竞赛列表' }
+            },
+            {
+                path: 'competition/add',
+                name: 'CompetitionAdd',
+                component: () => import('@/views/competition/add.vue'),
+                meta: { title: '新增竞赛' }
             },
         ]
 
@@ -41,29 +47,23 @@ const routes = [
     },
     //不需要侧边导航栏的页面
     {
-        path:'/login',
+        path: '/',
         component: EmptyLayout,
-        children:[
+        children: [
             {
-                path: '',
+                path: 'login',
                 name: 'Login',
                 component: () => import('@/views/login.vue'),
                 meta: { title: '登录' }
-            }
-        ]
-    },
-    {
-        path:'/notice',
-        component: EmptyLayout,
-        children:[
+            },
             {
-                path: '',
+                path: 'notice',
                 name: 'Notice',
                 component: () => import('@/views/notice/notice.vue'),
                 meta: { title: '通知' }
             },
             {
-                path: 'list',
+                path: 'notice/list',
                 name: 'NoticeList',
                 component: () => import('@/views/notice/list.vue'),
                 meta: { title: '通知列表' }
