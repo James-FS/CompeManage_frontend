@@ -29,7 +29,8 @@ const props = defineProps({
         icon: Trophy,
         children: [
           { path: '/competition/list', title: '竞赛列表' },
-          { path: '/competition/add', title: '添加竞赛' }
+          { path: '/competition/add', title: '添加竞赛' },
+          { path:'/competition/register',title:'赛事报名'}
         ]
       },
       {
