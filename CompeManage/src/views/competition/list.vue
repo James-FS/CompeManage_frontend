@@ -453,7 +453,7 @@ const tableData = ref([
 
         <!-- 赛事列表表格 -->
         <div class="competition-table-container">
-            <el-table :data="tableData" stripe height="400" style="width: 100%">
+            <el-table v-if="tableData.length > 0" :data="tableData" stripe height="400" style="width: 100%">
                 <el-table-column type="selection" width="40" />
                 <el-table-column prop="id" label="序号" width="60" align="center"></el-table-column>
                 <el-table-column prop="comp_code" label="竞赛编号" min-width="100" align="center"></el-table-column>
@@ -467,7 +467,8 @@ const tableData = ref([
                 <el-table-column prop="team_members" label="团队成员" min-width="120" align="center" show-overflow-tooltip></el-table-column>
                 <el-table-column prop="college" label="所属学院" width="150" align="center"></el-table-column>
             </el-table>
-            <div class="pagination-wrapper">
+            <el-empty v-else description="暂无数据" />
+            <div v-if="tableData.length > 0" class="pagination-wrapper">
                 <el-pagination v-model:current-page="current_page" v-model:page-size="page_size"
                     :page-sizes="[10, 20, 30, 50]" layout="total, sizes, prev, pager, next, jumper" :total="400"
                     @size-change="handleSizeChange" @current-change="handleCurrentChange" />
