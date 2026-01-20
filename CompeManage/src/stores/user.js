@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { api } from '@/api'
 
 export const useUserStore = defineStore('user', () => {
     // 用户信息
@@ -7,7 +8,7 @@ export const useUserStore = defineStore('user', () => {
     const token = ref('')
     const userInfo = ref(JSON.parse(localStorage.getItem('userInfo') || '{}'))
 
-    // 模拟后端数据库中的用户表
+    // 模拟后端数据库中的用户表（用于开发测试）
     const mockUsers = [
         { username: 'admin', password: '123', role: 'school_admin', name: '校级管理员' },
         { username: 'yuan', password: '123', role: 'college_admin', name: '计算机学院管理员' },
@@ -18,23 +19,39 @@ export const useUserStore = defineStore('user', () => {
 
     // 登录动作
     async function login(loginForm) {
-        // 查找匹配的用户
-        const user = mockUsers.find(u => u.username === loginForm.username && u.password === loginForm.password)
-        
-        if (!user) {
-            throw new Error('用户名或密码错误')
+        try {
+            // 调用后端登录接口
+            const response = await api.login({
+                username: loginForm.username,
+                password: loginForm.password
+            })
+
+            // 检查响应
+            if (response.code === 200 && response.data) {
+                const { token: resToken, userInfo: resUserInfo } = response.data
+                
+                // 设置用户信息
+                token.value = resToken
+                role.value = resUserInfo.role
+                userInfo.value = {
+                    id: resUserInfo.id,
+                    name: resUserInfo.realname || resUserInfo.username,
+                    username: resUserInfo.username
+                }
+                
+                // 保存到 localStorage
+                localStorage.setItem('token', resToken)
+                localStorage.setItem('role', resUserInfo.role)
+                localStorage.setItem('userInfo', JSON.stringify(userInfo.value))
+                
+                return response
+            } else {
+                throw new Error(response.msg || '登录失败')
+            }
+        } catch (error) {
+            console.error('登录失败:', error)
+            throw error
         }
-        
-        // 设置用户信息
-        const mockToken = 'mock-token-' + Date.now()
-        userInfo.value = { name: user.name, username: user.username }
-        role.value = user.role
-        token.value = mockToken
-        
-        // 保存到localStorage
-        localStorage.setItem('token', mockToken)
-        localStorage.setItem('role', user.role)
-        localStorage.setItem('userInfo', JSON.stringify(userInfo.value))
     }
 
     // 登出动作
