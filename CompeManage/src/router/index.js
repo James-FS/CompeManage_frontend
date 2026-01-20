@@ -6,7 +6,7 @@ import { useUserStore } from '@/stores/user'
 const routes = [
     {
         path: '/',
-        redirect: '/home'
+        redirect: '/login'
     },
     //需要侧边导航栏的页面
     {

@@ -35,7 +35,7 @@ const allMenus = [
       { 
         path: '/competition/register', 
         title: '赛事报名', 
-        roles: ['student','competition_manager'] 
+        roles: ['school_admin', 'college_admin', 'student','competition_manager'] 
       },
       {
         path: '/competition/audit',
