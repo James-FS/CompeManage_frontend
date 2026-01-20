@@ -30,7 +30,8 @@ const props = defineProps({
         children: [
           { path: '/competition/list', title: '竞赛列表' },
           { path: '/competition/add', title: '添加竞赛' },
-          { path:'/competition/register',title:'赛事报名'}
+          {path:'/competition/register',title:'赛事报名'},
+          {path:'/competition/edit',title:'编辑赛事' }
         ]
       },
       {

@@ -1,0 +1,442 @@
+<script setup>
+import { ref, reactive } from 'vue'
+import { useRouter } from 'vue-router'
+import { 
+  
+  School, UploadFilled, ArrowLeft, 
+  Plus, Delete, Trophy, Document
+} from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
+
+const router = useRouter()
+const formRef = ref(null)
+
+// 1. 数据模型
+const formData = reactive({
+  teamName: '',
+  leader: { name: '张三', stuId: '2023001', phone: '', email: '' },
+  members: [{ name: '', stuId: '', phone: '' }],
+  teacher: { name: '', phone: '', title: '' },
+  fileList: []
+})
+
+// 2. 校验规则
+const rules = {
+  teamName: [{ required: true, message: '必填', trigger: 'blur' }],
+  'leader.phone': [{ required: true, message: '必填', trigger: 'blur' }],
+  'leader.email': [{ required: true, message: '必填', trigger: 'blur' }],
+}
+
+// 3. 逻辑操作
+const addMember = () => {
+  if (formData.members.length >= 4) return ElMessage.warning('人数已达上限')
+  formData.members.push({ name: '', stuId: '', phone: '' })
+}
+const removeMember = (index) => formData.members.splice(index, 1)
+
+const submitForm = async (formEl) => {
+  if (!formEl) return
+  await formEl.validate((valid) => {
+    if (valid) ElMessage.success('提交成功')
+  })
+}
+</script>
+
+<template>
+  <div class="document-page">
+    
+    <div class="nav-bar">
+      <el-button link @click="router.back()">
+        <el-icon><ArrowLeft /></el-icon> 返回列表
+      </el-button>
+    </div>
+
+    <div class="paper-container">
+      
+      <div class="paper-header">
+        <div class="header-content">
+          <el-icon class="header-icon" :size="40"><Document /></el-icon>
+          <div class="header-text">
+            <h1 class="main-title">2026年团队报名申请表</h1>
+            <p class="sub-title">请根据赛事要求如实填写，带 * 号为必填项</p>
+          </div>
+        </div>
+        <div class="header-curve"></div>
+      </div>
+
+      <div class="paper-body">
+        <el-form 
+          ref="formRef" 
+          :model="formData" 
+          :rules="rules" 
+          label-position="top"
+          size="large"
+          class="clean-form"
+        >
+          
+          <div class="form-section">
+            <div class="section-title">
+              <span class="num">01</span> 团队基础信息
+            </div>
+            <el-row :gutter="40">
+              <el-col :span="24">
+                <el-form-item label="团队名称 Team Name" prop="teamName">
+                  <el-input 
+                    v-model="formData.teamName" 
+                    placeholder="请输入团队名称" 
+                    class="underlined-input"
+                  />
+                </el-form-item>
+              </el-col>
+            </el-row>
+          </div>
+
+          <div class="form-section">
+            <div class="section-title">
+              <span class="num">02</span> 负责人信息 (Captain)
+            </div>
+            <div class="gray-block">
+              <el-row :gutter="24">
+                <el-col :span="8">
+                  <el-form-item label="姓名">
+                    <span class="read-text">{{ formData.leader.name }}</span>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item label="学号">
+                     <span class="read-text">{{ formData.leader.stuId }}</span>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item label="身份">
+                    <el-tag effect="dark" type="primary" size="small">队长</el-tag>
+                  </el-form-item>
+                </el-col>
+                
+                <el-col :span="12">
+                   <el-form-item label="联系电话" prop="leader.phone">
+                     <el-input v-model="formData.leader.phone" placeholder="请输入" class="underlined-input" prefix-icon="Iphone"/>
+                   </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                   <el-form-item label="电子邮箱" prop="leader.email">
+                     <el-input v-model="formData.leader.email" placeholder="请输入" class="underlined-input" prefix-icon="Message"/>
+                   </el-form-item>
+                </el-col>
+              </el-row>
+            </div>
+          </div>
+
+          <div class="form-section">
+             <div class="section-header-row">
+                <div class="section-title">
+                  <span class="num">03</span> 成员名单 (Members)
+                </div>
+                <el-button type="primary" plain size="small" @click="addMember" :icon="Plus" round>
+                  新增成员
+                </el-button>
+             </div>
+
+             <div class="member-table">
+                <div class="table-header">
+                   <span>成员姓名</span>
+                   <span>学号</span>
+                   <span>手机号</span>
+                   <span style="width: 40px">操作</span>
+                </div>
+                <div v-if="formData.members.length === 0" class="empty-row">暂无成员</div>
+                <div 
+                  v-for="(m, i) in formData.members" 
+                  :key="i" 
+                  class="table-row"
+                >
+                   <div class="cell">
+                     <el-form-item :prop="'members.'+i+'.name'" :rules="{required:true, message:'必填'}">
+                        <el-input v-model="m.name" placeholder="姓名" />
+                     </el-form-item>
+                   </div>
+                   <div class="cell">
+                     <el-form-item :prop="'members.'+i+'.stuId'" :rules="{required:true, message:'必填'}">
+                        <el-input v-model="m.stuId" placeholder="学号" />
+                     </el-form-item>
+                   </div>
+                   <div class="cell">
+                     <el-form-item :prop="'members.'+i+'.phone'" :rules="{required:true, message:'必填'}">
+                        <el-input v-model="m.phone" placeholder="手机号" />
+                     </el-form-item>
+                   </div>
+                   <div class="cell action">
+                      <el-button type="danger" link :icon="Delete" @click="removeMember(i)"></el-button>
+                   </div>
+                </div>
+             </div>
+          </div>
+
+          <div class="form-section">
+            <div class="section-title">
+              <span class="num">04</span> 指导老师 & 附件
+            </div>
+            <el-row :gutter="24">
+              <el-col :span="8">
+                 <el-form-item label="老师姓名" prop="teacher.name">
+                   <el-input v-model="formData.teacher.name" class="underlined-input" />
+                 </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                 <el-form-item label="电话" prop="teacher.phone">
+                   <el-input v-model="formData.teacher.phone" class="underlined-input" />
+                 </el-form-item>
+              </el-col>
+               <el-col :span="8">
+                 <el-form-item label="职称" prop="teacher.title">
+                   <el-input v-model="formData.teacher.title" class="underlined-input" />
+                 </el-form-item>
+              </el-col>
+            </el-row>
+
+            <div class="upload-box">
+               <el-upload action="#" drag multiple :auto-upload="false" v-model:file-list="formData.fileList">
+                  <div class="upload-inner">
+                    <el-icon class="icon"><UploadFilled /></el-icon>
+                    <span>点击或拖拽上传项目书</span>
+                  </div>
+               </el-upload>
+            </div>
+          </div>
+
+          <div class="paper-footer">
+             <div class="footer-desc">
+               点击提交即代表您已阅读并同意《赛事参赛承诺书》
+             </div>
+             <div class="btn-area">
+                <el-button size="large" @click="router.back()">暂存草稿</el-button>
+                <el-button type="primary" size="large" class="submit-btn" @click="submitForm(formRef)">
+                  确认提交申请
+                </el-button>
+             </div>
+          </div>
+
+        </el-form>
+      </div>
+    </div>
+  </div>
+</template>
+
+<style scoped lang="scss">
+/* 页面背景 */
+.document-page {
+  min-height: 100vh;
+  background-color: #f2f4f7; /* 深灰底色，衬托白纸 */
+  padding: 40px 20px 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.nav-bar {
+  width: 100%;
+  max-width: 800px;
+  margin-bottom: 10px;
+}
+
+/* 核心白纸容器 */
+.paper-container {
+  width: 100%;
+  max-width: 800px;
+  background: #fff;
+  border-radius: 4px; /* 直角微圆，像纸张 */
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  position: relative;
+}
+
+/* 顶部装饰 Header */
+.paper-header {
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); /* 深蓝学术风 */
+  color: #fff;
+  padding: 40px 50px 60px; /* 底部留多点给曲线 */
+  position: relative;
+  
+  .header-content {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    z-index: 2;
+    position: relative;
+    .header-text {
+      .main-title { margin: 0; font-size: 26px; font-weight: 500; letter-spacing: 1px; }
+      .sub-title { margin: 8px 0 0; opacity: 0.8; font-size: 13px; }
+    }
+  }
+
+  /* 装饰圆弧 (用 CSS 画个弧形遮罩) */
+  .header-curve {
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    width: 100%;
+    height: 40px;
+    background: #fff;
+    border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+    transform: scaleX(1.2); /* 拉宽弧度 */
+  }
+}
+
+/* 表单主体 */
+.paper-body {
+  padding: 20px 50px 50px;
+}
+
+/* 模块通用样式 */
+.form-section {
+  margin-bottom: 50px;
+  position: relative;
+
+  .section-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+
+  /* 标题样式：左侧竖线风格 */
+  .section-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    
+    .num {
+      font-family: 'Georgia', serif; /* 衬线体更有公文感 */
+      font-size: 24px;
+      color: #e0e0e0;
+      margin-right: 12px;
+      font-style: italic;
+    }
+    
+    &::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #f0f0f0;
+      margin-left: 15px;
+    }
+  }
+}
+
+/* 输入框风格改造：下划线式 (Underlined) */
+:deep(.underlined-input) {
+  .el-input__wrapper {
+    box-shadow: none !important;
+    border-bottom: 1px solid #dcdfe6;
+    border-radius: 0;
+    padding-left: 0;
+    background: transparent;
+    
+    &:hover, &.is-focus {
+      border-bottom-color: #2a5298;
+    }
+  }
+}
+
+/* 灰色块 (只读信息背景) */
+.gray-block {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 4px;
+  
+  .read-text {
+    font-weight: bold;
+    color: #333;
+  }
+  /* 灰色块里的 form-item margin 去除 */
+  :deep(.el-form-item) { margin-bottom: 0; }
+}
+
+/* 成员表格模拟 */
+.member-table {
+  border: 1px solid #ebeef5;
+  border-radius: 4px;
+  
+  .table-header {
+    background: #f5f7fa;
+    padding: 10px 15px;
+    display: flex;
+    font-size: 13px;
+    color: #606266;
+    font-weight: bold;
+    span { flex: 1; &:last-child { flex: 0 0 40px; } }
+  }
+  
+  .table-row {
+    display: flex;
+    padding: 10px 15px;
+    border-top: 1px solid #ebeef5;
+    align-items: center;
+    
+    .cell {
+      flex: 1;
+      padding-right: 15px;
+      &:last-child { flex: 0 0 40px; padding-right: 0; text-align: center; }
+      
+      /* 去掉 table 里的 form-item 错误提示占位，让它紧凑 */
+      :deep(.el-form-item) { margin-bottom: 0; }
+    }
+  }
+  .empty-row { padding: 20px; text-align: center; color: #ccc; }
+}
+
+/* 上传框微调 */
+.upload-box {
+  margin-top: 20px;
+  :deep(.el-upload-dragger) {
+    background: #fafafa;
+    border: 1px dashed #d9d9d9;
+    padding: 20px;
+    height: auto;
+    
+    .upload-inner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      color: #666;
+    }
+  }
+}
+
+/* 底部 */
+.paper-footer {
+  margin-top: 60px;
+  text-align: center;
+  border-top: 2px dashed #eee;
+  padding-top: 40px;
+
+  .footer-desc {
+    color: #999;
+    font-size: 12px;
+    margin-bottom: 20px;
+  }
+
+  .submit-btn {
+    width: 200px;
+    background-color: #2a5298; /* 与 Header 呼应 */
+    border-color: #2a5298;
+    
+    &:hover {
+      background-color: #1e3c72;
+      border-color: #1e3c72;
+    }
+  }
+}
+
+/* 移动端适配 */
+@media screen and (max-width: 768px) {
+  .document-page { padding: 0; background: #fff; }
+  .paper-container { box-shadow: none; }
+  .paper-header { padding: 30px 20px 40px; }
+  .paper-body { padding: 20px; }
+}
+</style>
