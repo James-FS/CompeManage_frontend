@@ -3,7 +3,7 @@ import Sidebar from '@/components/Sidebar.vue';
 import Header from '@/components/Header.vue';
 import { computed } from 'vue';
 import { useUserStore } from '@/stores/user';
-import { House, Trophy, DataAnalysis } from '@element-plus/icons-vue';
+import { House, Trophy} from '@element-plus/icons-vue';
 
 const userStore = useUserStore();
 
@@ -40,6 +40,14 @@ const allMenus = [
     ]
   }
 ];
+// 深拷贝菜单但保留icon组件引用
+const deepCloneMenus = (menus) => {
+  return menus.map(item => ({
+    ...item,
+    children: item.children ? deepCloneMenus(item.children) : undefined
+  }));
+};
+
 // 计算过滤后的菜单项
 const filterMenus = (menus, userRoles) => {
   return menus.filter(item => {
@@ -59,8 +67,8 @@ const filterMenus = (menus, userRoles) => {
 
 // 根据用户角色计算可见菜单
 const dynamicMenuItems = computed(() => {
-  // 深拷贝，避免直接修改原数组
-  const menusCopy = JSON.parse(JSON.stringify(allMenus));
+  // 深拷贝菜单数据（保留icon组件引用），避免直接修改原数组
+  const menusCopy = deepCloneMenus(allMenus);
   return filterMenus(menusCopy, userStore.role);
 });
 </script>

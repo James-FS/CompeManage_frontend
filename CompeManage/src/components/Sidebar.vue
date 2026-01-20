@@ -2,9 +2,6 @@
 import { ref, watch, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
-  House,
-  Trophy,
-  DataAnalysis,
   Expand,
   Fold
 } from '@element-plus/icons-vue';
