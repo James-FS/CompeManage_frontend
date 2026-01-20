@@ -26,7 +26,7 @@ const tableData = ref([
         comp_type: '学科竞赛',
         comp_level: '校级',
         organizer: '广州大学计算机学院',
-        undertaker: '广州大学ACM集训队',
+        undertaker: '广州大学ACM',
         manager: '李教授',
         team_members: '张三、李四、王五',
         project_source: '学校录入',
@@ -101,7 +101,7 @@ const tableData = ref([
         comp_type: '学科竞赛',
         comp_level: '校级',
         organizer: '广州大学计算机学院',
-        undertaker: '广州大学ACM集训队',
+        undertaker: '广州大学ACM',
         manager: '李教授',
         team_members: '张三、李四、王五',
         project_source: '学校录入',
@@ -176,7 +176,7 @@ const tableData = ref([
         comp_type: '学科竞赛',
         comp_level: '校级',
         organizer: '广州大学计算机学院',
-        undertaker: '广州大学ACM集训队',
+        undertaker: '广州大学ACM',
         manager: '李教授',
         team_members: '张三、李四、王五',
         project_source: '学校录入',
@@ -251,7 +251,7 @@ const tableData = ref([
         comp_type: '学科竞赛',
         comp_level: '校级',
         organizer: '广州大学计算机学院',
-        undertaker: '广州大学ACM集训队',
+        undertaker: '广州大学ACM',
         manager: '李教授',
         team_members: '张三、李四、王五',
         project_source: '学校录入',
@@ -326,10 +326,10 @@ const tableData = ref([
         comp_type: '学科竞赛',
         comp_level: '校级',
         organizer: '广州大学计算机学院',
-        undertaker: '广州大学ACM集训队',
+        undertaker: '广州大学ACM',
         manager: '李教授',
         team_members: '张三、李四、王五',
-        project_source: '学校录入',
+        project_source: '学院录入',
         status: '进行中',
         college: '计算机学院',
         year: '2025'
@@ -461,11 +461,15 @@ const tableData = ref([
                     align="center"></el-table-column>
                 <el-table-column prop="comp_type" label="竞赛类型" width="110" align="center"></el-table-column>
                 <el-table-column prop="comp_level" label="竞赛级别" width="100" align="center"></el-table-column>
-                <el-table-column prop="organizer" label="主办单位" min-width="150" align="center"></el-table-column>
-                <el-table-column prop="undertaker" label="承办单位" min-width="150" align="center"></el-table-column>
+                <el-table-column prop="organizer" label="主办单位" min-width="150" align="center" show-overflow-tooltip></el-table-column>
+                <el-table-column prop="undertaker" label="承办单位" min-width="150" align="center" show-overflow-tooltip></el-table-column>
                 <el-table-column prop="manager" label="赛事负责人" width="100" align="center"></el-table-column>
-                <el-table-column prop="team_members" label="团队成员" min-width="120" align="center" show-overflow-tooltip></el-table-column>
+                <el-table-column prop="team_members" label="团队成员" min-width="120" align="center"
+                    show-overflow-tooltip></el-table-column>
                 <el-table-column prop="college" label="所属学院" width="150" align="center"></el-table-column>
+                <el-table-column prop="project_source" label="项目来源" min-width="90" align="center"></el-table-column>
+                <el-table-column prop="year" label="所属年份" width="90" align="center"></el-table-column>
+                <el-table-column prop="status" label="赛事状态" width="90" align="center"></el-table-column>
             </el-table>
             <el-empty v-else description="暂无数据" />
             <div v-if="tableData.length > 0" class="pagination-wrapper">
