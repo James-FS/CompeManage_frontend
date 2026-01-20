@@ -1,33 +1,12 @@
 <script setup>
-import { ref, computed } from 'vue'
-import { Search,ArrowRight, Calendar, User, Bell } from '@element-plus/icons-vue' // 引入必要的图标
-import { ElPagination } from 'element-plus'
+import { ref } from 'vue'
+import { Calendar, User, Bell, Setting } from '@element-plus/icons-vue' // 引入 Setting 图标
 import { useRouter } from 'vue-router'
-const router = useRouter()
-// 1. 定义所有的学科分类 (模拟数据)
-const allCategories = [
-  '全部',
-  '计算机/软件',
-  '数学/建模',
-  '电子/自动化',
-  '机械工程',
-  '艺术/设计',
-  '经济/金融',
-  '创新创业',
-  '外语',
-  '土木建筑',
-  '化工/材料',
-  '法学',
-  '体育',
-  '文学/新闻',
-  '物理',
-  '生命科学',
-  '环境工程',
-  '医学',
-  '教育学',
-  '哲学',
-]
+import { ElMessage } from 'element-plus'
 
+const router = useRouter()
+
+// 1. 模拟赛事列表数据 (复用之前的结构)
 const compList = ref([
   {
     id: 1,
@@ -44,7 +23,7 @@ const compList = ref([
     level: '省级B类',
     organizer: '广告人杂志社',
     timeRange: '2026-02-10 至 2026-05-20',
-    status: 1, // 1:报名中
+    status: 1, 
     tags: ['团队赛'],
   },
   {
@@ -62,7 +41,7 @@ const compList = ref([
     level: '国家级B类',
     organizer: '高等学校大学外语教学研究会',
     timeRange: '2026-01-20 至 2026-03-10',
-    status: 2, // 2:即将截止
+    status: 2, 
     tags: ['个人赛'],
   },
   {
@@ -71,98 +50,45 @@ const compList = ref([
     level: '校级',
     organizer: '计算机学院',
     timeRange: '2026-04-01 至 2026-04-05',
-    status: 3, // 3:筹备中
+    status: 3, 
     tags: ['团队赛'],
   },
 ])
 
-// 2. 定义筛选状态
-const query = ref({
-  keyword: '', // 搜索关键词
-  category: '全部', // 当前选中的分类
-  level: '全部', // 当前选中的级别
-  status: 'all', // 当前选中的状态
-})
-
+// 获取状态样式 (保留此逻辑，方便管理员查看当前状态)
 const getStatusConfig = (status) => {
   const map = {
-    1: { label: '立即报名', tagType: 'success', tagText: '报名中' },
-    2: { label: '立即报名', tagType: 'danger', tagText: '急' },
-    3: { label: '等待开始', tagType: 'info', tagText: '筹备中' },
-    0: { label: '查看公示', tagType: 'info', tagText: '已结束' },
+    1: { tagType: 'success', tagText: '报名中' },
+    2: { tagType: 'danger', tagText: '急' },
+    3: { tagType: 'info', tagText: '筹备中' },
+    0: { tagType: 'info', tagText: '已结束' },
   }
-  return map[status]
+  return map[status] || { tagType: 'info', tagText: '未知' }
 }
 
 let currentPage = ref(1)
 let pageSize = ref(10)
-let total = ref(5000)
+let total = ref(100)
 
-function NavigateToRegister(compID) {
-    router.push({ name: 'detail', params: { id: compID } })
+// 按钮操作逻辑
+function handleSettings(compID) {
+    // 跳转到报名设置页面 (假设路由名为 competition-settings)
+    // router.push({ name: 'CompetitionSettings', params: { id: compID } })
+    ElMessage.success(`点击了ID为 ${compID} 的报名设置`)
+}
+
+function handleNotice(compID) {
+    // 发布通知逻辑
+    ElMessage.info(`点击了ID为 ${compID} 的发布通知`)
 }
 </script>
 
 <template>
   <div class="page-container">
-    <div class="filter-panel">
-      <div class="search-row">
-        <el-input v-model="query.keyword" placeholder="搜索赛事名称" prefix-icon="Search" clearable>
-          <template #append><el-button type="primary">搜索</el-button></template>
-        </el-input>
-      </div>
-
-      <el-divider class="filter-divider" />
-
-      <div class="discipline-row">
-        <span class="filter-label">学科分类：</span>
-        <div class="options-area">
-          <span
-            v-for="cat in allCategories"
-            :key="cat"
-            class="filter-tag"
-            :class="{ active: query.category === cat }"
-            @click="query.category = cat"
-          >
-            {{ cat }}
-          </span>
-        </div>
-      </div>
-
-      <div class="level-row">
-        <span class="filter-label">赛事级别：</span>
-        <div class="options-area">
-          <span
-            v-for="lvl in ['全部', '国家级', '省级', '校级']"
-            :key="lvl"
-            class="filter-tag"
-            :class="{ active: query.level === lvl }"
-            @click="query.level = lvl"
-          >
-            {{ lvl }}
-          </span>
-        </div>
-      </div>
-
-      <div class="status-row">
-        <span class="filter-label">赛事状态：</span>
-        <div class="options-area">
-          <span
-            v-for="(label, value) in {
-              all: '全部',
-              upcoming: '未开始',
-              ongoing: '进行中',
-              ended: '已结束',
-            }"
-            :key="value"
-            class="filter-tag"
-            :class="{ active: query.status === value }"
-            @click="query.status = value"
-          >
-            {{ label }}
-          </span>
-        </div>
-      </div>
+    
+    <div class="page-header">
+      <h2>赛事管理与设置</h2>
+      <el-button type="primary" plain>+ 新增赛事</el-button>
     </div>
 
     <div class="comp-list">
@@ -179,6 +105,7 @@ function NavigateToRegister(compID) {
             </el-tag>
             <h3 class="comp-name">{{ item.title }}</h3>
           </div>
+          
           <div class="meta-row">
             <el-tag effect="plain" type="primary" size="small" class="level-tag">
               {{ item.level }}
@@ -195,31 +122,31 @@ function NavigateToRegister(compID) {
               <el-icon><Calendar /></el-icon> {{ item.timeRange }}
             </span>
           </div>
+          
           <div class="tag-row">
             <el-tag v-for="t in item.tags" :key="t" size="small" type="info" class="extra-tag">
               {{ t }}
             </el-tag>
           </div>
         </div>
+
         <div class="comp-action">
           <div class="btn-group">
             <el-button link type="info" class="sub-btn" @click.stop="handleNotice(item.id)">
-              <el-icon><Bell /></el-icon> 通知
+              <el-icon><Bell /></el-icon> 发布通知
             </el-button>
 
             <el-button
-              :type="item.status === 0||item.status === 3 ? 'info' : 'primary'"
-              :disabled="item.status === 3"
-              @click="NavigateToRegister(item.id)"
+              type="primary"
               class="primary-btn"
+              @click.stop="handleSettings(item.id)"
             >
-              {{ getStatusConfig(item.status).label }}
-              <el-icon class="el-icon--right"><ArrowRight /></el-icon>
+              <el-icon style="margin-right: 6px"><Setting /></el-icon>
+              报名设置
             </el-button>
           </div>
         </div>
       </div>
-      
     </div>
 
     <div class="pagination-container">
@@ -229,7 +156,6 @@ function NavigateToRegister(compID) {
           :total="total"
           layout="total, sizes, prev, pager, next, jumper"
           :page-sizes="[10, 20, 50, 100]"
-          
         />
     </div>
   </div>
@@ -242,85 +168,41 @@ function NavigateToRegister(compID) {
   flex-direction: column;
   background-color: var(--background-color);
   padding: 20px;
-  
+  min-height: 100vh;
 }
-.filter-panel {
-  box-sizing: border-box;
-  background-color: #fff;
-  padding: 24px;
-  border-radius: 4px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
-  .filter-divider {
-    margin: 16px 0;
-  }
-  .discipline-row,
-  .level-row,
-  .status-row {
-    display: flex;
-    align-items: flex-start;
-    margin-bottom: 12px;
-    font-size: var(--primary-font);
-    &:last-child {
-      margin-bottom: 0;
-    }
-    &.search-row {
-      margin-bottom: 0;
-    }
-    .filter-label {
-      width: 80px;
-      color: #909399;
-      line-height: 28px;
-      flex-shrink: 0;
-    }
-    .options-area {
-      flex: 1;
-      display: flex;
-      flex-wrap: wrap; /* 允许换行 */
-      gap: 10px;
-      .filter-tag {
-        padding: 4px 12px;
-        border-radius: 4px;
-        cursor: pointer;
-        color: #606266;
-        line-height: 20px;
-        transition: all 0.2s;
-        white-space: nowrap;
 
-        &:hover {
-          color: #13c2c2;
-          background-color: #f0fdfa;
-        }
-
-        &.active {
-          background-color: #13c2c2;
-          color: #fff;
-          font-weight: 500;
-        }
-      }
-    }
+/* 简单的头部样式 */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  h2 {
+    margin: 0;
+    font-size: 20px;
+    color: #303133;
+    font-weight: 600;
   }
 }
 
 .comp-list {
-  
   display: flex;
   flex-direction: column;
-//   flex:1;
   margin-bottom: 40px;
   gap: 16px;
-  margin-top: 20px;
   
   .comp-item {
     background-color: #fff;
     padding: 24px;
     border-radius: 8px;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05); /* 默认微弱阴影 */
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
     border: 1px solid transparent;
     display: flex;
-    justify-content: space-between; /* 左右布局 */
+    justify-content: space-between;
     align-items: center;
     cursor: pointer;
     transition: all 0.3s;
+    
     &:hover {
       transform: translateY(-2px);
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
@@ -328,6 +210,7 @@ function NavigateToRegister(compID) {
         color: #13c2c2;
       }
     }
+
     .comp-info {
       flex: 1;
       display: flex;
@@ -392,7 +275,7 @@ function NavigateToRegister(compID) {
         display: flex;
         align-items: center;
         gap: 20px;
-        /* 次要按钮（通知） */
+        
         .sub-btn {
           font-size: 13px;
           color: #909399;
@@ -407,22 +290,20 @@ function NavigateToRegister(compID) {
           }
         }
 
-        /* 主要按钮（报名） */
         .primary-btn {
-          
           width: 120px;
           height: 38px;
           font-weight: 600;
           border: none;
-          &.el-button--primary {
-               background: linear-gradient(135deg, #13c2c2 0%, #36cfc9 100%);
-               box-shadow: 0 4px 12px rgba(19, 194, 194, 0.3);
-               transition: all 0.3s;
-               &:hover {
-                   transform: translateY(-1px);
-                   box-shadow: 0 6px 16px rgba(19, 194, 194, 0.4);
-               }
-            }
+          /* 保持原有的青色渐变风格 */
+          background: linear-gradient(135deg, #13c2c2 0%, #36cfc9 100%);
+          box-shadow: 0 4px 12px rgba(19, 194, 194, 0.3);
+          transition: all 0.3s;
+          &:hover {
+               transform: translateY(-1px);
+               box-shadow: 0 6px 16px rgba(19, 194, 194, 0.4);
+               opacity: 0.9;
+          }
         }
       }
     }
