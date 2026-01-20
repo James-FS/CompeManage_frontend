@@ -28,11 +28,6 @@ const allMenus = [
         roles: ['school_admin', 'college_admin', 'competition_manager', 'student'] 
       },
       { 
-        path: '/competition/add', 
-        title: '添加赛事', 
-        roles: ['school_admin', 'college_admin'] 
-      },
-      { 
         path: '/competition/register', 
         title: '赛事报名', 
         roles: ['school_admin', 'college_admin', 'student','competition_manager'] 
