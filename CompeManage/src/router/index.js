@@ -3,6 +3,7 @@ import MainLayout from '@/layouts/MainLayout.vue'
 import EmptyLayout from '@/layouts/EmptyLayout.vue'
 import { useUserStore } from '@/stores/user'
 
+
 const routes = [
     {
         path: '/',
@@ -57,6 +58,18 @@ const routes = [
                 component: () => import('@/views/competition/edit.vue'),
 
             },
+        ]
+    },
+    {
+        path: '/permission',
+        component: MainLayout,
+        children: [
+            {
+                path:'',
+                name:'permission',
+                component: () => import('@/views/permission/permission.vue'),
+                meta: { title: '权限管理' }
+            }
         ]
     },
     //不需要侧边导航栏的页面
