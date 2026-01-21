@@ -4,6 +4,7 @@ import EmptyLayout from '@/layouts/EmptyLayout.vue'
 import { useUserStore } from '@/stores/user'
 
 
+
 const routes = [
     {
         path: '/',
@@ -41,23 +42,29 @@ const routes = [
                 meta: { title: '新增赛事', roles: ['school_admin', 'college_admin'] }
             },
             {
-                path: 'register',
+                path: '/competition/register',
                 name: 'CompetitionRegister',
-                component: () => import('@/views/competition/register.vue'),
+                component: () => import('@/views/register/register.vue'),
                 meta: { title: '赛事报名', roles: ['school_admin', 'college_admin', 'competition_manager', 'student'] }
             },
             {
-                path: 'register/detail/:id',
+                path: '/competition/register/detail/:id',
                 name: 'detail',
-                component: () => import('@/views/competition/registerDetail.vue'),
+                component: () => import('@/views/register/registerDetail.vue'),
                 props: true,
             },
             {
-                path: 'edit',
-                nmame: 'edit',
-                component: () => import('@/views/competition/edit.vue'),
+                path: '/competition/register/edit',
+                name: 'register-edit',
+                component: () => import('@/views/register/edit.vue'),
 
             },
+            {
+                path: '/competition/register/edit/:id',
+                name: 'edit-detail',
+                component: () => import('@/views/register/editDetail.vue'),
+                props: true,
+            }
         ]
     },
     {
