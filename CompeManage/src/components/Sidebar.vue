@@ -38,6 +38,11 @@ const props = defineProps({
         path: '/statistics',
         title: '数据统计',
         icon: DataAnalysis
+      },
+      {
+        path:'/permission',
+        title:'权限管理',
+
       }
     ]
   },
