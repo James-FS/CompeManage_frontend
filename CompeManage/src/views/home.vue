@@ -59,7 +59,7 @@ function NavigateToMoreNotice() {
 <template>
   <div class="home-container">
     <div class="card-container">
-      <el-card class="notice-card" shadow="hover">
+      <el-card class="notice-card">
         <template #header>
           <div class="notice-title">
             <span class="second-title">赛事通知</span>
@@ -168,6 +168,7 @@ function NavigateToMoreNotice() {
     gap: 20px;
     .main-card {
       flex: 0 0 auto;
+      box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
       .index-content {
         display: flex;
         flex-direction: column;
@@ -187,7 +188,7 @@ function NavigateToMoreNotice() {
           padding: 0 25px;
           box-sizing: border-box;
           gap: 15px;
-          border-radius: 12px;
+          border-radius: 4px;
           cursor: pointer;
           transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
           &:hover {
@@ -249,6 +250,7 @@ function NavigateToMoreNotice() {
       display: flex;
       flex-direction: column;
       min-height: 0;
+      box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
       :deep(.el-card__body) {
         flex: 1;
         display: flex;
@@ -356,9 +358,8 @@ function NavigateToMoreNotice() {
   }
 
   .notice-card {
-    // width: 50%;
-    // height: 90%;
     flex: 1;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
 
     .notice-title {
       display: flex;

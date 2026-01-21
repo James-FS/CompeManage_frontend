@@ -2,9 +2,6 @@
 import { ref, watch, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
-  House,
-  Trophy,
-  DataAnalysis,
   Expand,
   Fold
 } from '@element-plus/icons-vue';
@@ -17,34 +14,7 @@ const props = defineProps({
   // 菜单项配置，支持从父组件传入
   menuItems: {
     type: Array,
-    default: () => [
-      {
-        path: '/home',
-        title: '首页',
-        icon: House
-      },
-      {
-        path: '/competition',
-        title: '竞赛管理',
-        icon: Trophy,
-        children: [
-          { path: '/competition/list', title: '竞赛列表' },
-          { path: '/competition/add', title: '添加竞赛' },
-          {path:'/competition/register',title:'赛事报名'},
-          {path:'/competition/edit',title:'编辑赛事' }
-        ]
-      },
-      {
-        path: '/statistics',
-        title: '数据统计',
-        icon: DataAnalysis
-      },
-      {
-        path:'/permission',
-        title:'权限管理',
-
-      }
-    ]
+    default: () => []
   },
   // 默认折叠状态
   defaultCollapse: {
@@ -120,36 +90,28 @@ const sidebarWidth = computed(() => {
 <template>
   <div class="sidebar-container" :style="{ width: sidebarWidth }">
     <!-- 导航菜单 -->
-    <el-menu
-      :default-active="activeMenu"
-      :collapse="isCollapse"
-      :background-color="backgroundColor"
-      :text-color="textColor"
-      :active-text-color="activeTextColor"
-      class="sidebar-menu"
-      @select="handleMenuSelect"
-      @open="handleMenuOpen"
-      @close="handleMenuClose"
-    >
+    <el-menu :default-active="activeMenu" :collapse="isCollapse" :background-color="backgroundColor"
+      :text-color="textColor" :active-text-color="activeTextColor" class="sidebar-menu" @select="handleMenuSelect"
+      @open="handleMenuOpen" @close="handleMenuClose">
       <template v-for="item in menuItems" :key="item.path">
         <!-- 有子菜单 -->
         <el-sub-menu v-if="item.children" :index="item.path">
           <template #title>
-            <el-icon><component :is="item.icon" /></el-icon>
+            <el-icon>
+              <component :is="item.icon" />
+            </el-icon>
             <span>{{ item.title }}</span>
           </template>
-          <el-menu-item
-            v-for="child in item.children"
-            :key="child.path"
-            :index="child.path"
-          >
+          <el-menu-item v-for="child in item.children" :key="child.path" :index="child.path">
             {{ child.title }}
           </el-menu-item>
         </el-sub-menu>
 
         <!-- 无子菜单 -->
         <el-menu-item v-else :index="item.path">
-          <el-icon><component :is="item.icon" /></el-icon>
+          <el-icon>
+            <component :is="item.icon" />
+          </el-icon>
           <template #title>{{ item.title }}</template>
         </el-menu-item>
       </template>
@@ -157,11 +119,7 @@ const sidebarWidth = computed(() => {
 
     <!-- 折叠按钮 -->
     <div v-if="showCollapseButton" class="sidebar-footer">
-      <el-button
-        circle
-        size="small"
-        @click="toggleCollapse"
-      >
+      <el-button circle size="small" @click="toggleCollapse">
         <el-icon>
           <component :is="isCollapse ? Expand : Fold" />
         </el-icon>
@@ -184,20 +142,20 @@ const sidebarWidth = computed(() => {
     border-right: none;
     overflow-y: auto;
     overflow-x: hidden;
-    
+
     // 隐藏滚动条但保持功能
     &::-webkit-scrollbar {
       width: 6px;
     }
-    
+
     &::-webkit-scrollbar-track {
       background: transparent;
     }
-    
+
     &::-webkit-scrollbar-thumb {
       background: rgba(255, 255, 255, 0.2);
       border-radius: 3px;
-      
+
       &:hover {
         background: rgba(255, 255, 255, 0.3);
       }
@@ -211,10 +169,10 @@ const sidebarWidth = computed(() => {
     justify-content: center;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
     padding: 10px 0;
-    
+
     .el-button {
       transition: all 0.3s ease;
-      
+
       &:hover {
         transform: scale(1.1);
       }
