@@ -72,13 +72,12 @@ let total = ref(100)
 
 // 按钮操作逻辑
 function NavigateToSettings(compID) {
-    ElMessage.success(`点击了ID为 ${compID} 的报名设置`)
     router.push({name: 'edit-detail', params: { id: compID } })
 }
 
-function handleNotice(compID) {
+function NavigateToNotice(compID) {
     // 发布通知逻辑
-    ElMessage.info(`点击了ID为 ${compID} 的发布通知`)
+    router.push({name: 'NoticeDetail', params: { id: compID } })
 }
 </script>
 
@@ -131,7 +130,7 @@ function handleNotice(compID) {
 
         <div class="comp-action">
           <div class="btn-group">
-            <el-button link type="info" class="sub-btn" @click.stop="handleNotice(item.id)">
+            <el-button link type="info" class="sub-btn" @click.stop="NavigateToNotice(item.id)">
               <el-icon><Bell /></el-icon> 发布通知
             </el-button>
 

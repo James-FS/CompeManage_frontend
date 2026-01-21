@@ -102,7 +102,20 @@ const routes = [
                 component: () => import('@/views/notice/list.vue'),
                 meta: { title: '通知列表', roles: ['school_admin', 'college_admin', 'competition_manager', 'student'] }
             },
-
+            {
+                path: 'notice/detail/:id',
+                name: 'NoticeDetail',
+                component: () => import('@/views/notice/detail.vue'),
+                props: true,
+                meta: { title: '通知详情', roles: ['school_admin', 'college_admin', 'competition_manager', 'student'] }
+            },
+            {
+                path:'notice/edit/:id',
+                name:'NoticeEdit',
+                component: () => import('@/views/notice/edit.vue'),
+                props: true,
+                meta: { title: '编辑通知', roles: ['school_admin', 'college_admin', 'competition_manager'] }
+            }
         ]
     }
 ]

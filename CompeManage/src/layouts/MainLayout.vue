@@ -45,7 +45,7 @@ const allMenus = [
     ]
   },
   {
-    path:'/permission/permission',
+    path:'/permission',
     title:'权限管理',
     roles: ['school_admin'],
   }
