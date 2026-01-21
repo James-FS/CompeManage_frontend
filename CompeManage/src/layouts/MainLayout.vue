@@ -36,8 +36,18 @@ const allMenus = [
         path: '/competition/audit',
         title: '赛事审核',
         roles: ['school_admin']
+      },
+      {
+        path: '/competition/register/edit',
+        title:'报名设置',
+        roles: ['school_admin', 'college_admin', 'competition_manager']
       }
     ]
+  },
+  {
+    path:'/permission/permission',
+    title:'权限管理',
+    roles: ['school_admin'],
   }
 ];
 // 深拷贝菜单但保留icon组件引用
