@@ -3,6 +3,8 @@ import MainLayout from '@/layouts/MainLayout.vue'
 import EmptyLayout from '@/layouts/EmptyLayout.vue'
 import { useUserStore } from '@/stores/user'
 
+
+
 const routes = [
     {
         path: '/',
@@ -40,23 +42,41 @@ const routes = [
                 meta: { title: '新增赛事', roles: ['school_admin', 'college_admin'] }
             },
             {
-                path: 'register',
+                path: '/competition/register',
                 name: 'CompetitionRegister',
-                component: () => import('@/views/competition/register.vue'),
+                component: () => import('@/views/register/register.vue'),
                 meta: { title: '赛事报名', roles: ['school_admin', 'college_admin', 'competition_manager', 'student'] }
             },
             {
-                path: 'register/detail/:id',
+                path: '/competition/register/detail/:id',
                 name: 'detail',
-                component: () => import('@/views/competition/registerDetail.vue'),
+                component: () => import('@/views/register/registerDetail.vue'),
                 props: true,
             },
             {
-                path: 'edit',
-                nmame: 'edit',
-                component: () => import('@/views/competition/edit.vue'),
+                path: '/competition/register/edit',
+                name: 'register-edit',
+                component: () => import('@/views/register/edit.vue'),
 
             },
+            {
+                path: '/competition/register/edit/:id',
+                name: 'edit-detail',
+                component: () => import('@/views/register/editDetail.vue'),
+                props: true,
+            }
+        ]
+    },
+    {
+        path: '/permission',
+        component: MainLayout,
+        children: [
+            {
+                path:'',
+                name:'permission',
+                component: () => import('@/views/permission/permission.vue'),
+                meta: { title: '权限管理' }
+            }
         ]
     },
     //不需要侧边导航栏的页面
@@ -82,7 +102,20 @@ const routes = [
                 component: () => import('@/views/notice/list.vue'),
                 meta: { title: '通知列表', roles: ['school_admin', 'college_admin', 'competition_manager', 'student'] }
             },
-
+            {
+                path: 'notice/detail/:id',
+                name: 'NoticeDetail',
+                component: () => import('@/views/notice/detail.vue'),
+                props: true,
+                meta: { title: '通知详情', roles: ['school_admin', 'college_admin', 'competition_manager', 'student'] }
+            },
+            {
+                path:'notice/edit/:id',
+                name:'NoticeEdit',
+                component: () => import('@/views/notice/edit.vue'),
+                props: true,
+                meta: { title: '编辑通知', roles: ['school_admin', 'college_admin', 'competition_manager'] }
+            }
         ]
     }
 ]

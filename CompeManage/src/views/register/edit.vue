@@ -55,7 +55,7 @@ const compList = ref([
   },
 ])
 
-// 获取状态样式 (保留此逻辑，方便管理员查看当前状态)
+// 获取状态样式 
 const getStatusConfig = (status) => {
   const map = {
     1: { tagType: 'success', tagText: '报名中' },
@@ -71,15 +71,13 @@ let pageSize = ref(10)
 let total = ref(100)
 
 // 按钮操作逻辑
-function handleSettings(compID) {
-    // 跳转到报名设置页面 (假设路由名为 competition-settings)
-    // router.push({ name: 'CompetitionSettings', params: { id: compID } })
-    ElMessage.success(`点击了ID为 ${compID} 的报名设置`)
+function NavigateToSettings(compID) {
+    router.push({name: 'edit-detail', params: { id: compID } })
 }
 
-function handleNotice(compID) {
+function NavigateToNotice(compID) {
     // 发布通知逻辑
-    ElMessage.info(`点击了ID为 ${compID} 的发布通知`)
+    router.push({name: 'NoticeDetail', params: { id: compID } })
 }
 </script>
 
@@ -132,14 +130,14 @@ function handleNotice(compID) {
 
         <div class="comp-action">
           <div class="btn-group">
-            <el-button link type="info" class="sub-btn" @click.stop="handleNotice(item.id)">
+            <el-button link type="info" class="sub-btn" @click.stop="NavigateToNotice(item.id)">
               <el-icon><Bell /></el-icon> 发布通知
             </el-button>
 
             <el-button
               type="primary"
               class="primary-btn"
-              @click.stop="handleSettings(item.id)"
+              @click.stop="NavigateToSettings(item.id)"
             >
               <el-icon style="margin-right: 6px"><Setting /></el-icon>
               报名设置
