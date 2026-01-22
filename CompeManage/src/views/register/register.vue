@@ -1,113 +1,76 @@
 <script setup>
-import { ref, computed } from 'vue'
-import { Search,ArrowRight, Calendar, User, Bell } from '@element-plus/icons-vue' // 引入必要的图标
-import { ElPagination } from 'element-plus'
+import { ref, computed, onMounted } from 'vue'
+import { Search, ArrowRight, Calendar, User, Bell } from '@element-plus/icons-vue' // 引入必要的图标
+import { ElPagination, ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
+import { api } from '@/api'
+import { formatTimeRange } from '@/utils/format'
+import { 
+  COMP_CATEGORIES, 
+  getParticipantType,
+  getStatusConfig
+} from '@/utils/competition'
 const router = useRouter()
 // 1. 定义所有的学科分类 (模拟数据)
-const allCategories = [
-  '全部',
-  '计算机/软件',
-  '数学/建模',
-  '电子/自动化',
-  '机械工程',
-  '艺术/设计',
-  '经济/金融',
-  '创新创业',
-  '外语',
-  '土木建筑',
-  '化工/材料',
-  '法学',
-  '体育',
-  '文学/新闻',
-  '物理',
-  '生命科学',
-  '环境工程',
-  '医学',
-  '教育学',
-  '哲学',
-]
 
-const compList = ref([
-  {
-    id: 1,
-    title: '第十五届蓝桥杯全国软件和信息技术专业人才大赛',
-    level: '国家级A类',
-    organizer: '工信部人才交流中心',
-    timeRange: '2026-03-01 至 2026-04-15',
-    status: 1, // 1:报名中
-    tags: ['个人赛', '省赛直通'],
-  },
-  {
-    id: 2,
-    title: '2026年中国大学生广告艺术节学院奖',
-    level: '省级B类',
-    organizer: '广告人杂志社',
-    timeRange: '2026-02-10 至 2026-05-20',
-    status: 1, // 1:报名中
-    tags: ['团队赛'],
-  },
-  {
-    id: 3,
-    title: '第九届中国国际“互联网+”大学生创新创业大赛',
-    level: '国家级A+',
-    organizer: '教育部',
-    timeRange: '2025-11-01 至 2026-01-15',
-    status: 0, // 0:已结束
-    tags: ['团队赛', '创业'],
-  },
-  {
-    id: 4,
-    title: '2026年全国大学生英语竞赛(NECCS)',
-    level: '国家级B类',
-    organizer: '高等学校大学外语教学研究会',
-    timeRange: '2026-01-20 至 2026-03-10',
-    status: 2, // 2:即将截止
-    tags: ['个人赛'],
-  },
-  {
-    id: 5,
-    title: 'ACM国际大学生程序设计竞赛校内选拔赛',
-    level: '校级',
-    organizer: '计算机学院',
-    timeRange: '2026-04-01 至 2026-04-05',
-    status: 3, // 3:筹备中
-    tags: ['团队赛'],
-  },
-])
+const compList = ref([])
 
-// 2. 定义筛选状态
-const query = ref({
-  keyword: '', // 搜索关键词
-  category: '全部', // 当前选中的分类
-  level: '全部', // 当前选中的级别
-  status: 'all', // 当前选中的状态
+const queryParams = ref({
+  page: 1,
+  page_size: 10,
+  keyword: '',
+  category: '全部',
 })
 
-const getStatusConfig = (status) => {
-  const map = {
-    1: { label: '立即报名', tagType: 'success', tagText: '报名中' },
-    2: { label: '立即报名', tagType: 'danger', tagText: '急' },
-    3: { label: '等待开始', tagType: 'info', tagText: '筹备中' },
-    0: { label: '查看公示', tagType: 'info', tagText: '已结束' },
-  }
-  return map[status]
-}
+const query = ref({
+  page: 1,
+  page_size: 10,
+  is_my: false,
+})
+
+
 
 let currentPage = ref(1)
 let pageSize = ref(10)
-let total = ref(5000)
+let total = ref(0)
 
 function NavigateToRegister(compID) {
-    router.push({ name: 'detail', params: { id: compID } })
+  router.push({ name: 'detail', params: { id: compID } })
 }
+
+async function fetchCompList() {
+  try {
+    const response = await api.getCompetitionList(queryParams.value)
+    if (response.code == 200) {
+      compList.value = response.data.list.map((item) => {
+        const detail=item.Detail||{}
+        return{
+        ...item,
+        timeRange: formatTimeRange(detail.RegStartTime, detail.RegEndTime),
+        }
+      })
+      total.value = response.data.total
+    }
+  } catch (error) {
+    ElMessage.error(error.message || '获取竞赛列表失败')
+  }
+}
+
+onMounted(() => {
+  fetchCompList()
+})
 </script>
 
 <template>
   <div class="page-container">
     <div class="filter-panel">
       <div class="search-row">
-        <el-input v-model="query.keyword" placeholder="搜索赛事名称" prefix-icon="Search" clearable>
+        <el-input
+          v-model="queryParams.keyword"
+          placeholder="搜索赛事名称"
+          prefix-icon="Search"
+          clearable
+        >
           <template #append><el-button type="primary">搜索</el-button></template>
         </el-input>
       </div>
@@ -118,11 +81,11 @@ function NavigateToRegister(compID) {
         <span class="filter-label">学科分类：</span>
         <div class="options-area">
           <span
-            v-for="cat in allCategories"
+            v-for="cat in COMP_CATEGORIES"
             :key="cat"
             class="filter-tag"
-            :class="{ active: query.category === cat }"
-            @click="query.category = cat"
+            :class="{ active: queryParams.category === cat }"
+            @click="queryParams.category = cat"
           >
             {{ cat }}
           </span>
@@ -136,8 +99,8 @@ function NavigateToRegister(compID) {
             v-for="lvl in ['全部', '国家级', '省级', '校级']"
             :key="lvl"
             class="filter-tag"
-            :class="{ active: query.level === lvl }"
-            @click="query.level = lvl"
+            :class="{ active: queryParams.CompLevel === lvl }"
+            @click="queryParams.CompLevel = lvl"
           >
             {{ lvl }}
           </span>
@@ -156,8 +119,8 @@ function NavigateToRegister(compID) {
             }"
             :key="value"
             class="filter-tag"
-            :class="{ active: query.status === value }"
-            @click="query.status = value"
+            :class="{ active: queryParams.status === value }"
+            @click="queryParams.status = value"
           >
             {{ label }}
           </span>
@@ -166,27 +129,27 @@ function NavigateToRegister(compID) {
     </div>
 
     <div class="comp-list">
-      <div class="comp-item" v-for="item in compList" :key="item.id">
+      <div class="comp-item" v-for="item in compList" :key="item.ID">
         <div class="comp-info">
           <div class="name-row">
             <el-tag
-              :type="getStatusConfig(item.status).tagType"
+              :type="getStatusConfig(item.Status).tagType"
               effect="dark"
               size="small"
               class="status-badge"
             >
-              {{ getStatusConfig(item.status).tagText }}
+              {{ getStatusConfig(item.Status).tagText }}
             </el-tag>
-            <h3 class="comp-name">{{ item.title }}</h3>
+            <h3 class="comp-name">{{ item.CompName }}</h3>
           </div>
           <div class="meta-row">
             <el-tag effect="plain" type="primary" size="small" class="level-tag">
-              {{ item.level }}
+              {{ item.CompLevel }}
             </el-tag>
 
             <span class="divider"></span>
             <span class="meta-text">
-              <el-icon><User /></el-icon> {{ item.organizer }}
+              <el-icon><User /></el-icon> {{ item.Organizer }}
             </span>
 
             <span class="divider"></span>
@@ -196,8 +159,8 @@ function NavigateToRegister(compID) {
             </span>
           </div>
           <div class="tag-row">
-            <el-tag v-for="t in item.tags" :key="t" size="small" type="info" class="extra-tag">
-              {{ t }}
+            <el-tag  size="small" type="info" class="extra-tag">
+              {{ getParticipantType(item.Detail.ParticipantType) }}
             </el-tag>
           </div>
         </div>
@@ -208,29 +171,27 @@ function NavigateToRegister(compID) {
             </el-button>
 
             <el-button
-              :type="item.status === 0||item.status === 3 ? 'info' : 'primary'"
+              :type="item.status === 0 || item.status === 3 ? 'info' : 'primary'"
               :disabled="item.status === 3"
               @click="NavigateToRegister(item.id)"
               class="primary-btn"
             >
-              {{ getStatusConfig(item.status).label }}
+              {{ getStatusConfig(item.Status).label }}
               <el-icon class="el-icon--right"><ArrowRight /></el-icon>
             </el-button>
           </div>
         </div>
       </div>
-      
     </div>
 
     <div class="pagination-container">
-        <el-pagination
-          v-model:current-page="currentPage"
-          v-model:page-size="pageSize"
-          :total="total"
-          layout="total, sizes, prev, pager, next, jumper"
-          :page-sizes="[10, 20, 50, 100]"
-          
-        />
+      <el-pagination
+        v-model:current-page="queryParams.page"
+        v-model:page-size="queryParams.page_size"
+        :total="total"
+        layout="total, sizes, prev, pager, next, jumper"
+        :page-sizes="[10, 20, 50, 100]"
+      />
     </div>
   </div>
 </template>
@@ -242,7 +203,6 @@ function NavigateToRegister(compID) {
   flex-direction: column;
   background-color: var(--background-color);
   padding: 20px;
-  
 }
 .filter-panel {
   box-sizing: border-box;
@@ -302,14 +262,13 @@ function NavigateToRegister(compID) {
 }
 
 .comp-list {
-  
   display: flex;
   flex-direction: column;
-//   flex:1;
+  //   flex:1;
   margin-bottom: 40px;
   gap: 16px;
   margin-top: 20px;
-  
+
   .comp-item {
     background-color: #fff;
     padding: 24px;
@@ -409,28 +368,27 @@ function NavigateToRegister(compID) {
 
         /* 主要按钮（报名） */
         .primary-btn {
-          
           width: 120px;
           height: 38px;
           font-weight: 600;
           border: none;
           &.el-button--primary {
-               background: linear-gradient(135deg, #13c2c2 0%, #36cfc9 100%);
-               box-shadow: 0 4px 12px rgba(19, 194, 194, 0.3);
-               transition: all 0.3s;
-               &:hover {
-                   transform: translateY(-1px);
-                   box-shadow: 0 6px 16px rgba(19, 194, 194, 0.4);
-               }
+            background: linear-gradient(135deg, #13c2c2 0%, #36cfc9 100%);
+            box-shadow: 0 4px 12px rgba(19, 194, 194, 0.3);
+            transition: all 0.3s;
+            &:hover {
+              transform: translateY(-1px);
+              box-shadow: 0 6px 16px rgba(19, 194, 194, 0.4);
             }
+          }
         }
       }
     }
   }
 }
 
-.pagination-container{
-    display: flex;
-    justify-content: center;
+.pagination-container {
+  display: flex;
+  justify-content: center;
 }
 </style>

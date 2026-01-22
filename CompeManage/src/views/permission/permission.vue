@@ -1,76 +1,126 @@
 <script setup>
-import { ref } from 'vue'
+import { onMounted, ref, nextTick } from 'vue'
 import { UserFilled, Plus, ArrowRight, Lock, Folder, Document } from '@element-plus/icons-vue'
+import api from '@/api'
 const treeRef = ref(null)
 const isSaving = ref(false)
-
-// 2. 告诉 el-tree 哪个字段是名字，哪个字段是子节点
+const checkStrictly = ref(false)
+// 告诉 el-tree 哪个字段是名字，哪个字段是子节点
 const defaultProps = {
   children: 'children',
-  label: 'label',
+  label: 'Name',
 }
 const roleList = ref([
-  { id: 101, name: '超级管理员', code: 'admin', tagType: 'danger' },
-  { id: 102, name: '指导教师', code: 'teacher', tagType: 'warning' },
-  { id: 103, name: '普通学生', code: 'student', tagType: 'success' },
-  { id: 104, name: '教务处', code: 'dean', tagType: 'info' },
-  { id: 105, name: '访客', code: 'guest', tagType: 'info' },
+  // { id: 101, name: '超级管理员', code: 'admin', tagType: 'danger' },
+  // { id: 102, name: '指导教师', code: 'teacher', tagType: 'warning' },
+  // { id: 103, name: '普通学生', code: 'student', tagType: 'success' },
+  // { id: 104, name: '教务处', code: 'dean', tagType: 'info' },
+  // { id: 105, name: '访客', code: 'guest', tagType: 'info' },
 ])
-const permissionData = [
-  {
-    id: 1,
-    label: '系统管理',
-    children: [
-      { id: 11, label: '用户管理' },
-      { id: 12, label: '角色管理' },
-      { id: 13, label: '日志监控' },
-      { id: 11, label: '用户管理' },
-      { id: 12, label: '角色管理' },
-      { id: 13, label: '日志监控' },
-      { id: 11, label: '用户管理' },
-      { id: 12, label: '角色管理' },
-      { id: 13, label: '日志监控' },
-      { id: 11, label: '用户管理' },
-      { id: 12, label: '角色管理' },
-      { id: 13, label: '日志监控' },
-      { id: 11, label: '用户管理' },
-      { id: 12, label: '角色管理' },
-      { id: 13, label: '日志监控' },
-    ],
-  },
-  {
-    id: 2,
-    label: '竞赛业务',
-    children: [
-      { id: 21, label: '发布竞赛' },
-      { id: 22, label: '审核报名' },
-      { id: 23, label: '成绩录入' },
-      // 多搞点数据测试滚动
-      { id: 24, label: '证书打印' },
-      { id: 25, label: '历史归档' },
-      { id: 26, label: '数据导出' },
-    ],
-  },
-  {
-    id: 3,
-    label: '学生中心',
-    children: [
-      { id: 31, label: '我的竞赛' },
-      { id: 32, label: '个人档案' },
-    ],
-  },
-]
-// 2. 定义当前选中的角色 (初始为空)
-const currentRole = ref(null)
+const permissionData = ref([])
+const currentRole = ref(null) // 定义当前选中的角色 (初始为空)
 
-// 3. 点击事件处理
 const handleRoleClick = (role) => {
   currentRole.value = role
+  // 从当前点击的角色对象中提取拥有的权限 ID 列表
+  const rolePermIds = role.Permissions ? role.Permissions.map((p) => p.ID) : []
+  // 切断父子关联
+  checkStrictly.value = true
+
+  nextTick(() => {
+    if (treeRef.value) {
+      treeRef.value.setCheckedKeys(rolePermIds)
+      // 恢复关联，方便用户手动操作
+      checkStrictly.value = false
+    }
+  })
 }
 
-function handleSaveClick(){
-  
+/**
+ * 扁平数组转树形结构
+ * @param {Array} list  后端返回的扁平数组
+ * @param {String} idKey ID字段名 (你的后端是 "ID")
+ * @param {String} pidKey 父ID字段名 (你的后端是 "ParentID")
+ */
+function listToTree(list, idKey = 'ID', pidKey = 'ParentID') {
+  const map = {}
+  const tree = []
+
+  list.forEach((item) => {
+    item.children = []
+    map[item[idKey]] = item
+  })
+
+  // 2. 再次遍历，将元素放入父节点的 children 中
+  list.forEach((item) => {
+    const parentId = item[pidKey]
+
+    // 如果 ParentID 不为 0 且 Map 中能找到父亲
+    if (parentId && parentId !== 0 && map[parentId]) {
+      map[parentId].children.push(item)
+    } else {
+      // 否则，它就是根节点
+      tree.push(item)
+    }
+  })
+
+  return tree
 }
+
+async function fetchRoles() {
+  try {
+    const response = await api.getRoleList()
+    if (response.code === 200) {
+      roleList.value = response.data
+    }
+  } catch (error) {
+    ElMessage.error(error.message || '获取失败')
+  }
+}
+
+async function fetchPermissions() {
+  try {
+    const response = await api.getPermissionList()
+    if (response.code === 200) {
+      permissionData.value = listToTree(response.data)
+    }
+  } catch (error) {
+    ElMessage.error(error.message || '获取失败')
+  }
+}
+
+async function handleSaveClick() {
+  if (!currentRole.value) return
+
+  isSaving.value = true
+  try {
+    // getCheckedKeys() 拿到底层叶子节点
+    // getHalfCheckedKeys() 拿到半选的父节点 (目录)
+    const checkedKeys = treeRef.value.getCheckedKeys()
+    const halfCheckedKeys = treeRef.value.getHalfCheckedKeys()
+    const finalPermIds = [...checkedKeys, ...halfCheckedKeys]
+
+    const res = await api.assignPermissions({
+      role_id: currentRole.value.ID, // 注意大小写 ID
+      perm_ids: finalPermIds,
+    })
+
+    if (res.code === 200) {
+      ElMessage.success('权限分配成功')
+      await fetchRoles()
+      // currentRole.value = roleList.value.find(r => r.ID === currentRole.value.ID)
+    }
+  } catch (error) {
+    ElMessage.error(error.message || '保存失败')
+  } finally {
+    isSaving.value = false
+  }
+}
+
+onMounted(() => {
+  fetchRoles()
+  fetchPermissions()
+})
 </script>
 
 <template>
@@ -89,18 +139,18 @@ function handleSaveClick(){
       <div class="scroll-content role-list">
         <div
           v-for="role in roleList"
-          :key="role.id"
+          :key="role.ID"
           class="role-item"
-          :class="{ 'is-active': currentRole?.id === role.id }"
+          :class="{ 'is-active': currentRole?.ID === role.ID }"
           @click="handleRoleClick(role)"
         >
           <div class="role-info">
-            <span class="role-name">{{ role.name }}</span>
+            <span class="role-name">{{ role.RoleName }}</span>
             <el-tag size="small" :type="role.tagType" effect="plain">
-              {{ role.code }}
+              {{ role.RoleCode }}
             </el-tag>
           </div>
-          <el-icon v-if="currentRole?.id === role.id" class="arrow-icon">
+          <el-icon v-if="currentRole?.ID === role.ID" class="arrow-icon">
             <ArrowRight />
           </el-icon>
         </div>
@@ -115,11 +165,17 @@ function handleSaveClick(){
             <span>权限配置</span>
 
             <span v-if="currentRole" class="current-role-tip">
-              - 当前正在编辑：<span class="highlight">{{ currentRole.name }}</span>
+              - 当前正在编辑：<span class="highlight">{{ currentRole.RoleName }}</span>
             </span>
           </div>
 
-          <el-button type="primary" size="small" :disabled="!currentRole" :loading="isSaving">
+          <el-button
+            type="primary"
+            size="small"
+            :disabled="!currentRole"
+            :loading="isSaving"
+            @click="handleSaveClick"
+          >
             保存
           </el-button>
         </div>
@@ -133,9 +189,10 @@ function handleSaveClick(){
           ref="treeRef"
           :data="permissionData"
           show-checkbox
-          node-key="id"
+          node-key="ID"
           default-expand-all
           :props="defaultProps"
+          :check-strictly="checkStrictly"
           class="custom-tree"
         >
           <template #default="{ node, data }">
