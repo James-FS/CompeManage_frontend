@@ -3,6 +3,8 @@ import { onMounted, reactive, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Setting, Select, User, UserFilled } from '@element-plus/icons-vue'
+import { api } from '@/api'
+import { formatToGoTime } from '@/utils/format'
 const route = useRoute()
 
 const isSaving = ref(false)
@@ -32,8 +34,7 @@ const form = reactive({
   maxMember: 3,
   timeRange: [], // [开始时间, 结束时间]
   grades: [], // 限制年级
-  allowAdvisor: true, // 是否允许指导老师
-  advisorRequired: false, // 指导老师是否必填
+  advisorRequired: 0, // 指导老师是否必填
   attachmentType: 1, // 0:无, 1:选填, 2:必填
 })
 
@@ -56,31 +57,74 @@ const handleTypeChange = (val) => {
 }
 
 // 保存逻辑
-const handleSave = async () => {
+async function handleSave() {
   if (!formRef.value) return
 
-  await formRef.value.validate((valid) => {
+  await formRef.value.validate(async (valid) => {
     if (valid) {
       isSaving.value = true
-
       // 模拟构造发送给后端的数据
       const submitData = {
-        ...form,
-        start_time: form.timeRange?.[0],
-        end_time: form.timeRange?.[1],
+        comp_id: Number(route.params.id),
+        participant_type: form.type,
+        min_team_member: form.type === 2 ? form.minMember : 1,
+        max_team_member: form.type === 2 ? form.maxMember : 1,
+        grade_requirement: form.grades,
+        need_advisor: form.allowAdvisor ? (form.advisorRequired ? 2 : 1) : 0,
+        need_attachment: form.attachmentType,
+        reg_start_time: formatToGoTime(form.timeRange[0]),
+        reg_end_time: formatToGoTime(form.timeRange[1]),
       }
-      console.log('提交的数据:', submitData)
 
-      setTimeout(() => {
+      try {
+        const response = await api.saveRegConfig(submitData)
+        if (response.code === 200) {
+          ElMessage.success('报名设置已更新')
+        }
+      } catch (err) {
+      } finally {
         isSaving.value = false
-        ElMessage.success('报名设置已更新')
-      }, 800)
+        fetchConfig()
+      }
+    } else {
+      ElMessage.error('表单验证未通过，请检查输入项')
     }
   })
 }
 
+// 获取已有设置
+async function fetchConfig() {
+  const compID = Number(route.params.id)
+  try {
+    const response = await api.getRegConfig(compID)
+    if (response.code === 200) {
+      const data = response.data
+      form.type = data.participant_type
+      form.minMember = data.min_team_member || 1
+      form.maxMember = data.max_team_member || 1
+      form.timeRange = [data.reg_start_time, data.reg_end_time]
+      form.grades = data.grade_requirement || []
+      form.advisorRequired = data.need_advisor
+      form.attachmentType = data.need_attachment
+      if (data.need_advisor === 0) {
+        form.allowAdvisor = false
+        form.advisorRequired = false
+      } else {
+        form.allowAdvisor = true
+        form.advisorRequired = (data.need_advisor === 2)
+      }
+      if (data.reg_start_time && data.reg_end_time) {
+        form.timeRange = [new Date(data.reg_start_time), new Date(data.reg_end_time)]
+      } else {
+        form.timeRange = []
+      }
+    }
+  } catch (error) {
+    ElMessage.error(error.message || '获取报名配置失败')
+  }
+}
 onMounted(() => {
-  const compID = route.params.id
+  fetchConfig()
 })
 </script>
 
@@ -159,7 +203,7 @@ onMounted(() => {
             start-placeholder="开始报名"
             end-placeholder="报名截止"
             format="YYYY-MM-DD HH:mm"
-            value-format="YYYY-MM-DD HH:mm:ss"
+           
             :default-time="defaultTime"
             style="width: 100%; max-width: 400px"
           />
