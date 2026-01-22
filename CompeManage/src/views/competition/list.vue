@@ -1,7 +1,8 @@
 <script setup>
 import { ref, reactive } from 'vue';
+import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import { Search, Refresh, Download, Upload, Plus, Delete, ArrowDown, Edit } from '@element-plus/icons-vue';
+import { Search, Refresh, Download, Upload, Plus, Delete, ArrowDown, Edit, Setting } from '@element-plus/icons-vue';
 
 
 // 搜索表单数据
@@ -408,22 +409,153 @@ const tableData = ref([
 // 加载状态
 const loading = ref(false);
 
+// 路由实例
+const router = useRouter();
+
+// 新增赛事
+const handleAddCompetition = () => {
+    router.push({ name: 'CompetitionAdd' });
+};
+
 // 年份管理数据
 const currentYear = ref('2025'); // 当前选中的年份
 const yearList = ref(['2026', '2025', '2024', '2023']); // 可选年份列表
-const handleYearSwitch = (year) => {
-    loading.value = true;
-    currentYear.value = year;
-    // 同步更新搜索表单
-    searchForm.year = year;
+// 弹窗控制
+const yearManageVisible = ref(false);
+const newYearInput = ref('');
+// 构造表格数据（包装对象支持行内编辑）
+const yearTableData = ref([]);
 
-    // 模拟网络请求延迟
-    setTimeout(() => {
-        ElMessage.success(`已切换至 ${year} 年度数据`);
-        loading.value = false;
-        // 在这里调用获取列表的接口，例如：
-        // getList(); 
-    }, 1000);
+// 1. 下拉菜单指令处理
+const handleYearCommand = (command) => {
+    if (command === 'manage_years') {
+        openManageDialog();
+    } else {
+        handleYearSwitch(command);
+    }
+};
+
+// 2. 打开管理弹窗
+const openManageDialog = () => {
+    // 将简单数组转换为对象数组，方便管理编辑状态
+    yearTableData.value = yearList.value.map(year => ({
+        year: year,
+        editValue: year,
+        isEditing: false
+    }));
+    newYearInput.value = '';
+    yearManageVisible.value = true;
+};
+
+// 3. 弹窗内：新增年份
+const handleAddYearInDialog = () => {
+    const year = newYearInput.value.trim();
+    // 简单正则校验：4位数字
+    if (!/^\d{4}$/.test(year)) {
+        ElMessage.warning('请输入正确的4位年份格式');
+        return;
+    }
+    if (yearList.value.includes(year)) {
+        ElMessage.warning('该年份目录已存在');
+        return;
+    }
+
+    // 更新原始列表和表格数据
+    yearList.value.unshift(year); // 加到最前面
+    yearTableData.value.unshift({
+        year: year,
+        editValue: year,
+        isEditing: false
+    });
+
+    newYearInput.value = '';
+    ElMessage.success('添加成功');
+};
+
+// 4. 弹窗内：修改年份（开始编辑）
+const handleStartEdit = (index) => {
+    // 重置其他行，保证同时只编辑一行
+    yearTableData.value.forEach(item => item.isEditing = false);
+    yearTableData.value[index].isEditing = true;
+    yearTableData.value[index].editValue = yearTableData.value[index].year;
+};
+
+// 5. 弹窗内：保存修改
+const handleSaveEdit = (index) => {
+    const row = yearTableData.value[index];
+    const newYear = row.editValue.trim();
+    const oldYear = row.year;
+
+    if (!/^\d{4}$/.test(newYear)) {
+        ElMessage.warning('年份格式不正确');
+        return;
+    }
+    // 如果改成了和其他行一样的年份
+    if (newYear !== oldYear && yearList.value.includes(newYear)) {
+        ElMessage.warning('该年份已存在，无法重复');
+        return;
+    }
+
+    // TODO: 这里应该调用后端接口修改年份名称
+    // api.updateYear({ old: oldYear, new: newYear }).then(...)
+
+    // 更新前端数据
+    const listIndex = yearList.value.indexOf(oldYear);
+    if (listIndex !== -1) {
+        yearList.value[listIndex] = newYear;
+    }
+    row.year = newYear;
+    row.isEditing = false;
+
+    // 如果当前选中的就是被修改的年份，同步更新选中状态
+    if (currentYear.value === oldYear) {
+        currentYear.value = newYear;
+        searchForm.year = newYear;
+    }
+
+    ElMessage.success('修改成功');
+};
+
+// 6. 弹窗内：取消编辑
+const handleCancelEdit = (index) => {
+    yearTableData.value[index].isEditing = false;
+};
+
+// 7. 弹窗内：删除年份
+const handleDeleteYear = (year) => {
+    // 模拟检查：如果该年份下有数据（这里仅演示，实际应根据API或当前加载的数据判断）
+    // 严格来说，应该调用一个 checkDataExist(year) 的接口
+    if (year === '2025' && tableData.value.length > 0) {
+        ElMessage.error('该年度目录下包含赛事数据，禁止删除！请先清空该年度下的赛事。');
+        return;
+    }
+
+    ElMessageBox.confirm(
+        `确定要删除 ${year} 年度目录吗？`,
+        '警告',
+        { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
+    ).then(() => {
+        // 从原始列表移除
+        const index = yearList.value.indexOf(year);
+        if (index > -1) yearList.value.splice(index, 1);
+
+        // 从表格移除
+        const tableIndex = yearTableData.value.findIndex(item => item.year === year);
+        if (tableIndex > -1) yearTableData.value.splice(tableIndex, 1);
+
+        // 如果删除了当前选中的年份，自动切换到最新的年份
+        if (currentYear.value === year) {
+            const nextYear = yearList.value[0] || '';
+            if (nextYear) handleYearSwitch(nextYear);
+        }
+
+        ElMessage.success('删除成功');
+    }).catch(() => { });
+};
+
+// 8. 关闭弹窗时的收尾
+const handleManageClose = () => {
+    // 这里可以再次确保 yearList 和 yearTableData 同步，或者做一些清理
 };
 
 // 删除操作
@@ -505,13 +637,13 @@ const handleCurrentChange = (val) => {
         <div class="competition-table-container">
             <div class="table-toolbar">
                 <div class="left-actions">
-                    <el-button type="primary" :icon="Plus">新增赛事</el-button>
+                    <el-button type="primary" :icon="Plus" @click="handleAddCompetition">新增赛事</el-button>
                     <el-button type="danger" plain :icon="Delete">批量删除</el-button>
                     <el-button type="info" plain :icon="Download">导出数据</el-button>
                     <el-button type="default" :icon="Upload" plain>导入数据</el-button>
                 </div>
                 <div class="right-info">
-                    <el-dropdown trigger="click" @command="handleYearSwitch">
+                    <el-dropdown trigger="click" @command="handleYearCommand">
                         <div class="year-switch-tag">
                             <span class="tag-text">当前：{{ currentYear }}年度赛事</span>
                             <el-icon class="tag-icon">
@@ -521,14 +653,55 @@ const handleCurrentChange = (val) => {
 
                         <template #dropdown>
                             <el-dropdown-menu>
-                                <el-dropdown-item v-for="year in yearList" :key="year" :command="year">
+                                <el-dropdown-item v-for="year in yearList" :key="year" :command="year"
+                                    :class="{ 'is-active': currentYear === year }">
                                     {{ year }}年度
+                                </el-dropdown-item>
+                                <el-dropdown-item divided command="manage_years">
+                                    <el-icon>
+                                        <Setting />
+                                    </el-icon> 管理年度目录
                                 </el-dropdown-item>
                             </el-dropdown-menu>
                         </template>
                     </el-dropdown>
                 </div>
             </div>
+            <el-dialog v-model="yearManageVisible" title="年度目录管理" width="500px" align-center
+                @closed="handleManageClose">
+                <div class="manage-header" style="margin-bottom: 20px; display: flex; gap: 10px;">
+                    <el-input v-model="newYearInput" placeholder="输入年份 (如 2026)" style="flex: 1" maxlength="4"
+                        clearable />
+                    <el-button type="primary" :icon="Plus" @click="handleAddYearInDialog">新增年份</el-button>
+                </div>
+
+                <el-table :data="yearTableData" border stripe style="width: 100%" max-height="400">
+                    <el-table-column prop="year" label="年份目录" align="center">
+                        <template #default="scope">
+                            <el-input v-if="scope.row.isEditing" v-model="scope.row.editValue" size="small" autofocus/>
+                            <span v-else>{{ scope.row.year }}年度</span>
+                        </template>
+                    </el-table-column>
+
+                    <el-table-column label="操作" width="160" align="center">
+                        <template #default="scope">
+                            <div v-if="scope.row.isEditing">
+                                <el-button link type="success" size="small"
+                                    @click="handleSaveEdit(scope.$index)">保存</el-button>
+                                <el-button link type="info" size="small"
+                                    @click="handleCancelEdit(scope.$index)">取消</el-button>
+                            </div>
+                            <div v-else>
+                                <el-button link type="primary" size="small" :icon="Edit"
+                                    @click="handleStartEdit(scope.$index)">修改</el-button>
+                                <el-button link type="danger" size="small" :icon="Delete"
+                                    @click="handleDeleteYear(scope.row.year)">删除</el-button>
+                            </div>
+                        </template>
+                    </el-table-column>
+                </el-table>
+            </el-dialog>
+
             <el-table v-if="tableData.length > 0" v-loading="loading" :data="tableData" stripe height="400"
                 style="width: 100%">
                 <el-table-column type="selection" width="40" />
