@@ -38,7 +38,6 @@ const tableData = ref([
         organizer: '广州大学计算机学院',
         undertaker: '广州大学ACM',
         manager: '李教授',
-        team_members: '张三、李四、王五',
         project_source: '学校录入',
         status: '进行中',
         college: '计算机学院',
@@ -53,7 +52,6 @@ const tableData = ref([
         organizer: '广州大学创新创业学院',
         undertaker: '广州大学教务处',
         manager: '王老师',
-        team_members: '赵六、钱七、孙八',
         project_source: '学校录入',
         status: '已结束',
         college: '创新创业学院',
@@ -68,7 +66,6 @@ const tableData = ref([
         organizer: '广州大学计算机学院',
         undertaker: '广州大学软件工程系',
         manager: '张讲师',
-        team_members: '周九、吴十',
         project_source: '学校录入',
         status: "未开始",
         college: '计算机学院',
@@ -83,7 +80,6 @@ const tableData = ref([
         organizer: '广东省教育厅',
         undertaker: '广州大学',
         manager: '刘主任',
-        team_members: '陈十二',
         project_source: '学校录入',
         status: '进行中',
         college: '经济管理学院',
@@ -98,7 +94,6 @@ const tableData = ref([
         organizer: '教育部',
         undertaker: '蓝桥杯全国组委会',
         manager: '林教授',
-        team_members: '朱十五',
         project_source: '学校录入',
         status: '进行中',
         college: '电子信息工程学院',
@@ -113,7 +108,6 @@ const tableData = ref([
         organizer: '广州大学计算机学院',
         undertaker: '广州大学ACM',
         manager: '李教授',
-        team_members: '张三、李四、王五',
         project_source: '学校录入',
         status: '进行中',
         college: '计算机学院',
@@ -128,9 +122,8 @@ const tableData = ref([
         organizer: '广州大学创新创业学院',
         undertaker: '广州大学教务处',
         manager: '王老师',
-        team_members: '赵六、钱七、孙八',
         project_source: '学校录入',
-        status: '进行中',
+        status: '已结束',
         college: '创新创业学院',
         year: '2025'
     },
@@ -143,7 +136,6 @@ const tableData = ref([
         organizer: '广州大学计算机学院',
         undertaker: '广州大学软件工程系',
         manager: '张讲师',
-        team_members: '周九、吴十',
         project_source: '学校录入',
         status: "未开始",
         college: '计算机学院',
@@ -158,7 +150,6 @@ const tableData = ref([
         organizer: '广东省教育厅',
         undertaker: '广州大学',
         manager: '刘主任',
-        team_members: '陈十二',
         project_source: '学校录入',
         status: '进行中',
         college: '经济管理学院',
@@ -173,7 +164,6 @@ const tableData = ref([
         organizer: '教育部',
         undertaker: '蓝桥杯全国组委会',
         manager: '林教授',
-        team_members: '朱十五',
         project_source: '学校录入',
         status: '进行中',
         college: '电子信息工程学院',
@@ -188,7 +178,6 @@ const tableData = ref([
         organizer: '广州大学计算机学院',
         undertaker: '广州大学ACM',
         manager: '李教授',
-        team_members: '张三、李四、王五',
         project_source: '学校录入',
         status: '进行中',
         college: '计算机学院',
@@ -203,9 +192,8 @@ const tableData = ref([
         organizer: '广州大学创新创业学院',
         undertaker: '广州大学教务处',
         manager: '王老师',
-        team_members: '赵六、钱七、孙八',
         project_source: '学校录入',
-        status: '进行中',
+        status: '已结束',
         college: '创新创业学院',
         year: '2025'
     },
@@ -218,7 +206,6 @@ const tableData = ref([
         organizer: '广州大学计算机学院',
         undertaker: '广州大学软件工程系',
         manager: '张讲师',
-        team_members: '周九、吴十',
         project_source: '学校录入',
         status: "未开始",
         college: '计算机学院',
@@ -233,7 +220,6 @@ const tableData = ref([
         organizer: '广东省教育厅',
         undertaker: '广州大学',
         manager: '刘主任',
-        team_members: '陈十二',
         project_source: '学校录入',
         status: '进行中',
         college: '经济管理学院',
@@ -248,157 +234,6 @@ const tableData = ref([
         organizer: '教育部',
         undertaker: '蓝桥杯全国组委会',
         manager: '林教授',
-        team_members: '朱十五',
-        project_source: '学校录入',
-        status: '进行中',
-        college: '电子信息工程学院',
-        year: '2025'
-    },
-    {
-        id: 1,
-        comp_code: 'XS2025001',
-        comp_name: '2025年广州大学校级ACM程序设计竞赛',
-        comp_type: '学科竞赛',
-        comp_level: '校级',
-        organizer: '广州大学计算机学院',
-        undertaker: '广州大学ACM',
-        manager: '李教授',
-        team_members: '张三、李四、王五',
-        project_source: '学校录入',
-        status: '进行中',
-        college: '计算机学院',
-        year: '2025'
-    },
-    {
-        id: 2,
-        comp_code: 'XS2025002',
-        comp_name: '2025年广州大学校级大学生创新创业训练计划项目（大创）',
-        comp_type: '创新创业竞赛',
-        comp_level: '校级',
-        organizer: '广州大学创新创业学院',
-        undertaker: '广州大学教务处',
-        manager: '王老师',
-        team_members: '赵六、钱七、孙八',
-        project_source: '学校录入',
-        status: '进行中',
-        college: '创新创业学院',
-        year: '2025'
-    },
-    {
-        id: 3,
-        comp_code: 'XS2025003',
-        comp_name: '2025年广州大学校级蓝桥杯软件和信息技术专业人才大赛模拟赛',
-        comp_type: '学科竞赛',
-        comp_level: '校级',
-        organizer: '广州大学计算机学院',
-        undertaker: '广州大学软件工程系',
-        manager: '张讲师',
-        team_members: '周九、吴十',
-        project_source: '学校录入',
-        status: "未开始",
-        college: '计算机学院',
-        year: '2025'
-    },
-    {
-        id: 4,
-        comp_code: 'SS2025001',
-        comp_name: '2025年广东省“挑战杯”大学生创业计划竞赛',
-        comp_type: '创新创业竞赛',
-        comp_level: '省部级',
-        organizer: '广东省教育厅',
-        undertaker: '广州大学',
-        manager: '刘主任',
-        team_members: '陈十二',
-        project_source: '学校录入',
-        status: '进行中',
-        college: '经济管理学院',
-        year: '2025'
-    },
-    {
-        id: 5,
-        comp_code: 'GS2025001',
-        comp_name: '2025年全国大学生蓝桥杯软件和信息技术专业人才大赛',
-        comp_type: '学科竞赛',
-        comp_level: '国家级',
-        organizer: '教育部',
-        undertaker: '蓝桥杯全国组委会',
-        manager: '林教授',
-        team_members: '朱十五',
-        project_source: '学校录入',
-        status: '进行中',
-        college: '电子信息工程学院',
-        year: '2025'
-    },
-    {
-        id: 1,
-        comp_code: 'XS2025001',
-        comp_name: '2025年广州大学校级ACM程序设计竞赛',
-        comp_type: '学科竞赛',
-        comp_level: '校级',
-        organizer: '广州大学计算机学院',
-        undertaker: '广州大学ACM',
-        manager: '李教授',
-        team_members: '张三、李四、王五',
-        project_source: '学院录入',
-        status: '进行中',
-        college: '计算机学院',
-        year: '2025'
-    },
-    {
-        id: 2,
-        comp_code: 'XS2025002',
-        comp_name: '2025年广州大学校级大学生创新创业训练计划项目（大创）',
-        comp_type: '创新创业竞赛',
-        comp_level: '校级',
-        organizer: '广州大学创新创业学院',
-        undertaker: '广州大学教务处',
-        manager: '王老师',
-        team_members: '赵六、钱七、孙八',
-        project_source: '学校录入',
-        status: '进行中',
-        college: '创新创业学院',
-        year: '2025'
-    },
-    {
-        id: 3,
-        comp_code: 'XS2025003',
-        comp_name: '2025年广州大学校级蓝桥杯软件和信息技术专业人才大赛模拟赛',
-        comp_type: '学科竞赛',
-        comp_level: '校级',
-        organizer: '广州大学计算机学院',
-        undertaker: '广州大学软件工程系',
-        manager: '张讲师',
-        team_members: '周九、吴十',
-        project_source: '学校录入',
-        status: "未开始",
-        college: '计算机学院',
-        year: '2025'
-    },
-    {
-        id: 4,
-        comp_code: 'SS2025001',
-        comp_name: '2025年广东省“挑战杯”大学生创业计划竞赛',
-        comp_type: '创新创业竞赛',
-        comp_level: '省部级',
-        organizer: '广东省教育厅',
-        undertaker: '广州大学',
-        manager: '刘主任',
-        team_members: '陈十二',
-        project_source: '学校录入',
-        status: '进行中',
-        college: '经济管理学院',
-        year: '2025'
-    },
-    {
-        id: 5,
-        comp_code: 'GS2025001',
-        comp_name: '2025年全国大学生蓝桥杯软件和信息技术专业人才大赛',
-        comp_type: '学科竞赛',
-        comp_level: '国家级',
-        organizer: '教育部',
-        undertaker: '蓝桥杯全国组委会',
-        manager: '林教授',
-        team_members: '朱十五',
         project_source: '学校录入',
         status: '进行中',
         college: '电子信息工程学院',
@@ -702,7 +537,7 @@ const handleCurrentChange = (val) => {
                 </el-table>
             </el-dialog>
 
-            <el-table v-if="tableData.length > 0" v-loading="loading" :data="tableData" stripe height="400"
+            <el-table v-loading="loading" :data="tableData" stripe max-height="400"
                 style="width: 100%">
                 <el-table-column type="selection" width="40" />
                 <el-table-column prop="id" label="序号" width="60" align="center"></el-table-column>
@@ -715,8 +550,6 @@ const handleCurrentChange = (val) => {
                 <el-table-column prop="undertaker" label="承办单位" min-width="150" align="center"
                     show-overflow-tooltip></el-table-column>
                 <el-table-column prop="manager" label="赛事负责人" width="100" align="center"></el-table-column>
-                <el-table-column prop="team_members" label="团队成员" min-width="120" align="center"
-                    show-overflow-tooltip></el-table-column>
                 <el-table-column prop="college" label="所属学院" width="150" align="center"></el-table-column>
                 <el-table-column prop="project_source" label="项目来源" min-width="90" align="center"></el-table-column>
                 <el-table-column prop="status" label="状态" width="90" align="center">
@@ -733,8 +566,10 @@ const handleCurrentChange = (val) => {
                             @click="handleDelete(scope.row)">删除</el-button>
                     </template>
                 </el-table-column>
+                <template #empty>
+                    <el-empty description="暂无数据" />
+                </template>
             </el-table>
-            <el-empty v-else description="暂无数据" />
             <div v-if="tableData.length > 0" class="pagination-wrapper">
                 <el-pagination v-model:current-page="current_page" v-model:page-size="page_size"
                     :page-sizes="[10, 20, 30, 50]" layout="total, sizes, prev, pager, next, jumper" :total="400"
