@@ -1,73 +1,32 @@
 <script setup>
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { Calendar, User, Bell, Setting } from '@element-plus/icons-vue' // 引入 Setting 图标
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-
+import { formatTimeRange } from '@/utils/format'
+import api from '@/api'
+import { 
+  getParticipantType,
+  getStatusConfig
+} from '@/utils/competition'
 const router = useRouter()
 
 // 1. 模拟赛事列表数据 (复用之前的结构)
-const compList = ref([
-  {
-    id: 1,
-    title: '第十五届蓝桥杯全国软件和信息技术专业人才大赛',
-    level: '国家级A类',
-    organizer: '工信部人才交流中心',
-    timeRange: '2026-03-01 至 2026-04-15',
-    status: 1, // 1:报名中
-    tags: ['个人赛', '省赛直通'],
-  },
-  {
-    id: 2,
-    title: '2026年中国大学生广告艺术节学院奖',
-    level: '省级B类',
-    organizer: '广告人杂志社',
-    timeRange: '2026-02-10 至 2026-05-20',
-    status: 1, 
-    tags: ['团队赛'],
-  },
-  {
-    id: 3,
-    title: '第九届中国国际“互联网+”大学生创新创业大赛',
-    level: '国家级A+',
-    organizer: '教育部',
-    timeRange: '2025-11-01 至 2026-01-15',
-    status: 0, // 0:已结束
-    tags: ['团队赛', '创业'],
-  },
-  {
-    id: 4,
-    title: '2026年全国大学生英语竞赛(NECCS)',
-    level: '国家级B类',
-    organizer: '高等学校大学外语教学研究会',
-    timeRange: '2026-01-20 至 2026-03-10',
-    status: 2, 
-    tags: ['个人赛'],
-  },
-  {
-    id: 5,
-    title: 'ACM国际大学生程序设计竞赛校内选拔赛',
-    level: '校级',
-    organizer: '计算机学院',
-    timeRange: '2026-04-01 至 2026-04-05',
-    status: 3, 
-    tags: ['团队赛'],
-  },
-])
+const compList = ref([])
 
-// 获取状态样式 
-const getStatusConfig = (status) => {
-  const map = {
-    1: { tagType: 'success', tagText: '报名中' },
-    2: { tagType: 'danger', tagText: '急' },
-    3: { tagType: 'info', tagText: '筹备中' },
-    0: { tagType: 'info', tagText: '已结束' },
-  }
-  return map[status] || { tagType: 'info', tagText: '未知' }
-}
+const queryParams = ref({
+  page: 1,
+  page_size: 10,
+  keyword: '',
+  category: '全部',
+})
 
-let currentPage = ref(1)
-let pageSize = ref(10)
+const query = ref({
+  page: 1,
+  page_size: 10,
+  is_my: false,
+})
+
 let total = ref(100)
 
 // 按钮操作逻辑
@@ -79,6 +38,28 @@ function NavigateToNotice(compID) {
     // 发布通知逻辑
     router.push({name: 'NoticeDetail', params: { id: compID } })
 }
+
+async function fetchCompList() {
+  try {
+    const response = await api.getCompetitionList(queryParams.value)
+    if (response.code == 200) {
+      compList.value = response.data.list.map((item) => {
+        const detail=item.Detail||{}
+        return{
+        ...item,
+        timeRange: formatTimeRange(detail.RegStartTime, detail.RegEndTime),
+        }
+      })
+      total.value = response.data.total
+    }
+  } catch (error) {
+    ElMessage.error(error.message || '获取竞赛列表失败')
+  }
+}
+
+onMounted(() => {
+  fetchCompList()
+})
 </script>
 
 <template>
@@ -90,28 +71,28 @@ function NavigateToNotice(compID) {
     </div>
 
     <div class="comp-list">
-      <div class="comp-item" v-for="item in compList" :key="item.id">
+      <div class="comp-item" v-for="item in compList" :key="item.ID">
         <div class="comp-info">
           <div class="name-row">
             <el-tag
-              :type="getStatusConfig(item.status).tagType"
+              :type="getStatusConfig(item.Status).tagType"
               effect="dark"
               size="small"
               class="status-badge"
             >
-              {{ getStatusConfig(item.status).tagText }}
+              {{ getStatusConfig(item.Status).tagText }}
             </el-tag>
-            <h3 class="comp-name">{{ item.title }}</h3>
+            <h3 class="comp-name">{{ item.CompName }}</h3>
           </div>
           
           <div class="meta-row">
             <el-tag effect="plain" type="primary" size="small" class="level-tag">
-              {{ item.level }}
+              {{ item.CompLevel }}
             </el-tag>
 
             <span class="divider"></span>
             <span class="meta-text">
-              <el-icon><User /></el-icon> {{ item.organizer }}
+              <el-icon><User /></el-icon> {{ item.Organizer }}
             </span>
 
             <span class="divider"></span>
@@ -121,23 +102,23 @@ function NavigateToNotice(compID) {
             </span>
           </div>
           
-          <div class="tag-row">
-            <el-tag v-for="t in item.tags" :key="t" size="small" type="info" class="extra-tag">
-              {{ t }}
+         <div class="tag-row">
+            <el-tag  size="small" type="info" class="extra-tag">
+              {{ getParticipantType(item.Detail.ParticipantType) }}
             </el-tag>
           </div>
         </div>
 
         <div class="comp-action">
           <div class="btn-group">
-            <el-button link type="info" class="sub-btn" @click.stop="NavigateToNotice(item.id)">
+            <el-button link type="info" class="sub-btn" @click.stop="NavigateToNotice(item.ID)">
               <el-icon><Bell /></el-icon> 发布通知
             </el-button>
 
             <el-button
               type="primary"
               class="primary-btn"
-              @click.stop="NavigateToSettings(item.id)"
+              @click.stop="NavigateToSettings(item.ID)"
             >
               <el-icon style="margin-right: 6px"><Setting /></el-icon>
               报名设置
@@ -149,8 +130,8 @@ function NavigateToNotice(compID) {
 
     <div class="pagination-container">
         <el-pagination
-          v-model:current-page="currentPage"
-          v-model:page-size="pageSize"
+          v-model:current-page="queryParams.page"
+          v-model:page-size="queryParams.page_size"
           :total="total"
           layout="total, sizes, prev, pager, next, jumper"
           :page-sizes="[10, 20, 50, 100]"
