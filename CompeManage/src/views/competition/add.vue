@@ -175,12 +175,12 @@ const handleFinalImport = () => {
                                 </el-col>
                             </el-row>
                             <el-row :gutter="20">
-                                <el-col :span="8">
+                                <el-col :span="12">
                                     <el-form-item label="主办单位" prop="organizer">
                                         <el-input v-model="form.organizer" placeholder="请填写主办单位" />
                                     </el-form-item>
                                 </el-col>
-                                <el-col :span="8">
+                                <el-col :span="12">
                                     <el-form-item label="承办单位" prop="undertaker">
                                         <el-input v-model="form.undertaker" placeholder="请填写承办单位" />
                                     </el-form-item>
