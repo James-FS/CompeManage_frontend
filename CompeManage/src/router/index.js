@@ -28,6 +28,7 @@ const routes = [
     {
         path: '/competition',
         component: MainLayout,
+        meta: { title: '赛事管理', redirect: 'noRedirect' },
         children: [
             {
                 path: 'list',
@@ -39,7 +40,8 @@ const routes = [
                 path: 'add',
                 name: 'CompetitionAdd',
                 component: () => import('@/views/competition/add.vue'),
-                meta: { title: '新增赛事', roles: ['school_admin', 'college_admin'] }
+
+                meta: { title: '新增赛事', roles: ['school_admin', 'college_admin'] , parent: 'CompetitionList', activeMenu: '/competition/list'}
             },
             {
                 path: 'audit',
