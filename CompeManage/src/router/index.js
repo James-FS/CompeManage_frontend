@@ -36,10 +36,16 @@ const routes = [
                 meta: { title: '赛事目录', roles: ['school_admin', 'college_admin', 'competition_manager', 'student'] }
             },
             {
-                path: 'competition/add',
+                path: 'add',
                 name: 'CompetitionAdd',
                 component: () => import('@/views/competition/add.vue'),
                 meta: { title: '新增赛事', roles: ['school_admin', 'college_admin'] }
+            },
+            {
+                path: 'audit',
+                name: 'CompetitionAudit',
+                component: () => import('@/views/competition/audit.vue'),
+                meta: { title: '赛事审核', roles: ['school_admin', 'college_admin'] }
             },
             {
                 path: '/competition/register',
@@ -72,8 +78,8 @@ const routes = [
         component: MainLayout,
         children: [
             {
-                path:'',
-                name:'permission',
+                path: '',
+                name: 'permission',
                 component: () => import('@/views/permission/permission.vue'),
                 meta: { title: '权限管理' }
             }
@@ -110,8 +116,8 @@ const routes = [
                 meta: { title: '通知详情', roles: ['school_admin', 'college_admin', 'competition_manager', 'student'] }
             },
             {
-                path:'notice/edit/:id',
-                name:'NoticeEdit',
+                path: 'notice/edit/:id',
+                name: 'NoticeEdit',
                 component: () => import('@/views/notice/edit.vue'),
                 props: true,
                 meta: { title: '编辑通知', roles: ['school_admin', 'college_admin', 'competition_manager'] }
@@ -160,7 +166,7 @@ router.beforeEach((to, from, next) => {
             alert('无权访问该页面')
             next(from.path)
         }
-    }else{
+    } else {
         // 没有设置roles，默认允许访问
         next()
     }
