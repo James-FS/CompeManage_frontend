@@ -35,8 +35,11 @@ const handleReset = () => {
     handleSearch();
 };
 
-// 表格模拟数据
+// 表格数据
 const tableData = ref([])
+
+// 学院列表
+const collegeList = ref([]);
 
 // 加载状态
 const loading = ref(false);
@@ -284,8 +287,23 @@ const handleSearch = async () => {
     }
 };
 
+// 加载学院列表
+const loadCollegeList = async () => {
+    try {
+        const response = await api.getCollegeList();
+        if (response.code === 0 || response.code === 200) {
+            collegeList.value = response.data || [];
+        } else {
+            ElMessage.error('加载学院列表失败');
+        }
+    } catch (error) {
+        console.error('加载学院列表失败：', error);
+    }
+};
+
 // 页面加载时初始化数据
 onMounted(() => {
+    loadCollegeList();
     handleSearch();
 });
 
@@ -310,10 +328,7 @@ onMounted(() => {
                 </el-form-item>
                 <el-form-item label="所属学院">
                     <el-select v-model="searchForm.college" placeholder="请选择所属学院" clearable="true" style="width: 220px">
-                        <el-option label="计算机科学与网络工程学院" value="计算机科学与网络工程学院"></el-option>
-                        <el-option label="电子信息工程学院" value="电子信息工程学院"></el-option>
-                        <el-option label="经济管理学院" value="经济管理学院"></el-option>
-                        <el-option label="创新创业学院" value="创新创业学院"></el-option>
+                        <el-option v-for="college in collegeList" :key="college.id" :label="college.name" :value="college.name"></el-option>
                     </el-select>
                 </el-form-item>
                 <el-form-item label="赛事负责人">
