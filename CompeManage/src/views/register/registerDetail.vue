@@ -1,6 +1,7 @@
 <script setup>
-import { ref, reactive } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, reactive, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { api } from '@/api'
 import {
   User,
   Iphone,
@@ -17,25 +18,27 @@ import {
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const router = useRouter()
+const route = useRoute()
 const formRef = ref(null)
-let maxMembers = 4
+let maxMembers = ref()
+let minMembers = ref()
+let need_advisor = ref()
 let compType = 'team' // team / individual
-/* --- 1. 固定赛事信息 --- */
-const compInfo = {
-  title: '第十五届蓝桥杯全国软件和信息技术专业人才大赛',
-  limitText: '团队赛 (3-5人)',
-  compType: 'team', // team / individual
+const uploadRef = ref(null)
+const token = localStorage.getItem('token')
+const uploadHeaders = {
+  Authorization: `Bearer ${token}`,
 }
 
+/* --- 1. 固定赛事信息 --- */
+const compInfo = ref({})
 /* --- 2. 表单数据 --- */
 const formData = reactive({
   teamName: '',
-  // 队长/负责人信息 (默认回显当前用户)
   leader: {
     name: '张三',
     stuID: '2023001',
     phone: '',
-    email: '',
   },
   // 队员列表
   members: [{ name: '', stuID: '', phone: '' }],
@@ -46,12 +49,26 @@ const formData = reactive({
 const rules = {
   teamName: [{ required: true, message: '请输入团队名称', trigger: 'blur' }],
   'leader.phone': [{ required: true, message: '请输入手机号', trigger: 'blur' }],
-  'leader.email': [{ required: true, message: '请输入邮箱', trigger: 'blur' }],
 }
 
+const handleUploadSuccess = (response) => {
+  if (response.code === 200) {
+    submitForm(response.data.url)
+  } else {
+    ElMessage.error(response.msg || '附件上传失败')
+  }
+}
+
+const handleUploadError = () => {
+  ElMessage.error('网络错误，附件上传失败')
+}
+
+const handleExceed = () => {
+  ElMessage.warning('附件数量超出限制')
+}
 function addMember() {
-  if (formData.members.length >= maxMembers) {
-    ElMessage.warning(`团队成员最多只能添加到${maxMembers}人`)
+  if (formData.members.length >= maxMembers.value - 1) {
+    ElMessage.warning(`团队成员最多只能添加到${maxMembers.value}人`)
     return
   }
   formData.members.push({ name: '', stuID: '', phone: '' })
@@ -60,6 +77,65 @@ function addMember() {
 function removeMember(index) {
   formData.members.splice(index, 1)
 }
+
+async function fetchRegSettings() {
+  const compID = Number(route.params.id)
+  const response = await api.getRegConfig(compID)
+  if (response.code == 200) {
+    const config = response.data
+    maxMembers.value = config.max_team_member
+    minMembers.value = config.min_team_member
+    compInfo.value.title = config.comp_name
+    need_advisor.value = config.need_advisor
+    if (maxMembers.value > 1) {
+      compInfo.value.compType = 2
+      compInfo.value.limitText = `团队赛 (${minMembers.value}-${maxMembers.value}人)`
+    } else {
+      compInfo.value.compType = 1
+      compInfo.value.limitText = '个人赛'
+    }
+  }
+}
+
+async function submitVerify() {
+  if (!formRef.value) return
+  await formRef.value.validate((valid) => {
+    if (valid) {
+      // 核心判断：有没有待上传的文件？
+      if (formData.fileList.length > 0) {
+        uploadRef.value.submit()
+      } else {
+        submitForm('')
+      }
+    } else {
+      ElMessage.error('请完善表单信息')
+    }
+  })
+}
+
+async function submitForm(attachmentURL) {
+  const compID = Number(route.params.id)
+  const submitData = {
+    comp_id: compID,
+    team_name: formData.teamName,
+    leader: formData.leader,
+    members: formData.members,
+    attachment_url: attachmentURL,
+  }
+  try {
+    const response = await api.submitReg(submitData)
+    if (response.code == 200) {
+      ElMessage.success('报名成功！')
+      router.back()
+    }
+  } catch (error) {
+    ElMessage.error(error.message || '报名失败')
+  }
+}
+
+onMounted(() => {
+  fetchRegSettings()
+})
 </script>
 
 <template>
@@ -72,12 +148,12 @@ function removeMember(index) {
       </div>
 
       <div class="header-content">
-        <h1 class="comp-title">第十五届蓝桥杯全国软件和信息技术专业人才大赛</h1>
+        <h1 class="comp-title">{{ compInfo.title }}</h1>
 
         <div class="limit-badge">
           <el-icon><UserFilled /></el-icon>
           <span>赛制限制：</span>
-          <span class="highlight">团队赛 (3-5人)</span>
+          <span class="highlight">{{ compInfo.limitText }}</span>
         </div>
       </div>
       <el-icon class="bg-watermark"><Trophy /></el-icon>
@@ -93,22 +169,19 @@ function removeMember(index) {
           size="large"
           class="main-form"
         >
-          <div class="form-section">
-            <h3 class="section-title">01 团队名称</h3>
+          <div class="form-section" v-if="compInfo.compType === 2">
+            <h3 class="section-title">团队名称</h3>
             <el-row>
               <el-col :span="24">
                 <el-form-item label="团队名称" prop="teamName">
-                  <el-input
-                    v-model="formData.teamName"
-                    prefix-icon="Trophy"
-                  />
+                  <el-input v-model="formData.teamName" prefix-icon="Trophy" />
                 </el-form-item>
               </el-col>
             </el-row>
           </div>
 
           <div class="form-section">
-            <h3 class="section-title">02 负责人信息</h3>
+            <h3 class="section-title">负责人信息</h3>
             <div class="info-grid">
               <el-row :gutter="20">
                 <el-col :span="8" :xs="24">
@@ -134,9 +207,9 @@ function removeMember(index) {
             </div>
           </div>
 
-          <div class="form-section">
+          <div class="form-section" v-if="compInfo.compType == 2">
             <div class="section-header">
-              <h3 class="section-title" style="margin: 0">03 成员列表</h3>
+              <h3 class="section-title" style="margin: 0">成员列表</h3>
               <el-button link type="primary" @click="addMember" :icon="Plus">添加成员</el-button>
             </div>
 
@@ -153,14 +226,29 @@ function removeMember(index) {
             </div>
           </div>
 
+          <!-- <div class="form-section" v-if="need_advisor"> 先搁置，确认需求后再实现
+            <h3 class="section-title">指导老师信息</h3>
+            <div class="info-grid"> 
+              
+            </div>
+
+          </div> -->
+
           <div class="form-section">
-            <h3 class="section-title">04 附件材料</h3>
+            <h3 class="section-title">附件材料</h3>
             <el-upload
+              ref="uploadRef"
               class="simple-upload"
               drag
-              action="#"
+              action="/api/upload"
               multiple
               :auto-upload="false"
+              :data="{ type: 'reg_attachment' }"
+              :limit="5"
+              :headers="uploadHeaders"
+              :on-success="handleUploadSuccess"
+              :on-error="handleUploadError"
+              :on-exceed="handleExceed"
               v-model:file-list="formData.fileList"
             >
               <el-icon class="el-icon--upload"><upload-filled /></el-icon>
@@ -174,7 +262,7 @@ function removeMember(index) {
               type="primary"
               size="large"
               style="width: 180px"
-              @click="submitForm(formRef)"
+              @click="submitVerify"
             >
               确认报名
             </el-button>
@@ -299,49 +387,52 @@ function removeMember(index) {
       }
     }
     .info-grid {
-    background: #fcfcfc;
-    border: 1px solid #ebeef5;
-    padding: 24px;
-    border-radius: 6px;
-  }
-  .member-list {
-    border: 1px solid #ebeef5;
-    border-radius: 6px;
-    overflow: hidden;
-    
-    .empty-tip {
-      text-align: center;
-      padding: 20px;
-      color: #909399;
-      font-size: 13px;
+      background: #fcfcfc;
+      border: 1px solid #ebeef5;
+      padding: 24px;
+      border-radius: 6px;
     }
+    .member-list {
+      border: 1px solid #ebeef5;
+      border-radius: 6px;
+      overflow: hidden;
 
-    .member-row {
-      display: flex;
-      align-items: center;
-      gap: 15px;
-      padding: 15px 20px;
-      border-bottom: 1px solid #ebeef5;
-      background: #fff;
-      &:last-child { border-bottom: none; }
-      &:hover { background-color: #f0fdfa; }
-      
-      .row-index {
-        width: 24px;
-        height: 24px;
-        background: #f0f2f5;
-        color: #909399;
+      .empty-tip {
         text-align: center;
-        line-height: 24px;
-        border-radius: 4px;
-        font-size: 12px;
-        font-weight: bold;
+        padding: 20px;
+        color: #909399;
+        font-size: 13px;
+      }
+
+      .member-row {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        padding: 15px 20px;
+        border-bottom: 1px solid #ebeef5;
+        background: #fff;
+        &:last-child {
+          border-bottom: none;
+        }
+        &:hover {
+          background-color: #f0fdfa;
+        }
+
+        .row-index {
+          width: 24px;
+          height: 24px;
+          background: #f0f2f5;
+          color: #909399;
+          text-align: center;
+          line-height: 24px;
+          border-radius: 4px;
+          font-size: 12px;
+          font-weight: bold;
+        }
       }
     }
   }
-  
-  }
-  
+
   .simple-upload {
     :deep(.el-upload-dragger:hover) {
       border-color: #13c2c2;
@@ -353,11 +444,14 @@ function removeMember(index) {
     text-align: center;
     padding-top: 30px;
     border-top: 1px dashed #e4e7ed;
-    
+
     .submit-btn {
       background-color: #13c2c2;
       border-color: #13c2c2;
-      &:hover { background-color: #36cfc9; border-color: #36cfc9; }
+      &:hover {
+        background-color: #36cfc9;
+        border-color: #36cfc9;
+      }
     }
   }
 }

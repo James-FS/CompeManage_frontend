@@ -18,13 +18,14 @@ const queryParams = ref({
   page: 1,
   page_size: 10,
   keyword: '',
-  category: '全部',
+  is_my: true,
+  is_reg:true,
 })
 
 const query = ref({
   page: 1,
   page_size: 10,
-  is_my: false,
+  
 })
 
 let total = ref(100)

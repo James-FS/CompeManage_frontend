@@ -20,12 +20,15 @@ const queryParams = ref({
   page_size: 10,
   keyword: '',
   category: '全部',
+  is_my: false,
+  is_reg:true,
 })
 
 const query = ref({
   page: 1,
   page_size: 10,
   is_my: false,
+  is_reg:true, 
 })
 
 
@@ -173,7 +176,7 @@ onMounted(() => {
             <el-button
               :type="item.status === 0 || item.status === 3 ? 'info' : 'primary'"
               :disabled="item.status === 3"
-              @click="NavigateToRegister(item.id)"
+              @click="NavigateToRegister(item.ID)"
               class="primary-btn"
             >
               {{ getStatusConfig(item.Status).label }}

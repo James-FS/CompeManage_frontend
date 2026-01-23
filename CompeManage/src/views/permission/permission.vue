@@ -10,13 +10,11 @@ const defaultProps = {
   children: 'children',
   label: 'Name',
 }
-const roleList = ref([
-  // { id: 101, name: '超级管理员', code: 'admin', tagType: 'danger' },
-  // { id: 102, name: '指导教师', code: 'teacher', tagType: 'warning' },
-  // { id: 103, name: '普通学生', code: 'student', tagType: 'success' },
-  // { id: 104, name: '教务处', code: 'dean', tagType: 'info' },
-  // { id: 105, name: '访客', code: 'guest', tagType: 'info' },
-])
+const tagTypes = ['danger', 'warning', '', 'success', 'info']
+const getTagTypeByIndex = (index) => {
+  return tagTypes[index % tagTypes.length]
+}
+const roleList = ref([])
 const permissionData = ref([])
 const currentRole = ref(null) // 定义当前选中的角色 (初始为空)
 
@@ -138,7 +136,7 @@ onMounted(() => {
 
       <div class="scroll-content role-list">
         <div
-          v-for="role in roleList"
+          v-for="(role, index) in roleList"
           :key="role.ID"
           class="role-item"
           :class="{ 'is-active': currentRole?.ID === role.ID }"
@@ -146,7 +144,7 @@ onMounted(() => {
         >
           <div class="role-info">
             <span class="role-name">{{ role.RoleName }}</span>
-            <el-tag size="small" :type="role.tagType" effect="plain">
+            <el-tag size="small" :type="getTagTypeByIndex(index)" effect="plain">
               {{ role.RoleCode }}
             </el-tag>
           </div>

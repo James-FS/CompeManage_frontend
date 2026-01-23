@@ -24,6 +24,10 @@ export const api = {
   // ==================== 报名相关 ====================
   saveRegConfig: (data) => post('/api/reg/config', data),
   getRegConfig: (compID) => get(`/api/reg/config/get?comp_id=${compID}`),
+  submitReg:(data) => post('/api/reg/submit', data),
+  getRegList:(params) => get('/api/reg/list', params),
+
+  // ==================== 通知相关 ====================
 }
 
 export default api
