@@ -1,13 +1,21 @@
-<script setup></script>
+<script setup>
+// 根组件，无需额外逻辑
+</script>
 
 <template>
-  <h1>You did it!</h1>
-  <p>
-    Visit <a href="https://vuejs.org/" target="_blank" rel="noopener">vuejs.org</a> to read the
-    documentation
-  </p>
+  <router-view />
 </template>
 
-<style scoped>
-  
+<style>
+  html, body, #app {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    font-family:"Helvetica Neue", Helvetica, "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+}
+#app {
+    display: flex;
+    flex-direction: column;
+    
+}
 </style>
