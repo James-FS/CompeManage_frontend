@@ -3,6 +3,7 @@ import { ref, reactive, computed, renderList } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox, ElTableColumn } from 'element-plus';
 import { Plus, DocumentCopy, ArrowRight, Check, Delete, ArrowLeft } from '@element-plus/icons-vue';
+import { debounce } from '@/utils/debounce';
 
 const router = useRouter();
 const activeTab = ref('manual');
@@ -18,7 +19,7 @@ const rules = {
     comp_name: [{ required: true, message: '请输入赛事名称', trigger: 'blur' }],
     comp_level: [{ required: true, message: '请选择赛事级别', trigger: 'change' }],
     college: [{ required: true, message: '请选择所属学院', trigger: 'change' }],
-    manager: [{ required: true, message: '请输入赛事负责人', trigger: 'blur' }],
+    manager: [{ required: true, message: '请输入赛事负责人', trigger: 'change' }],
 };
 const handleSubmit = async (formEl) => {
     if (!formEl) return;
@@ -127,6 +128,101 @@ const handleFinalImport = () => {
     }).catch(() => { });
 };
 
+// 负责人弹窗显示
+const managerDialogVisible = ref(false); // 控制弹窗显示
+const managerLoading = ref(false);       // 表格加载状态
+const teacherList = ref([]);             // 教师列表数据
+
+// 搜索表单
+const searchForm = reactive({
+    name: '',
+    work_id: '',
+    college: ''
+});
+
+// 打开选择弹窗
+const openManagerSelect = () => {
+    managerDialogVisible.value = true;
+    getTeacherList(); // 打开时获取一次列表
+};
+
+// 模拟获取教师列表接口 (实际项目中应调用后端 api.getTeacherList)
+const getTeacherList = () => {
+    managerLoading.value = true;
+    // 模拟网络延迟
+    setTimeout(() => {
+        // 这里模拟后端返回的数据
+        // 实际开发中，请替换为 api.getUserList(searchForm)
+        const mockData = [
+            { id: 1, name: '张伟', work_id: 'T2023001', college: '计算机科学与网络工程学院' },
+            { id: 2, name: '李华', work_id: 'T2023002', college: '电子信息工程学院' },
+            { id: 3, name: '王强', work_id: 'T2023003', college: '经济管理学院' },
+            { id: 4, name: '赵敏', work_id: 'T2023004', college: '计算机科学与网络工程学院' },
+            { id: 5, name: '孙悟空', work_id: 'T2023005', college: '计算机科学与网络工程学院' },
+            { id: 6, name: '周杰', work_id: 'T2023006', college: '电子信息工程学院' },
+            { id: 7, name: '吴美', work_id: 'T2023007', college: '经济管理学院' },
+            { id: 8, name: '郑总', work_id: 'T2023008', college: '计算机科学与网络工程学院' },
+            { id: 9, name: '刘云', work_id: 'T2023009', college: '电子信息工程学院' },
+            { id: 10, name: '何芳', work_id: 'T2023010', college: '经济管理学院' },
+            { id: 11, name: '曾旭', work_id: 'T2023011', college: '计算机科学与网络工程学院' },
+            { id: 12, name: '林剑', work_id: 'T2023012', college: '电子信息工程学院' },
+        ];
+
+        // 简单的前端过滤模拟 (后端实现后可删除)
+        const filteredData = mockData.filter(item => {
+            const matchName = !searchForm.name || item.name.includes(searchForm.name);
+            const matchId = !searchForm.work_id || item.work_id.includes(searchForm.work_id);
+            const matchCollege = !searchForm.college || item.college === searchForm.college;
+            return matchName && matchId && matchCollege;
+        });
+
+        // 分页处理
+        managerTotal.value = filteredData.length;
+        const startIndex = (managerCurrentPage.value - 1) * managerPageSize.value;
+        const endIndex = startIndex + managerPageSize.value;
+        teacherList.value = filteredData.slice(startIndex, endIndex);
+
+        managerLoading.value = false;
+    }, 300);
+};
+
+const debouncedSearch = debounce(() => {
+    getTeacherList();
+}, 500);
+
+// 分页数据
+const managerCurrentPage = ref(1);
+const managerPageSize = ref(10);
+const managerTotal = ref(0);
+
+// 分页处理
+const handleManagerSizeChange = (val) => {
+    managerPageSize.value = val;
+    managerCurrentPage.value = 1; // 重置到第一页
+    getTeacherList();
+};
+const handleManagerCurrentChange = (val) => {
+    managerCurrentPage.value = val;
+    getTeacherList();
+};
+
+// 重置搜索
+const resetSearch = () => {
+    searchForm.name = '';
+    searchForm.work_id = '';
+    searchForm.college = '';
+    managerCurrentPage.value = 1; // 重置分页
+    getTeacherList();
+};
+
+// 确认选择某位教师
+const selectTeacher = (row) => {
+    form.manager = row.name; // 回填姓名到主表单
+    // 如果后端需要存ID，可以在 form 中增加 manager_id 字段: form.manager_id = row.id;
+    managerDialogVisible.value = false; // 关闭弹窗
+    ElMessage.success(`已选择负责人：${row.name}`);
+};
+
 </script>
 
 <template>
@@ -191,7 +287,8 @@ const handleFinalImport = () => {
                             <el-row :gutter="20">
                                 <el-col :span="12">
                                     <el-form-item label="赛事负责人" prop="manager">
-                                        <el-input v-model="form.manager" placeholder="请填写教师姓名" />
+                                        <el-input v-model="form.manager" placeholder="请选择赛事负责人" readonly
+                                            class="manager-input" @click="openManagerSelect" />
                                     </el-form-item>
                                 </el-col>
                                 <el-col :span="12">
@@ -224,10 +321,12 @@ const handleFinalImport = () => {
 
                         <div v-if="step === 1" class="step-content">
                             <div class="filter-bar">
-                                <el-select v-model="copySourceYear" placeholder="请选择年份" @change="fetchHistoryData">
-                                    <el-option label="2024年" value="2024" />
-                                    <el-option label="2023年" value="2023" />
-                                </el-select>
+                                <el-form-item label="赛事所属年份">
+                                    <el-select v-model="copySourceYear" placeholder="请选择年份" @change="fetchHistoryData">
+                                        <el-option label="2024年" value="2024" />
+                                        <el-option label="2023年" value="2023" />
+                                    </el-select>
+                                </el-form-item>
                             </div>
                             <el-table :data="historyTableData" border v-loading="historyLoading"
                                 @selection-change="handleSelectionChange" height="400">
@@ -311,12 +410,56 @@ const handleFinalImport = () => {
                 </el-tab-pane>
             </el-tabs>
         </div>
-
     </div>
+    <!-- 负责人选择弹窗 -->
+    <el-dialog v-model="managerDialogVisible" title="选择赛事负责人" width="800px" aligin-center append-to-body>
+        <div class="search-bar">
+            <el-form :inline="true" :model="searchForm" class="search-form-inline">
+                <el-form-item label="姓名">
+                    <el-input v-model="searchForm.name" placeholder="输入姓名" clearable @input="debouncedSearch"
+                        @clear="getTeacherList" style="width: 120px;" />
+                </el-form-item>
+                <el-form-item label="工号">
+                    <el-input v-model="searchForm.work_id" placeholder="输入工号" clearable @input="debouncedSearch"
+                        @clear="getTeacherList" style="width: 120px;" />
+                </el-form-item>
+                <el-form-item label="所属学院">
+                    <el-select v-model="searchForm.college" placeholder="选择学院" clearable @change="getTeacherList"
+                        @clear="getTeacherList" style="width: 180px;">
+                        <el-option label="计算机科学与网络工程学院" value="计算机科学与网络工程学院" />
+                        <el-option label="电子信息工程学院" value="电子信息工程学院" />
+                        <el-option label="经济管理学院" value="经济管理学院" />
+                    </el-select>
+                </el-form-item>
+                <el-form-item>
+                    <el-button @click="resetSearch">重置</el-button>
+                </el-form-item>
+            </el-form>
+        </div>
+        <el-table :data="teacherList" border stripe v-loading="managerLoading" height="350" style="width: 100%">
+            <el-table-column prop="work_id" label="工号" width="120" align="center" />
+            <el-table-column prop="name" label="姓名" width="120" align="center" />
+            <el-table-column prop="college" label="所属学院" min-width="200" align="center" />
+            <el-table-column label="操作" width="100" align="center" fixed="right">
+                <template #default="{ row }">
+                    <el-button type="primary" link @click="selectTeacher(row)">选择</el-button>
+                </template>
+            </el-table-column>
+            <template #empty>
+                <el-empty description="暂无数据" />
+            </template>
+        </el-table>
+        <div class="pagination-wrapper">
+            <el-pagination v-model:current-page="managerCurrentPage" v-model:page-size="managerPageSize"
+                :page-sizes="[10, 20, 30]" layout="total, sizes, prev, pager, next, jumper" :total="managerTotal"
+                @size-change="handleManagerSizeChange" @current-change="handleManagerCurrentChange" />
+        </div>
+    </el-dialog>
 </template>
 
 <style scoped lang="scss">
 .add-container {
+    box-sizing: border-box;
     padding: 20px;
     height: 100%;
     display: flex;
@@ -325,7 +468,6 @@ const handleFinalImport = () => {
 }
 
 .content-box {
-    margin-bottom: 15px;
     overflow: hidden;
 }
 
@@ -341,7 +483,7 @@ const handleFinalImport = () => {
 }
 
 .custom-steps {
-    margin-bottom: 30px;
+    margin-bottom: 10px;
 }
 
 .step-content {
@@ -349,21 +491,24 @@ const handleFinalImport = () => {
 }
 
 .filter-bar {
-    margin-bottom: 15px;
+    margin-bottom: 10px;
 
     .label {
         font-weight: bold;
         margin-right: 10px;
     }
+
+    :deep(.el-form-item__label) {
+        font-size: 15px;
+    }
 }
 
 .step-footer {
-    margin-top: 20px;
+    margin-top: 10px;
     display: flex;
     justify-content: flex-end;
     align-items: center;
     border-top: 1px solid #eee;
-    padding-top: 20px;
 
     .info {
         margin-right: 20px;
@@ -387,6 +532,36 @@ const handleFinalImport = () => {
     :deep(.el-input__wrapper:hover) {
         border-bottom-color: var(--el-color-primary);
     }
+}
+
+// 搜索栏样式
+.search-bar {
+    margin-bottom: 15px;
+
+    :deep(.el-form--inline .el-form-item) {
+        margin-right: 15px;
+    }
+
+    :deep(.el-form--inline) {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+}
+
+// 分页样式
+.pagination-wrapper {
+    margin-top: 15px;
+    display: flex;
+    justify-content: flex-end;
+    padding: 15px 0;
+    border-top: 1px solid #eee;
+}
+
+// 赛事负责人输入框样式
+
+:deep(.manager-input input) {
+    cursor: pointer !important;
 }
 
 @keyframes fadeIn {
