@@ -24,6 +24,7 @@ let maxMembers = ref()
 let minMembers = ref()
 let need_advisor = ref()
 let compType = 'team' // team / individual
+const uploadedUrls = ref([])
 const uploadRef = ref(null)
 const token = localStorage.getItem('token')
 const uploadHeaders = {
@@ -36,31 +37,50 @@ const compInfo = ref({})
 const formData = reactive({
   teamName: '',
   leader: {
-    name: '张三',
-    stuID: '2023001',
+    name: '',
+    stuID: '',
     phone: '',
+    email: '',
+    college: '',
+    is_leader: true,
   },
   // 队员列表
-  members: [{ name: '', stuID: '', phone: '' }],
+  members: [{ name: '', stuID: '', phone: '',email:'',college:'' }],
   fileList: [],
 })
 
 /* --- 3. 校验规则 --- */
 const rules = {
   teamName: [{ required: true, message: '请输入团队名称', trigger: 'blur' }],
+  'leader.name': [{ required: true, message: '请输入姓名', trigger: 'blur' }],
+  'leader.stuID': [{ required: true, message: '请输入学号', trigger: 'blur' }],
   'leader.phone': [{ required: true, message: '请输入手机号', trigger: 'blur' }],
+  'leader.email': [{ required: true, message: '请输入邮箱', trigger: 'blur' }],
+  'leader.college': [{ required: true, message: '请输入所属学院', trigger: 'blur' }],
 }
 
-const handleUploadSuccess = (response) => {
-  if (response.code === 200) {
-    submitForm(response.data.url)
-  } else {
+const handleUploadSuccess = (response, uploadFile, uploadFiles) => {
+  if (response.code !== 200) {
     ElMessage.error(response.msg || '附件上传失败')
+    return
+  }
+
+  // 1. 检查是否所有文件都上传完成了
+  // Element Plus 会把文件状态更新为 'success'
+  const isAllSuccess = uploadFiles.every(item => item.status === 'success')
+
+  if (isAllSuccess) {
+    const urls = uploadFiles.map(item => {
+      return item.response?.data?.url || item.url
+    })
+
+    const finalAttachmentUrl = urls.join(',')
+    submitForm(finalAttachmentUrl)
   }
 }
 
-const handleUploadError = () => {
-  ElMessage.error('网络错误，附件上传失败')
+const handleUploadError = (err, file, fileList) => {
+  ElMessage.error(`文件 ${file.name} 上传失败，请检查网络后重试`)
 }
 
 const handleExceed = () => {
@@ -71,7 +91,7 @@ function addMember() {
     ElMessage.warning(`团队成员最多只能添加到${maxMembers.value}人`)
     return
   }
-  formData.members.push({ name: '', stuID: '', phone: '' })
+  formData.members.push({ name: '', stuID: '', phone: '', email: '', college: '' })
 }
 
 function removeMember(index) {
@@ -168,6 +188,7 @@ onMounted(() => {
           label-position="top"
           size="large"
           class="main-form"
+          :hide-required-asterisk="true"
         >
           <div class="form-section" v-if="compInfo.compType === 2">
             <h3 class="section-title">团队名称</h3>
@@ -186,12 +207,12 @@ onMounted(() => {
               <el-row :gutter="20">
                 <el-col :span="8" :xs="24">
                   <el-form-item label="姓名">
-                    <el-input v-model="formData.leader.name" disabled prefix-icon="User" />
+                    <el-input v-model="formData.leader.name"  prefix-icon="User" />
                   </el-form-item>
                 </el-col>
                 <el-col :span="8" :xs="24">
                   <el-form-item label="学号">
-                    <el-input v-model="formData.leader.stuID" disabled prefix-icon="Postcard" />
+                    <el-input v-model="formData.leader.stuID"  prefix-icon="Postcard" />
                   </el-form-item>
                 </el-col>
                 <el-col :span="8" :xs="24">
@@ -199,7 +220,22 @@ onMounted(() => {
                     <el-input
                       v-model="formData.leader.phone"
                       placeholder="请输入手机号"
-                      prefix-icon="Iphone"
+                    />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8" :xs="24">
+                  <el-form-item label="联系邮箱" prop="leader.email">
+                    <el-input
+                      v-model="formData.leader.email"
+                      placeholder="请输入邮箱"
+                    />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8" :xs="24">
+                  <el-form-item label="所属学院" prop="leader.college">
+                    <el-input
+                      v-model="formData.leader.college"
+                      placeholder="请输入所属学院"
                     />
                   </el-form-item>
                 </el-col>
@@ -213,15 +249,86 @@ onMounted(() => {
               <el-button link type="primary" @click="addMember" :icon="Plus">添加成员</el-button>
             </div>
 
-            <div class="member-list">
-              <div v-if="formData.members.length === 0" class="empty-tip">暂无成员，请点击添加</div>
+            <div class="member-grid-container">
+              <div v-if="formData.members.length === 0" class="empty-tip">
+                <el-empty description="暂无成员，请点击右上角添加" :image-size="60" />
+              </div>
 
-              <div v-for="(m, i) in formData.members" :key="i" class="member-row">
-                <span class="row-index">{{ i + 1 }}</span>
-                <el-input v-model="m.name" placeholder="姓名" style="width: 140px" />
-                <el-input v-model="m.stuId" placeholder="学号" style="width: 180px" />
-                <el-input v-model="m.phone" placeholder="手机号" style="flex: 1" />
-                <el-button circle plain type="danger" :icon="Delete" @click="removeMember(i)" />
+              <div v-for="(m, i) in formData.members" :key="i" class="member-card">
+                <div class="card-header">
+                  <span class="member-index">成员 {{ i + 1 }}</span>
+                  <el-button
+                    type="danger"
+                    link
+                    :icon="Delete"
+                    @click="removeMember(i)"
+                    v-if="formData.members.length > 1"
+                  >
+                    删除
+                  </el-button>
+                </div>
+
+                <div class="card-body">
+                  <el-row :gutter="20">
+                    <el-col :span="8" :xs="24">
+                      <el-form-item
+                        label="姓名"
+                        :prop="'members.' + i + '.name'"
+                        :rules="{ required: true, message: '请输入姓名', trigger: 'blur' }"
+                      >
+                        <el-input v-model="m.name" placeholder="填写真实姓名" prefix-icon="User" />
+                      </el-form-item>
+                    </el-col>
+
+                    <el-col :span="8" :xs="24">
+                      <el-form-item
+                        label="学号"
+                        :prop="'members.' + i + '.stuID'"
+                        :rules="{ required: true, message: '请输入学号', trigger: 'blur' }"
+                      >
+                        <el-input v-model="m.stuID" placeholder="填写学号" prefix-icon="Postcard" />
+                      </el-form-item>
+                    </el-col>
+
+                    <el-col :span="8" :xs="24">
+                      <el-form-item
+                        label="手机号"
+                        :prop="'members.' + i + '.phone'"
+                        :rules="{ required: true, message: '请输入手机号', trigger: 'blur' }"
+                      >
+                        <el-input v-model="m.phone" placeholder="填写手机号" prefix-icon="Iphone" />
+                      </el-form-item>
+                    </el-col>
+
+                    <el-col :span="12" :xs="24">
+                      <el-form-item
+                        label="所属学院"
+                        :prop="'members.' + i + '.college'"
+                        :rules="{ required: true, message: '请输入所属学院', trigger: 'blur' }"
+                      >
+                        <el-input
+                          v-model="m.college"
+                          placeholder="例如：计算机科学与网络工程学院"
+                          prefix-icon="School"
+                        />
+                      </el-form-item>
+                    </el-col>
+
+                    <el-col :span="12" :xs="24">
+                      <el-form-item
+                        label="电子邮箱"
+                        :prop="'members.' + i + '.email'"
+                        :rules="{ required: true, message: '请输入邮箱', trigger: 'blur' }"
+                      >
+                        <el-input
+                          v-model="m.email"
+                          placeholder="接收比赛通知使用"
+                          prefix-icon="Message"
+                        />
+                      </el-form-item>
+                    </el-col>
+                  </el-row>
+                </div>
               </div>
             </div>
           </div>
@@ -258,12 +365,7 @@ onMounted(() => {
 
           <div class="form-actions">
             <el-button size="large" @click="router.back()">取消</el-button>
-            <el-button
-              type="primary"
-              size="large"
-              style="width: 180px"
-              @click="submitVerify"
-            >
+            <el-button type="primary" size="large" style="width: 180px" @click="submitVerify">
               确认报名
             </el-button>
           </div>
@@ -287,7 +389,7 @@ onMounted(() => {
   position: relative;
   overflow: hidden;
 
-  /* 4. 关键 Padding！
+  /* 
      顶部 20px：给导航栏留空
      底部 100px：这一大片空白，是留给下一个步骤的“白色卡片”上浮用的！
   */
@@ -392,42 +494,69 @@ onMounted(() => {
       padding: 24px;
       border-radius: 6px;
     }
-    .member-list {
-      border: 1px solid #ebeef5;
-      border-radius: 6px;
-      overflow: hidden;
+    /* 成员列表容器 */
+    .member-grid-container {
+      display: flex;
+      flex-direction: column;
+      gap: 20px; /* 卡片之间的间距 */
 
       .empty-tip {
-        text-align: center;
-        padding: 20px;
-        color: #909399;
-        font-size: 13px;
+        border: 1px dashed #dcdfe6;
+        border-radius: 8px;
+        padding: 20px 0;
       }
 
-      .member-row {
-        display: flex;
-        align-items: center;
-        gap: 15px;
-        padding: 15px 20px;
-        border-bottom: 1px solid #ebeef5;
-        background: #fff;
-        &:last-child {
-          border-bottom: none;
-        }
+      /* 单个成员卡片 */
+      .member-card {
+        background-color: #fcfcfc; /* 卡片背景微灰，区分于白底 */
+        border: 1px solid #ebeef5;
+        border-radius: 8px;
+        transition: all 0.3s;
+
         &:hover {
-          background-color: #f0fdfa;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* 悬浮时浮起 */
+          border-color: #dcdfe6;
+          background-color: #fff;
         }
 
-        .row-index {
-          width: 24px;
-          height: 24px;
-          background: #f0f2f5;
-          color: #909399;
-          text-align: center;
-          line-height: 24px;
-          border-radius: 4px;
-          font-size: 12px;
-          font-weight: bold;
+        /* 卡片标题栏 */
+        .card-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 10px 20px;
+          border-bottom: 1px solid #ebeef5;
+          background-color: #fafafa;
+          border-radius: 8px 8px 0 0;
+
+          .member-index {
+            font-weight: 600;
+            font-size: 14px;
+            color: #606266;
+
+            /* 左侧的小蓝条装饰 */
+            &::before {
+              content: '';
+              display: inline-block;
+              width: 3px;
+              height: 12px;
+              background-color: #13c2c2;
+              margin-right: 8px;
+              border-radius: 2px;
+            }
+          }
+        }
+
+        /* 卡片内容区 */
+        .card-body {
+          padding: 20px;
+          padding-bottom: 0; /* 抵消最后一行的 margin-bottom */
+
+          /* 让表单项的 Label 稍微小一点，不喧宾夺主 */
+          :deep(.el-form-item__label) {
+            font-size: 13px;
+            padding-bottom: 4px;
+          }
         }
       }
     }

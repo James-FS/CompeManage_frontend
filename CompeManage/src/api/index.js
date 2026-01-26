@@ -26,7 +26,8 @@ export const api = {
   getRegConfig: (compID) => get(`/api/reg/config/get?comp_id=${compID}`),
   submitReg:(data) => post('/api/reg/submit', data),
   getRegList:(params) => get('/api/reg/list', params),
-
+  getRegDetail:(id) => get(`/api/reg/detail?id=${id}`),
+  auditReg:(data) => put('/api/reg/audit', data),
   // ==================== 通知相关 ====================
 }
 
