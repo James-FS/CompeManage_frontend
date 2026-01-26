@@ -18,6 +18,15 @@ export const api = {
   // 分配权限给角色
   assignPermissions: (data) => post('/api/role/assign_perm', data),
 
+  // ==================== 学院相关 ====================
+  getCollegeList: () => get('/api/college/list'),
+
+  // ==================== 竞赛相关 ====================
+  getCompetitionList: (params) => get('/api/comp/list',params),
+
+  // ==================== 报名相关 ====================
+  saveRegConfig: (data) => post('/api/reg/config', data),
+  getRegConfig: (compID) => get(`/api/reg/config/get?comp_id=${compID}`),
 }
 
 export default api
