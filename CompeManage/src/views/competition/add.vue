@@ -14,9 +14,11 @@ const form = reactive({
     undertaker: '', manager: '', college: '', desc: ''
 });
 const rules = {
+    //blur: 输入框失去焦点时触发验证  change: 选择框值变化时触发验证
     comp_name: [{ required: true, message: '请输入赛事名称', trigger: 'blur' }],
     comp_level: [{ required: true, message: '请选择赛事级别', trigger: 'change' }],
     college: [{ required: true, message: '请选择所属学院', trigger: 'change' }],
+    manager: [{ required: true, message: '请输入赛事负责人', trigger: 'blur' }],
 };
 const handleSubmit = async (formEl) => {
     if (!formEl) return;
@@ -185,9 +187,16 @@ const handleFinalImport = () => {
                                         <el-input v-model="form.undertaker" placeholder="请填写承办单位" />
                                     </el-form-item>
                                 </el-col>
-                                <el-col :span="8">
-                                    <el-form-item label="负责人" prop="manager">
+                            </el-row>
+                            <el-row :gutter="20">
+                                <el-col :span="12">
+                                    <el-form-item label="赛事负责人" prop="manager">
                                         <el-input v-model="form.manager" placeholder="请填写教师姓名" />
+                                    </el-form-item>
+                                </el-col>
+                                <el-col :span="12">
+                                    <el-form-item label="所属年份" prop="year">
+                                        <el-input v-model="form.year" placeholder="请选择所属年份" />
                                     </el-form-item>
                                 </el-col>
                             </el-row>
@@ -195,7 +204,7 @@ const handleFinalImport = () => {
                                 <el-input v-model="form.desc" type="textarea" :rows="3" placeholder="填写赛事的其他补充说明..." />
                             </el-form-item>
                             <el-form-item>
-                                <el-button type="primary" @click="handleSubmit(formRef)">立即创建</el-button>
+                                <el-button type="primary" @click="handleSubmit(formRef)">创建</el-button>
                                 <el-button @click="handleReset(formRef)">重置</el-button>
                             </el-form-item>
                         </el-form>
