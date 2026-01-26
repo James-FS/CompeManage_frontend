@@ -16,67 +16,83 @@ const allMenus = [
     path: '/home',
     title: '首页',
     icon: House,
-    roles: ['school_admin', 'college_admin', 'competition_manager', 'student']
+    roles: ['school_admin', 'college_admin', 'competition_manager', 'student'],
   },
   {
     path: '/competition',
     title: '赛事管理',
     icon: Trophy,
     // 只要有任意子菜单权限，就显示父菜单
-    roles: ['school_admin', 'college_admin', 'competition_manager', 'student'], 
+    roles: ['school_admin', 'college_admin', 'competition_manager', 'student'],
     children: [
-      { 
-        path: '/competition/list', 
-        title: '赛事目录', 
-        roles: ['school_admin', 'college_admin', 'competition_manager', 'student'] 
+      {
+        path: '/competition/list',
+        title: '赛事目录',
+        roles: ['school_admin', 'college_admin', 'competition_manager', 'student'],
       },
-      { 
-        path: '/competition/register', 
-        title: '赛事报名', 
-        roles: ['school_admin', 'college_admin', 'student','competition_manager'] 
-      },
+
       {
         path: '/competition/audit',
         title: '赛事审核',
         roles: ['school_admin', 'college_admin']
       },
-      {
-        path: '/competition/register/edit',
-        title:'报名设置',
-        roles: ['school_admin', 'college_admin', 'competition_manager']
-      }
-    ]
+      
+    ],
   },
   {
-    path:'/permission',
-    title:'权限管理',
+    path: '/register',
+    title: '报名管理',
+    icon: EditPen,
+    roles: ['school_admin', 'college_admin', 'competition_manager', 'student'],
+    children: [
+      {
+        path: '/register',
+        title: '赛事报名',
+        roles: ['school_admin', 'college_admin', 'student', 'competition_manager'],
+      },
+      {
+        path: '/register/edit',
+        title: '报名设置',
+        roles: ['school_admin', 'college_admin', 'competition_manager'],
+      },
+      {
+        path: '/register/audit',
+        title: '报名审核',
+        roles: ['school_admin', 'college_admin', 'competition_manager'],
+      }
+    ],
+  },
+  {
+    path: '/permission',
+    title: '权限管理',
+    icon: Key,
     roles: ['school_admin'],
-  }
-];
+  },
+]
 // 深拷贝菜单但保留icon组件引用
 const deepCloneMenus = (menus) => {
-  return menus.map(item => ({
+  return menus.map((item) => ({
     ...item,
-    children: item.children ? deepCloneMenus(item.children) : undefined
-  }));
-};
+    children: item.children ? deepCloneMenus(item.children) : undefined,
+  }))
+}
 
 // 计算过滤后的菜单项
 const filterMenus = (menus, userRoles) => {
-  return menus.filter(item => {
+  return menus.filter((item) => {
     // 检查是否有权限字段,没有则默认显示
-    if(item.roles && !item.roles.includes(userRoles)){
-      return false;
+    if (item.roles && !item.roles.includes(userRoles)) {
+      return false
     }
     // 如果有子菜单，递归过滤子菜单
-    if(item.children){
-      item.children = filterMenus(item.children, userRoles);
+    if (item.children) {
+      item.children = filterMenus(item.children, userRoles)
       // 如果子菜单全部被过滤掉，则不显示父菜单
-      return item.children.length > 0;
+      return item.children.length > 0
     }
-    return true;
-  });
-};
+    return true
+  })
+}
 
 // 根据用户角色计算可见菜单
 const dynamicMenuItems = computed(() => {
@@ -117,7 +133,6 @@ const handleLink = (item) => {
 <template>
   <Header />
   <div class="main-layout">
-    
     <!-- 侧边导航栏 -->
     <aside class="sidebar">
       <Sidebar :menu-items="dynamicMenuItems" />

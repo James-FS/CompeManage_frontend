@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { Search, ArrowRight, Calendar, User, Bell } from '@element-plus/icons-vue' // 引入必要的图标
+import { Search, ArrowRight, Calendar, User, Bell } from '@element-plus/icons-vue'
 import { ElPagination, ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 import { api } from '@/api'
@@ -8,11 +8,11 @@ import { formatTimeRange } from '@/utils/format'
 import { 
   COMP_CATEGORIES, 
   getParticipantType,
-  getStatusConfig
+  getStatusConfig,
+  getTimeState,
 } from '@/utils/competition'
-const router = useRouter()
-// 1. 定义所有的学科分类 (模拟数据)
 
+const router = useRouter()
 const compList = ref([])
 
 const queryParams = ref({
@@ -20,18 +20,10 @@ const queryParams = ref({
   page_size: 10,
   keyword: '',
   category: '全部',
-})
-
-const query = ref({
-  page: 1,
-  page_size: 10,
   is_my: false,
+  is_reg: true,
 })
 
-
-
-let currentPage = ref(1)
-let pageSize = ref(10)
 let total = ref(0)
 
 function NavigateToRegister(compID) {
@@ -43,10 +35,17 @@ async function fetchCompList() {
     const response = await api.getCompetitionList(queryParams.value)
     if (response.code == 200) {
       compList.value = response.data.list.map((item) => {
-        const detail=item.Detail||{}
-        return{
-        ...item,
-        timeRange: formatTimeRange(detail.RegStartTime, detail.RegEndTime),
+        const detail = item.detail || {} 
+        const timeState = getTimeState(
+          detail.reg_start_time, 
+          detail.reg_end_time
+        )
+        
+        return {
+          ...item, 
+          detail: detail, 
+          timeState,
+          timeRange: formatTimeRange(detail.reg_start_time, detail.reg_end_time),
         }
       })
       total.value = response.data.total
@@ -129,27 +128,27 @@ onMounted(() => {
     </div>
 
     <div class="comp-list">
-      <div class="comp-item" v-for="item in compList" :key="item.ID">
+      <div class="comp-item" v-for="item in compList" :key="item.id">
         <div class="comp-info">
           <div class="name-row">
             <el-tag
-              :type="getStatusConfig(item.Status).tagType"
+              :type="item.timeState.tagType"
               effect="dark"
               size="small"
               class="status-badge"
             >
-              {{ getStatusConfig(item.Status).tagText }}
+              {{ item.timeState.tagText }}
             </el-tag>
-            <h3 class="comp-name">{{ item.CompName }}</h3>
+            <h3 class="comp-name">{{ item.comp_name }}</h3>
           </div>
           <div class="meta-row">
             <el-tag effect="plain" type="primary" size="small" class="level-tag">
-              {{ item.CompLevel }}
+              {{ item.comp_level }}
             </el-tag>
 
             <span class="divider"></span>
             <span class="meta-text">
-              <el-icon><User /></el-icon> {{ item.Organizer }}
+              <el-icon><User /></el-icon> {{ item.organizer }}
             </span>
 
             <span class="divider"></span>
@@ -159,8 +158,8 @@ onMounted(() => {
             </span>
           </div>
           <div class="tag-row">
-            <el-tag  size="small" type="info" class="extra-tag">
-              {{ getParticipantType(item.Detail.ParticipantType) }}
+            <el-tag size="small" type="info" class="extra-tag">
+              {{ getParticipantType(item.detail.participant_type) }}
             </el-tag>
           </div>
         </div>
@@ -171,12 +170,12 @@ onMounted(() => {
             </el-button>
 
             <el-button
-              :type="item.status === 0 || item.status === 3 ? 'info' : 'primary'"
-              :disabled="item.status === 3"
+              :type="item.timeState.type"
+              :disabled="item.timeState.disabled"
               @click="NavigateToRegister(item.id)"
               class="primary-btn"
             >
-              {{ getStatusConfig(item.Status).label }}
+              {{ item.timeState.label }}
               <el-icon class="el-icon--right"><ArrowRight /></el-icon>
             </el-button>
           </div>
