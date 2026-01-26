@@ -4,7 +4,7 @@ import Header from '@/components/Header.vue';
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useUserStore } from '@/stores/user';
-import { House, Trophy, ArrowRight} from '@element-plus/icons-vue';
+import { House, Trophy, ArrowRight,EditPen, Key } from '@element-plus/icons-vue';
 
 const userStore = useUserStore();
 const route = useRoute();

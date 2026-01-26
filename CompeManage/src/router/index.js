@@ -4,7 +4,7 @@ import EmptyLayout from '@/layouts/EmptyLayout.vue'
 import { useUserStore } from '@/stores/user'
 
 const routes = [
-<<<<<<< HEAD
+
   {
     path: '/',
     redirect: '/login',
@@ -178,35 +178,6 @@ router.beforeEach((to, from, next) => {
   // 设置页面标题
   document.title = to.meta.title || '学科竞赛管理系统'
 
-<<<<<<< HEAD
-  // 白名单页面放行
-  if (to.path === '/login') {
-    next()
-    return
-  }
-
-  // 检查是否登录
-  const token = localStorage.getItem('token')
-  if (!token) {
-    next('/login')
-    return
-  }
-
-  // 恢复store状态(页面刷新)
-  if (!userStore.token) {
-    userStore.restoreState()
-  }
-
-  // 检查角色权限
-  const allowedRoles = to.meta.roles
-  if (allowedRoles) {
-    if (allowedRoles.includes(userStore.role)) {
-      next()
-    } else {
-      // 无权限，跳转首页或显示错误页面
-      alert('无权访问该页面')
-      next(from.path)
-=======
     // 白名单页面放行
     if (to.path === '/login') {
         next()
@@ -238,11 +209,7 @@ router.beforeEach((to, from, next) => {
     } else {
         // 没有设置roles，默认允许访问
         next()
->>>>>>> develop
     }
-  } else {
-    // 没有设置roles，默认允许访问
-    next()
-  }
-})
+  } 
+)
 export default router
