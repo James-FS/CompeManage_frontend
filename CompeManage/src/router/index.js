@@ -39,11 +39,18 @@ const routes = [
         },
       },
       {
-        path: 'competition/add',
-        name: 'CompetitionAdd',
-        component: () => import('@/views/competition/add.vue'),
-        meta: { title: '新增赛事', roles: ['school_admin', 'college_admin'] },
+        path: 'add',
+                name: 'CompetitionAdd',
+                component: () => import('@/views/competition/add.vue'),
+
+                meta: { title: '新增赛事', roles: ['school_admin', 'college_admin'] , parent: 'CompetitionList', activeMenu: '/competition/list'}
       },
+      {
+                path: 'audit',
+                name: 'CompetitionAudit',
+                component: () => import('@/views/competition/audit.vue'),
+                meta: { title: '赛事审核', roles: ['school_admin', 'college_admin'] }
+            },
       
     ],
   },
@@ -156,128 +163,7 @@ const routes = [
       },
     ],
   },
-=======
-    {
-        path: '/',
-        redirect: '/login'
-    },
-    //需要侧边导航栏的页面
-    {
-        path: '/',
-        component: MainLayout,
-        children: [
-            {
-                path: 'home',
-                name: 'Home',
-                component: () => import('@/views/home.vue'),
-                meta: { title: '首页', roles: ['school_admin', 'college_admin', 'competition_manager', 'student'] }
-            },
 
-        ]
-
-    },
-    {
-        path: '/competition',
-        component: MainLayout,
-        meta: { title: '赛事管理', redirect: 'noRedirect' },
-        children: [
-            {
-                path: 'list',
-                name: 'CompetitionList',
-                component: () => import('@/views/competition/list.vue'),
-                meta: { title: '赛事目录', roles: ['school_admin', 'college_admin', 'competition_manager', 'student'] }
-            },
-            {
-                path: 'add',
-                name: 'CompetitionAdd',
-                component: () => import('@/views/competition/add.vue'),
-
-                meta: { title: '新增赛事', roles: ['school_admin', 'college_admin'] , parent: 'CompetitionList', activeMenu: '/competition/list'}
-            },
-            {
-                path: 'audit',
-                name: 'CompetitionAudit',
-                component: () => import('@/views/competition/audit.vue'),
-                meta: { title: '赛事审核', roles: ['school_admin', 'college_admin'] }
-            },
-            {
-                path: '/competition/register',
-                name: 'CompetitionRegister',
-                component: () => import('@/views/register/register.vue'),
-                meta: { title: '赛事报名', roles: ['school_admin', 'college_admin', 'competition_manager', 'student'] }
-            },
-            {
-                path: '/competition/register/detail/:id',
-                name: 'detail',
-                component: () => import('@/views/register/registerDetail.vue'),
-                props: true,
-            },
-            {
-                path: '/competition/register/edit',
-                name: 'register-edit',
-                component: () => import('@/views/register/edit.vue'),
-
-            },
-            {
-                path: '/competition/register/edit/:id',
-                name: 'edit-detail',
-                component: () => import('@/views/register/editDetail.vue'),
-                props: true,
-            }
-        ]
-    },
-    {
-        path: '/permission',
-        component: MainLayout,
-        children: [
-            {
-                path: '',
-                name: 'permission',
-                component: () => import('@/views/permission/permission.vue'),
-                meta: { title: '权限管理' }
-            }
-        ]
-    },
-    //不需要侧边导航栏的页面
-    {
-        path: '/',
-        component: EmptyLayout,
-        children: [
-            {
-                path: 'login',
-                name: 'Login',
-                component: () => import('@/views/login.vue'),
-                meta: { title: '登录', roles: ['school_admin', 'college_admin', 'competition_manager', 'student'] }
-            },
-            {
-                path: 'notice',
-                name: 'Notice',
-                component: () => import('@/views/notice/notice.vue'),
-                meta: { title: '通知', roles: ['school_admin', 'college_admin', 'competition_manager', 'student'] }
-            },
-            {
-                path: 'notice/list',
-                name: 'NoticeList',
-                component: () => import('@/views/notice/list.vue'),
-                meta: { title: '通知列表', roles: ['school_admin', 'college_admin', 'competition_manager', 'student'] }
-            },
-            {
-                path: 'notice/detail/:id',
-                name: 'NoticeDetail',
-                component: () => import('@/views/notice/detail.vue'),
-                props: true,
-                meta: { title: '通知详情', roles: ['school_admin', 'college_admin', 'competition_manager', 'student'] }
-            },
-            {
-                path: 'notice/edit/:id',
-                name: 'NoticeEdit',
-                component: () => import('@/views/notice/edit.vue'),
-                props: true,
-                meta: { title: '编辑通知', roles: ['school_admin', 'college_admin', 'competition_manager'] }
-            }
-        ]
-    }
->>>>>>> develop
 ]
 
 const router = createRouter({
