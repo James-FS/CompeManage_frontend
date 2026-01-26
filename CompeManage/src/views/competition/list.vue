@@ -1,9 +1,10 @@
 <script setup>
-import { ref, reactive } from 'vue';
+import { ref, reactive, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { Search, Refresh, Download, Upload, Plus, Delete, ArrowDown, Edit, Setting } from '@element-plus/icons-vue';
-
+import { useUserStore } from '@/stores/user';
+import api from '@/api/index';
 
 // 搜索表单数据
 const searchForm = reactive({
@@ -25,221 +26,20 @@ const handleReset = () => {
     searchForm.college = '';
     searchForm.manager = '';
     searchForm.status = '';
+    
+    // 重置分页
+    current_page.value = 1;
+    page_size.value = 10;
+    
+    // 重新搜索以加载第一页数据
+    handleSearch();
 };
 
-// 表格模拟数据
-const tableData = ref([
-    {
-        id: 1,
-        comp_code: 'XS2025001',
-        comp_name: '2025年广州大学校级ACM程序设计竞赛',
-        comp_type: '学科竞赛',
-        comp_level: '校级',
-        organizer: '广州大学计算机学院',
-        undertaker: '广州大学ACM',
-        manager: '李教授',
-        project_source: '学校录入',
-        status: '进行中',
-        college: '计算机学院',
-        year: '2025'
-    },
-    {
-        id: 2,
-        comp_code: 'XS2025002',
-        comp_name: '2025年广州大学校级大学生创新创业训练计划项目（大创）',
-        comp_type: '创新创业竞赛',
-        comp_level: '校级',
-        organizer: '广州大学创新创业学院',
-        undertaker: '广州大学教务处',
-        manager: '王老师',
-        project_source: '学校录入',
-        status: '已结束',
-        college: '创新创业学院',
-        year: '2025'
-    },
-    {
-        id: 3,
-        comp_code: 'XS2025003',
-        comp_name: '2025年广州大学校级蓝桥杯软件和信息技术专业人才大赛模拟赛',
-        comp_type: '学科竞赛',
-        comp_level: '校级',
-        organizer: '广州大学计算机学院',
-        undertaker: '广州大学软件工程系',
-        manager: '张讲师',
-        project_source: '学校录入',
-        status: "未开始",
-        college: '计算机学院',
-        year: '2025'
-    },
-    {
-        id: 4,
-        comp_code: 'SS2025001',
-        comp_name: '2025年广东省“挑战杯”大学生创业计划竞赛',
-        comp_type: '创新创业竞赛',
-        comp_level: '省部级',
-        organizer: '广东省教育厅',
-        undertaker: '广州大学',
-        manager: '刘主任',
-        project_source: '学校录入',
-        status: '进行中',
-        college: '经济管理学院',
-        year: '2025'
-    },
-    {
-        id: 5,
-        comp_code: 'GS2025001',
-        comp_name: '2025年全国大学生蓝桥杯软件和信息技术专业人才大赛',
-        comp_type: '学科竞赛',
-        comp_level: '国家级',
-        organizer: '教育部',
-        undertaker: '蓝桥杯全国组委会',
-        manager: '林教授',
-        project_source: '学校录入',
-        status: '进行中',
-        college: '电子信息工程学院',
-        year: '2025'
-    },
-    {
-        id: 1,
-        comp_code: 'XS2025001',
-        comp_name: '2025年广州大学校级ACM程序设计竞赛',
-        comp_type: '学科竞赛',
-        comp_level: '校级',
-        organizer: '广州大学计算机学院',
-        undertaker: '广州大学ACM',
-        manager: '李教授',
-        project_source: '学校录入',
-        status: '进行中',
-        college: '计算机学院',
-        year: '2025'
-    },
-    {
-        id: 2,
-        comp_code: 'XS2025002',
-        comp_name: '2025年广州大学校级大学生创新创业训练计划项目（大创）',
-        comp_type: '创新创业竞赛',
-        comp_level: '校级',
-        organizer: '广州大学创新创业学院',
-        undertaker: '广州大学教务处',
-        manager: '王老师',
-        project_source: '学校录入',
-        status: '已结束',
-        college: '创新创业学院',
-        year: '2025'
-    },
-    {
-        id: 3,
-        comp_code: 'XS2025003',
-        comp_name: '2025年广州大学校级蓝桥杯软件和信息技术专业人才大赛模拟赛',
-        comp_type: '学科竞赛',
-        comp_level: '校级',
-        organizer: '广州大学计算机学院',
-        undertaker: '广州大学软件工程系',
-        manager: '张讲师',
-        project_source: '学校录入',
-        status: "未开始",
-        college: '计算机学院',
-        year: '2025'
-    },
-    {
-        id: 4,
-        comp_code: 'SS2025001',
-        comp_name: '2025年广东省“挑战杯”大学生创业计划竞赛',
-        comp_type: '创新创业竞赛',
-        comp_level: '省部级',
-        organizer: '广东省教育厅',
-        undertaker: '广州大学',
-        manager: '刘主任',
-        project_source: '学校录入',
-        status: '进行中',
-        college: '经济管理学院',
-        year: '2025'
-    },
-    {
-        id: 5,
-        comp_code: 'GS2025001',
-        comp_name: '2025年全国大学生蓝桥杯软件和信息技术专业人才大赛',
-        comp_type: '学科竞赛',
-        comp_level: '国家级',
-        organizer: '教育部',
-        undertaker: '蓝桥杯全国组委会',
-        manager: '林教授',
-        project_source: '学校录入',
-        status: '进行中',
-        college: '电子信息工程学院',
-        year: '2025'
-    },
-    {
-        id: 1,
-        comp_code: 'XS2025001',
-        comp_name: '2025年广州大学校级ACM程序设计竞赛',
-        comp_type: '学科竞赛',
-        comp_level: '校级',
-        organizer: '广州大学计算机学院',
-        undertaker: '广州大学ACM',
-        manager: '李教授',
-        project_source: '学校录入',
-        status: '进行中',
-        college: '计算机学院',
-        year: '2025'
-    },
-    {
-        id: 2,
-        comp_code: 'XS2025002',
-        comp_name: '2025年广州大学校级大学生创新创业训练计划项目（大创）',
-        comp_type: '创新创业竞赛',
-        comp_level: '校级',
-        organizer: '广州大学创新创业学院',
-        undertaker: '广州大学教务处',
-        manager: '王老师',
-        project_source: '学校录入',
-        status: '已结束',
-        college: '创新创业学院',
-        year: '2025'
-    },
-    {
-        id: 3,
-        comp_code: 'XS2025003',
-        comp_name: '2025年广州大学校级蓝桥杯软件和信息技术专业人才大赛模拟赛',
-        comp_type: '学科竞赛',
-        comp_level: '校级',
-        organizer: '广州大学计算机学院',
-        undertaker: '广州大学软件工程系',
-        manager: '张讲师',
-        project_source: '学校录入',
-        status: "未开始",
-        college: '计算机学院',
-        year: '2025'
-    },
-    {
-        id: 4,
-        comp_code: 'SS2025001',
-        comp_name: '2025年广东省“挑战杯”大学生创业计划竞赛',
-        comp_type: '创新创业竞赛',
-        comp_level: '省部级',
-        organizer: '广东省教育厅',
-        undertaker: '广州大学',
-        manager: '刘主任',
-        project_source: '学校录入',
-        status: '进行中',
-        college: '经济管理学院',
-        year: '2025'
-    },
-    {
-        id: 5,
-        comp_code: 'GS2025001',
-        comp_name: '2025年全国大学生蓝桥杯软件和信息技术专业人才大赛',
-        comp_type: '学科竞赛',
-        comp_level: '国家级',
-        organizer: '教育部',
-        undertaker: '蓝桥杯全国组委会',
-        manager: '林教授',
-        project_source: '学校录入',
-        status: '进行中',
-        college: '电子信息工程学院',
-        year: '2025'
-    },
-])
+// 表格数据
+const tableData = ref([])
+
+// 学院列表
+const collegeList = ref([]);
 
 // 加载状态
 const loading = ref(false);
@@ -247,13 +47,28 @@ const loading = ref(false);
 // 路由实例
 const router = useRouter();
 
+// 用户角色
+const userStore = useUserStore();
+
 // 新增赛事
 const handleAddCompetition = () => {
     router.push({ name: 'CompetitionAdd' });
 };
 
+// 年份切换
+const handleYearSwitch = (year) => {
+    currentYear.value = year;
+    searchForm.year = year;
+    
+    // 重置分页到第一页
+    current_page.value = 1;
+    
+    // 重新加载数据
+    handleSearch();
+};
+
 // 年份管理数据
-const currentYear = ref('2025'); // 当前选中的年份
+const currentYear = ref(new Date().getFullYear().toString()); // 当前选中的年份（系统当前年份）
 const yearList = ref(['2026', '2025', '2024', '2023']); // 可选年份列表
 // 弹窗控制
 const yearManageVisible = ref(false);
@@ -423,6 +238,75 @@ const handleCurrentChange = (val) => {
     handleSearch();
 };
 
+// 搜索功能
+const handleSearch = async () => {
+    loading.value = true;
+    try {
+        // 构建查询参数
+        const params = {
+            page: current_page.value,
+            page_size: page_size.value,
+            year: currentYear.value, // 添加年份筛选
+        };
+        
+        // 添加可选的搜索和筛选参数
+        if (searchForm.comp_name) {
+            params.comp_name = searchForm.comp_name;
+        }
+        if (searchForm.comp_level) {
+            params.comp_level = searchForm.comp_level;
+        }
+        if (searchForm.college) {
+            params.college = searchForm.college;
+        }
+        if (searchForm.manager) {
+            params.manager = searchForm.manager;
+        }
+        if (searchForm.status) {
+            params.status = searchForm.status;
+        }
+        
+        console.log('调用赛事列表接口，参数：', params);
+        
+        // 调用后端接口获取数据
+        const response = await api.getCompetitionList(params);
+        console.log('赛事列表API响应：', response);
+        
+        if (response.code === 200 || response.code === 0) {
+            tableData.value = response.data.list || [];
+            total.value = response.data.total || 0;
+            console.log('数据加载成功，共', tableData.value.length, '条记录');
+        } else {
+            ElMessage.error(response.message || response.msg || '获取数据失败');
+        }
+    } catch (error) {
+        console.error('搜索请求失败：', error);
+        ElMessage.error('搜索失败，请检查网络或重试');
+    } finally {
+        loading.value = false;
+    }
+};
+
+// 加载学院列表
+const loadCollegeList = async () => {
+    try {
+        const response = await api.getCollegeList();
+        if (response.code === 0 || response.code === 200) {
+            collegeList.value = response.data || [];
+        } else {
+            ElMessage.error('加载学院列表失败');
+        }
+    } catch (error) {
+        console.error('加载学院列表失败：', error);
+    }
+};
+
+// 页面加载时初始化数据
+onMounted(() => {
+    loadCollegeList();
+    handleSearch();
+});
+
 </script>
 
 <template>
@@ -444,10 +328,7 @@ const handleCurrentChange = (val) => {
                 </el-form-item>
                 <el-form-item label="所属学院">
                     <el-select v-model="searchForm.college" placeholder="请选择所属学院" clearable="true" style="width: 220px">
-                        <el-option label="计算机科学与网络工程学院" value="计算机科学与网络工程学院"></el-option>
-                        <el-option label="电子信息工程学院" value="电子信息工程学院"></el-option>
-                        <el-option label="经济管理学院" value="经济管理学院"></el-option>
-                        <el-option label="创新创业学院" value="创新创业学院"></el-option>
+                        <el-option v-for="college in collegeList" :key="college.id" :label="college.name" :value="college.name"></el-option>
                     </el-select>
                 </el-form-item>
                 <el-form-item label="赛事负责人">
@@ -462,7 +343,7 @@ const handleCurrentChange = (val) => {
                     </el-select>
                 </el-form-item>
                 <el-form-item class="search-actions">
-                    <el-button type="primary" :icon="Search" plain>搜索</el-button>
+                    <el-button type="primary" :icon="Search" plain @click="handleSearch">搜索</el-button>
                     <el-button type="default" :icon="Refresh" plain @click="handleReset">重置</el-button>
                 </el-form-item>
             </el-form>
@@ -540,22 +421,55 @@ const handleCurrentChange = (val) => {
             <el-table v-loading="loading" :data="tableData" stripe max-height="400"
                 style="width: 100%">
                 <el-table-column type="selection" width="40" />
-                <el-table-column prop="id" label="序号" width="60" align="center"></el-table-column>
-                <el-table-column prop="comp_code" label="竞赛编号" min-width="100" align="center"></el-table-column>
-                <el-table-column prop="comp_name" label="竞赛名称" min-width="200" show-overflow-tooltip
-                    align="center"></el-table-column>
-                <el-table-column prop="comp_level" label="竞赛级别" width="100" align="center"></el-table-column>
-                <el-table-column prop="organizer" label="主办单位" min-width="150" align="center"
-                    show-overflow-tooltip></el-table-column>
-                <el-table-column prop="undertaker" label="承办单位" min-width="150" align="center"
-                    show-overflow-tooltip></el-table-column>
-                <el-table-column prop="manager" label="赛事负责人" width="100" align="center"></el-table-column>
-                <el-table-column prop="college" label="所属学院" width="150" align="center"></el-table-column>
-                <el-table-column prop="project_source" label="项目来源" min-width="90" align="center"></el-table-column>
-                <el-table-column prop="status" label="状态" width="90" align="center">
+                <el-table-column label="序号" width="60" align="center">
                     <template #default="scope">
-                        <el-tag :type="scope.row.status === '进行中' ? 'success' : 'info'" size="small" effect="plain">{{
-                            scope.row.status }}</el-tag>
+                        {{ scope.row.id || '-' }}
+                    </template>
+                </el-table-column>
+                <el-table-column label="赛事编号" min-width="100" align="center">
+                    <template #default="scope">
+                        {{ scope.row.comp_code || '-' }}
+                    </template>
+                </el-table-column>
+                <el-table-column label="赛事名称" min-width="200" show-overflow-tooltip align="center">
+                    <template #default="scope">
+                        {{ scope.row.comp_name || '-' }}
+                    </template>
+                </el-table-column>
+                <el-table-column label="赛事级别" width="100" align="center">
+                    <template #default="scope">
+                        {{ scope.row.comp_level || '-' }}
+                    </template>
+                </el-table-column>
+                <el-table-column label="主办单位" min-width="150" align="center" show-overflow-tooltip>
+                    <template #default="scope">
+                        {{ scope.row.organizer || '-' }}
+                    </template>
+                </el-table-column>
+                <el-table-column label="承办单位" min-width="150" align="center" show-overflow-tooltip>
+                    <template #default="scope">
+                        {{ scope.row.undertaker || '-' }}
+                    </template>
+                </el-table-column>
+                <el-table-column label="赛事负责人" width="120" align="center">
+                    <template #default="scope">
+                        {{ scope.row.manager?.realname || '-' }}
+                    </template>
+                </el-table-column>
+                <el-table-column label="所属学院" width="200" align="center">
+                    <template #default="scope">
+                        {{ scope.row.college_info?.name || '-' }}
+                    </template>
+                </el-table-column>
+                <el-table-column label="项目来源" min-width="90" align="center">
+                    <template #default="scope">
+                        {{ scope.row.project_source || '-' }}
+                    </template>
+                </el-table-column>
+                <el-table-column label="状态" width="90" align="center">
+                    <template #default="scope">
+                        <el-tag :type="scope.row.status === 1 ? 'success' : 'info'" size="small" effect="plain">{{
+                            scope.row.status === 1 ? '进行中' : scope.row.status === 2 ? '已结束' : '未开始' }}</el-tag>
                     </template>
                 </el-table-column>
                 <el-table-column label="操作" width="150" align="center" fixed="right">
@@ -572,7 +486,7 @@ const handleCurrentChange = (val) => {
             </el-table>
             <div v-if="tableData.length > 0" class="pagination-wrapper">
                 <el-pagination v-model:current-page="current_page" v-model:page-size="page_size"
-                    :page-sizes="[10, 20, 30, 50]" layout="total, sizes, prev, pager, next, jumper" :total="400"
+                    :page-sizes="[10, 20, 30, 50]" layout="total, sizes, prev, pager, next, jumper" :total="total"
                     @size-change="handleSizeChange" @current-change="handleCurrentChange" />
             </div>
         </div>

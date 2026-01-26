@@ -1,11 +1,14 @@
 <script setup>
-import Sidebar from '@/components/Sidebar.vue'
-import Header from '@/components/Header.vue'
-import { computed } from 'vue'
-import { useUserStore } from '@/stores/user'
-import { House, Trophy,EditPen,Key } from '@element-plus/icons-vue'
+import Sidebar from '@/components/Sidebar.vue';
+import Header from '@/components/Header.vue';
+import { computed } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { useUserStore } from '@/stores/user';
+import { House, Trophy, ArrowRight} from '@element-plus/icons-vue';
 
-const userStore = useUserStore()
+const userStore = useUserStore();
+const route = useRoute();
+const router = useRouter();
 
 //定义完整的菜单结构(包含权限)
 const allMenus = [
@@ -31,7 +34,7 @@ const allMenus = [
       {
         path: '/competition/audit',
         title: '赛事审核',
-        roles: ['school_admin'],
+        roles: ['school_admin', 'college_admin']
       },
       
     ],
@@ -94,9 +97,37 @@ const filterMenus = (menus, userRoles) => {
 // 根据用户角色计算可见菜单
 const dynamicMenuItems = computed(() => {
   // 深拷贝菜单数据（保留icon组件引用），避免直接修改原数组
-  const menusCopy = deepCloneMenus(allMenus)
-  return filterMenus(menusCopy, userStore.role)
-})
+  const menusCopy = deepCloneMenus(allMenus);
+  return filterMenus(menusCopy, userStore.role);
+});
+
+// 面包屑计算
+const breadcrumbs = computed(() => {
+  // 1. 获取当前路由匹配到的所有嵌套路径（过滤掉没有 title 的）
+  let matched = route.matched.filter(item => item.meta && item.meta.title);
+  
+  // 2. 处理父级插入逻辑 (保持不变，用于支持“新增赛事”显示父级)
+  const currentRouteMeta = route.meta;
+  if (currentRouteMeta && currentRouteMeta.parent) {
+    const parentRoute = router.getRoutes().find(r => r.name === currentRouteMeta.parent);
+    if (parentRoute) {
+      const last = matched.pop();
+      matched.push(parentRoute); // 插入 赛事目录
+      matched.push(last);        // 放回 新增赛事
+    }
+  }
+  return matched;
+});
+
+// 处理点击跳转
+const handleLink = (item) => {
+  const { redirect, path } = item;
+  // 如果配置了 noRedirect，则不跳转
+  if (redirect === 'noRedirect' || item.meta?.redirect === 'noRedirect') {
+    return;
+  }
+  router.push(path);
+}
 </script>
 
 <template>
@@ -109,6 +140,21 @@ const dynamicMenuItems = computed(() => {
 
     <!-- 主内容区 -->
     <div class="main-content">
+      <div class="breadcrumb-container">
+        <el-breadcrumb :separator-icon="ArrowRight">
+          <el-breadcrumb-item v-for="(item, index) in breadcrumbs" :key="item.path">
+            <span 
+              v-if="index === breadcrumbs.length - 1 || item.meta.redirect === 'noRedirect'" 
+              class="no-redirect">
+              {{ item.meta.title }}
+            </span>
+            <a v-else @click.prevent="handleLink(item)" class="redirect">
+              {{ item.meta.title }}
+            </a>
+          </el-breadcrumb-item>
+        </el-breadcrumb>
+      </div>
+
       <!-- 页面内容 -->
       <main class="content">
         <router-view />
@@ -135,6 +181,36 @@ const dynamicMenuItems = computed(() => {
     flex-direction: column;
     overflow: hidden;
     background-color: var(--background-color);
+
+
+    .breadcrumb-container {
+      padding: 15px 20px;
+      background: #fff;
+      border-bottom: 1px solid #e4e7ed;
+      flex-shrink: 0;
+
+      :deep(.el-breadcrumb) {
+        font-size: 14px;
+        line-height: 1;
+      }
+
+      /* 纯文本样式 */
+      .no-redirect {
+        color: #4f5660;
+        cursor: text;
+      }
+      
+      /* 链接样式 */
+      .redirect {
+        font-weight: 600;
+        cursor: pointer;
+        transition: color 0.2s;
+        &:hover {
+          color: var(--el-color-primary);
+        }
+      }
+    }
+
 
     .content {
       flex: 1;
