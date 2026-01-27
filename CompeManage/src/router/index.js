@@ -43,13 +43,34 @@ const routes = [
                 name: 'CompetitionAdd',
                 component: () => import('@/views/competition/add.vue'),
 
-                meta: { title: '新增赛事', roles: ['school_admin', 'college_admin'] , parent: 'CompetitionList', activeMenu: '/competition/list'}
-      },
-      {
+                meta: { 
+                    title: '新增赛事',
+                    roles: ['school_admin'], 
+                    parent: 'CompetitionList',
+                    activeMenu: '/competition/list' 
+                }
+            },
+            {
                 path: 'audit',
                 name: 'CompetitionAudit',
                 component: () => import('@/views/competition/audit.vue'),
-                meta: { title: '赛事审核', roles: ['school_admin', 'college_admin'] }
+                meta: {
+                    title: '赛事审核', roles: ['school_admin', 'college_admin'], isDynamic: true,
+                    // 分别定义校级和院级的标题
+                    schoolTitle: '赛事审核',
+                    collegeTitle: '赛事申报'
+                }
+            },
+            {
+                path: 'declare',
+                name: 'CompetitionDeclare',
+                component: () => import('@/views/competition/declare.vue'),
+                meta: { 
+                    title: '新增申报',
+                    roles: ['college_admin'],
+                    parent: 'CompetitionAudit',
+                    activeMenu: '/competition/audit'
+                }
             },
       
     ],
@@ -175,8 +196,21 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   const userStore = useUserStore()
 
-  // 设置页面标题
-  document.title = to.meta.title || '学科竞赛管理系统'
+    // 首先恢复store状态(页面刷新时从localStorage恢复)
+    if (!userStore.token) {
+        userStore.restoreState()
+    }
+
+    // 设置页面标题
+    let pageTitle = '学科竞赛管理系统'
+    if (to.meta.isDynamic && userStore.role === 'school_admin') {
+        pageTitle = to.meta.schoolTitle || to.meta.title || pageTitle
+    } else if (userStore.role === 'college_admin') {
+        pageTitle = to.meta.collegeTitle || to.meta.title || pageTitle
+    } else {
+        pageTitle = to.meta.title || pageTitle
+    }
+    document.title = pageTitle
 
     // 白名单页面放行
     if (to.path === '/login') {
@@ -191,9 +225,11 @@ router.beforeEach((to, from, next) => {
         return
     }
 
-    // 恢复store状态(页面刷新)
-    if (!userStore.token) {
-        userStore.restoreState()
+    // 确保角色已经被设置
+    if (!userStore.role) {
+        console.warn('请重新登录')
+        next('/login')
+        return
     }
 
     // 检查角色权限
@@ -203,7 +239,7 @@ router.beforeEach((to, from, next) => {
             next()
         } else {
             // 无权限，跳转首页或显示错误页面
-            alert('无权访问该页面')
+            alert('您无权访问该页面')
             next(from.path)
         }
     } else {

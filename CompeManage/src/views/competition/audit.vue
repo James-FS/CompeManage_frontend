@@ -260,7 +260,7 @@ const getStatusText = (status) => {
                     </template>
 
                     <template v-if="currentRole === 'college_admin' && activeTab === 'pending'">
-                        <el-button type="primary" :icon="Promotion" @click="router.push({ name: 'CompetitionAdd' })">
+                        <el-button type="primary" :icon="Promotion" @click="router.push({ name: 'CompetitionDeclare' })">
                             新增申报
                         </el-button>
                     </template>

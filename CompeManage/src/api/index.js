@@ -23,6 +23,13 @@ export const api = {
 
   // ==================== 竞赛相关 ====================
   getCompetitionList: (params) => get('/api/comp/list',params),
+  createCompetition: (data) => post('/api/comp/create', data),
+  batchImportCompetition: (data) => post('/api/comp/batch-import', data),
+  deleteCompetition: (id) => del(`/api/comp/${id}`),
+  batchDeleteCompetition: (ids) => post('/api/comp/batch-delete', { ids }),
+  restoreCompetition: (id) => put(`/api/comp/${id}/restore`),
+  getManagerList: (params) => get('/api/comp/manager/list', params),
+  getCompetitionYears: () => get('/api/comp/years'),
 
   // ==================== 报名相关 ====================
   saveRegConfig: (data) => post('/api/reg/config', data),
