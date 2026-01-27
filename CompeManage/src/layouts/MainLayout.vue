@@ -40,11 +40,6 @@ const allMenus = [
         title: '新增申报',
         roles: ['college_admin']
       },
-      {
-        path: '/competition/audit',
-        title: '赛事审核',
-        roles: ['school_admin', 'college_admin']
-      },
       
     ],
   },
