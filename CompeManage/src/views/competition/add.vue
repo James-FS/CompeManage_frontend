@@ -1,18 +1,20 @@
 <script setup>
-import { ref, reactive, computed, renderList } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, reactive, computed, renderList, onMounted } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import { ElMessage, ElMessageBox, ElTableColumn } from 'element-plus';
 import { Plus, DocumentCopy, ArrowRight, Check, Delete, ArrowLeft } from '@element-plus/icons-vue';
 import { debounce } from '@/utils/debounce';
+import api from '@/api/index';
 
 const router = useRouter();
+const route = useRoute();
 const activeTab = ref('manual');
 
 // Tab 1 手动录入新赛事
 const formRef = ref(null);
 const form = reactive({
     comp_name: '', comp_level: '', comp_type: '', organizer: '',
-    undertaker: '', manager: '', college: '', desc: ''
+    undertaker: '', manager: '', manager_id: '', college: '', desc: '', year: ''
 });
 const rules = {
     //blur: 输入框失去焦点时触发验证  change: 选择框值变化时触发验证
@@ -23,10 +25,26 @@ const rules = {
 };
 const handleSubmit = async (formEl) => {
     if (!formEl) return;
-    await formEl.validate((valid) => {
+    await formEl.validate(async (valid) => {
         if (valid) {
-            ElMessage.success('赛事新增成功！');
-            router.push({ name: 'CompetitionList' });
+            try {
+                const response = await api.createCompetition({
+                    comp_name: form.comp_name,
+                    comp_level: form.comp_level,
+                    comp_type: form.comp_type,
+                    organizer: form.organizer,
+                    undertaker: form.undertaker,
+                    manager_id: form.manager_id,
+                    college: form.college,
+                    desc: form.desc,
+                    year: form.year
+                });
+                
+                ElMessage.success('赛事新增成功！');
+                router.push({ name: 'CompetitionList' });
+            } catch (error) {
+                ElMessage.error(error.message || '新增失败');
+            }
         }
     });
 };
@@ -38,26 +56,73 @@ const handleReset = (formEl) => {
 // Tab 2 从往年赛事复用
 const step = ref(1);// 当前步骤: 1-选择往年赛事目录 2-确认并跳转赛事信息
 const copySourceYear = ref('');
+const targetYear = ref(''); // 保存目标年份，用于显示提示信息
 const historyLoading = ref(false);
 const historyTableData = ref([]);
 const selectedHistoryRows = ref([]);
+const importList = ref([]); // 导入列表，用于第二步编辑
+const yearOptions = ref([]); // 年份选项列表
+const yearsLoading = ref(false); // 年份加载状态
 
-// 待导入数据(可编辑)
-const importList = ref([]);
+// 初始化时获取年份列表
+const initializeYears = async () => {
+    yearsLoading.value = true;
+    try {
+        const response = await api.getCompetitionYears();
+        if (response.code === 200 && response.data.years) {
+            yearOptions.value = response.data.years.map(year => ({
+                label: `${year}年`,
+                value: year.toString()
+            }));
+        }
+    } catch (error) {
+        console.error('获取年份列表失败:', error);
+    }
+    yearsLoading.value = false;
+};
+
+// 组件挂载时初始化
+onMounted(() => {
+    initializeYears();
+    // 从路由参数中读取年份，如果有的话直接填充
+    if (route.query.year) {
+        form.year = route.query.year;
+    }
+});
 
 // 模拟查询历史数据
 const fetchHistoryData = () => {
     if (!copySourceYear.value) return;
     historyLoading.value = true;
-    setTimeout(() => {
-        // 模拟数据
-        historyTableData.value = [
-            { id: 101, comp_name: `${copySourceYear.value}年ACM程序设计竞赛`, comp_level: '校级', organizer: '广州大学', undertaker: '计算机学院', manager: '李教授', college: '计算机学院' },
-            { id: 102, comp_name: `${copySourceYear.value}年大学生创新创业训练`, comp_level: '校级', organizer: '广州大学', undertaker: '创新创业学院', manager: '王老师', college: '创新创业学院' },
-            { id: 103, comp_name: `${copySourceYear.value}年蓝桥杯模拟赛`, comp_level: '校级', organizer: '广州大学', undertaker: '软件工程系', manager: '张讲师', college: '计算机学院' },
-        ];
+    
+    // 调用后端接口，按年份筛选竞赛数据
+    api.getCompetitionList({
+        page: 1,
+        page_size: 100, // 获取该年份的所有竞赛
+        year: copySourceYear.value
+    }).then(response => {
+        if (response.code === 200) {
+            // 将响应数据映射到表格显示
+            historyTableData.value = response.data.list.map(item => ({
+                id: item.id,
+                comp_name: item.comp_name,
+                comp_level: item.comp_level,
+                organizer: item.organizer,
+                undertaker: item.undertaker,
+                manager: item.manager.realname,
+                manager_id: item.manager.id,
+                college: item.college_info?.name || '-'
+            }));
+        } else {
+            ElMessage.error(response.msg || '获取历史数据失败');
+            historyTableData.value = [];
+        }
         historyLoading.value = false;
-    }, 500);
+    }).catch(error => {
+        ElMessage.error('获取历史数据失败: ' + error.message);
+        historyTableData.value = [];
+        historyLoading.value = false;
+    });
 };
 
 // 监听表格选择
@@ -73,7 +138,8 @@ const handleNextStep = () => {
     }
 
     // 数据清洗逻辑
-    const targetYear = new Date().getFullYear().toString(); // 当前年份
+    const calculatedTargetYear = route.query.year || new Date().getFullYear().toString(); // 使用路由年份，如果没有则用当前年份
+    targetYear.value = calculatedTargetYear; // 保存目标年份用于显示
     const sourceYear = copySourceYear.value; // 来源年份
 
     // 深拷贝并处理数据
@@ -81,7 +147,7 @@ const handleNextStep = () => {
         // 自动替换名称中的年份
         let newName = item.comp_name;
         if (sourceYear && newName.includes(sourceYear)) {
-            newName = newName.replace(sourceYear, targetYear);
+            newName = newName.replace(sourceYear, calculatedTargetYear);
         }
 
         return {
@@ -89,9 +155,10 @@ const handleNextStep = () => {
             // 可以在这里清空某些不该复制的字段，比如“状态”
             status: '未开始',
             // 赋上处理过的新名称
-            comp_name: newName,
-            // 标记原始ID，方便后端溯源
-            source_id: item.id
+            comp_name: newName,            // 标记原始ID，方便后端溯源
+            source_id: item.id,
+            manager_id: item.manager_id,            
+            year: calculatedTargetYear
         };
     });
 
@@ -119,12 +186,17 @@ const handleFinalImport = () => {
         `确认将这 ${importList.value.length} 项赛事导入到本年度赛事库吗？`,
         '最终确认',
         { confirmButtonText: '确认导入', cancelButtonText: '取消', type: 'success' }
-    ).then(() => {
-        // TODO: 调用后端批量新增接口，传递 importList.value
-        console.log('提交的数据:', importList.value);
-
-        ElMessage.success('批量导入成功！');
-        router.push({ name: 'CompetitionList' });
+    ).then(async () => {
+        try {
+            await api.batchImportCompetition({
+                items: importList.value
+            });
+            
+            ElMessage.success('批量导入成功！');
+            router.push({ name: 'CompetitionList' });
+        } catch (error) {
+            ElMessage.error(error.message || '导入失败');
+        }
     }).catch(() => { });
 };
 
@@ -132,6 +204,7 @@ const handleFinalImport = () => {
 const managerDialogVisible = ref(false); // 控制弹窗显示
 const managerLoading = ref(false);       // 表格加载状态
 const teacherList = ref([]);             // 教师列表数据
+const currentManagerEditIndex = ref(-1); // 追踪当前编辑的是复用列表中的哪一项（-1表示手动新增）
 
 // 搜索表单
 const searchForm = reactive({
@@ -142,52 +215,44 @@ const searchForm = reactive({
 
 // 打开选择弹窗
 const openManagerSelect = () => {
+    currentManagerEditIndex.value = -1; // 标记为手动新增
     managerDialogVisible.value = true;
-    getTeacherList(); // 打开时获取一次列表
+    getManagerList(); // 打开时获取一次列表
 };
 
-// 模拟获取教师列表接口 (实际项目中应调用后端 api.getTeacherList)
-const getTeacherList = () => {
+// 在复用列表中打开负责人选择弹窗
+const openManagerSelectForImport = (index) => {
+    currentManagerEditIndex.value = index; // 标记为复用列表中的第index项
+    managerDialogVisible.value = true;
+    getManagerList(); // 打开时获取一次列表
+};
+
+// 获取赛事负责人列表接口 
+const getManagerList = () => {
     managerLoading.value = true;
-    // 模拟网络延迟
-    setTimeout(() => {
-        // 这里模拟后端返回的数据
-        // 实际开发中，请替换为 api.getUserList(searchForm)
-        const mockData = [
-            { id: 1, name: '张伟', work_id: 'T2023001', college: '计算机科学与网络工程学院' },
-            { id: 2, name: '李华', work_id: 'T2023002', college: '电子信息工程学院' },
-            { id: 3, name: '王强', work_id: 'T2023003', college: '经济管理学院' },
-            { id: 4, name: '赵敏', work_id: 'T2023004', college: '计算机科学与网络工程学院' },
-            { id: 5, name: '孙悟空', work_id: 'T2023005', college: '计算机科学与网络工程学院' },
-            { id: 6, name: '周杰', work_id: 'T2023006', college: '电子信息工程学院' },
-            { id: 7, name: '吴美', work_id: 'T2023007', college: '经济管理学院' },
-            { id: 8, name: '郑总', work_id: 'T2023008', college: '计算机科学与网络工程学院' },
-            { id: 9, name: '刘云', work_id: 'T2023009', college: '电子信息工程学院' },
-            { id: 10, name: '何芳', work_id: 'T2023010', college: '经济管理学院' },
-            { id: 11, name: '曾旭', work_id: 'T2023011', college: '计算机科学与网络工程学院' },
-            { id: 12, name: '林剑', work_id: 'T2023012', college: '电子信息工程学院' },
-        ];
-
-        // 简单的前端过滤模拟 (后端实现后可删除)
-        const filteredData = mockData.filter(item => {
-            const matchName = !searchForm.name || item.name.includes(searchForm.name);
-            const matchId = !searchForm.work_id || item.work_id.includes(searchForm.work_id);
-            const matchCollege = !searchForm.college || item.college === searchForm.college;
-            return matchName && matchId && matchCollege;
-        });
-
-        // 分页处理
-        managerTotal.value = filteredData.length;
-        const startIndex = (managerCurrentPage.value - 1) * managerPageSize.value;
-        const endIndex = startIndex + managerPageSize.value;
-        teacherList.value = filteredData.slice(startIndex, endIndex);
-
+    // 调用后端接口获取赛事负责人列表
+    api.getManagerList({
+        name: searchForm.name,
+        work_id: searchForm.work_id,
+        college: searchForm.college,
+        page: managerCurrentPage.value,
+        page_size: managerPageSize.value
+    }).then(response => {
+        if (response.code === 200) {
+            teacherList.value = response.data.list;
+            managerTotal.value = response.data.total;
+        } else {
+            ElMessage.error(response.msg || '获取负责人列表失败');
+        }
         managerLoading.value = false;
-    }, 300);
+    }).catch(error => {
+        ElMessage.error('获取负责人列表失败: ' + error.message);
+        managerLoading.value = false;
+    });
 };
 
 const debouncedSearch = debounce(() => {
-    getTeacherList();
+    getManagerList();
 }, 500);
 
 // 分页数据
@@ -199,11 +264,11 @@ const managerTotal = ref(0);
 const handleManagerSizeChange = (val) => {
     managerPageSize.value = val;
     managerCurrentPage.value = 1; // 重置到第一页
-    getTeacherList();
+    getManagerList();
 };
 const handleManagerCurrentChange = (val) => {
     managerCurrentPage.value = val;
-    getTeacherList();
+    getManagerList();
 };
 
 // 重置搜索
@@ -212,13 +277,20 @@ const resetSearch = () => {
     searchForm.work_id = '';
     searchForm.college = '';
     managerCurrentPage.value = 1; // 重置分页
-    getTeacherList();
+    getManagerList();
 };
 
 // 确认选择某位教师
 const selectTeacher = (row) => {
-    form.manager = row.name; // 回填姓名到主表单
-    // 如果后端需要存ID，可以在 form 中增加 manager_id 字段: form.manager_id = row.id;
+    if (currentManagerEditIndex.value === -1) {
+        // 手动新增的情况
+        form.manager = row.name; // 回填姓名到主表单
+        form.manager_id = row.id; // 保存负责人ID
+    } else {
+        // 复用列表中的情况
+        importList.value[currentManagerEditIndex.value].manager = row.name;
+        importList.value[currentManagerEditIndex.value].manager_id = row.id;
+    }
     managerDialogVisible.value = false; // 关闭弹窗
     ElMessage.success(`已选择负责人：${row.name}`);
 };
@@ -322,9 +394,17 @@ const selectTeacher = (row) => {
                         <div v-if="step === 1" class="step-content">
                             <div class="filter-bar">
                                 <el-form-item label="赛事所属年份">
-                                    <el-select v-model="copySourceYear" placeholder="请选择年份" @change="fetchHistoryData">
-                                        <el-option label="2024年" value="2024" />
-                                        <el-option label="2023年" value="2023" />
+                                    <el-select 
+                                        v-model="copySourceYear" 
+                                        placeholder="请选择年份" 
+                                        @change="fetchHistoryData"
+                                        :loading="yearsLoading">
+                                        <el-option 
+                                            v-for="year in yearOptions" 
+                                            :key="year.value"
+                                            :label="year.label" 
+                                            :value="year.value" 
+                                        />
                                     </el-select>
                                 </el-form-item>
                             </div>
@@ -355,7 +435,7 @@ const selectTeacher = (row) => {
 
                         <div v-if="step === 2" class="step-content">
                             <div class="preview-tip">
-                                <el-alert title="系统已自动替换年份，请在下方直接修改赛事变动信息" type="info" show-icon :closable="false" />
+                                <el-alert :title="`系统已自动替换年份为${targetYear}年，请在下方直接修改赛事变动信息`" type="info" show-icon :closable="false" />
                             </div>
                             <el-table :data="importList" border height="400" class="edit-table">
                                 <el-table-column label="序号" type="index" width="55" align="center" />
@@ -365,8 +445,9 @@ const selectTeacher = (row) => {
                                     </template>
                                 </el-table-column>
                                 <el-table-column label="负责人" width="140" align="center">
-                                    <template #default="{ row }">
-                                        <el-input v-model="row.manager" placeholder="负责人" />
+                                    <template #default="{ row, $index }">
+                                        <el-input v-model="row.manager" placeholder="负责人" readonly
+                                            class="manager-input" @click="openManagerSelectForImport($index)" />
                                     </template>
                                 </el-table-column>
 
@@ -417,15 +498,15 @@ const selectTeacher = (row) => {
             <el-form :inline="true" :model="searchForm" class="search-form-inline">
                 <el-form-item label="姓名">
                     <el-input v-model="searchForm.name" placeholder="输入姓名" clearable @input="debouncedSearch"
-                        @clear="getTeacherList" style="width: 120px;" />
+                        @clear="getManagerList" style="width: 120px;" />
                 </el-form-item>
                 <el-form-item label="工号">
                     <el-input v-model="searchForm.work_id" placeholder="输入工号" clearable @input="debouncedSearch"
-                        @clear="getTeacherList" style="width: 120px;" />
+                        @clear="getManagerList" style="width: 120px;" />
                 </el-form-item>
                 <el-form-item label="所属学院">
-                    <el-select v-model="searchForm.college" placeholder="选择学院" clearable @change="getTeacherList"
-                        @clear="getTeacherList" style="width: 180px;">
+                    <el-select v-model="searchForm.college" placeholder="选择学院" clearable @change="getManagerList"
+                        @clear="getManagerList" style="width: 180px;">
                         <el-option label="计算机科学与网络工程学院" value="计算机科学与网络工程学院" />
                         <el-option label="电子信息工程学院" value="电子信息工程学院" />
                         <el-option label="经济管理学院" value="经济管理学院" />
@@ -508,7 +589,6 @@ const selectTeacher = (row) => {
     display: flex;
     justify-content: flex-end;
     align-items: center;
-    border-top: 1px solid #eee;
 
     .info {
         margin-right: 20px;

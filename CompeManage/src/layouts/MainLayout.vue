@@ -30,15 +30,20 @@ const allMenus = [
         title: '赛事目录', 
         roles: ['school_admin', 'college_admin', 'competition_manager', 'student'] 
       },
+      {
+        path: '/competition/audit',
+        title: userStore.role === 'school_admin' ? '赛事审核' : '赛事申报',
+        roles: ['school_admin', 'college_admin']
+      },
+      {
+        path: '/competition/declare',
+        title: '新增申报',
+        roles: ['college_admin']
+      },
       { 
         path: '/competition/register', 
         title: '赛事报名', 
         roles: ['school_admin', 'college_admin', 'student','competition_manager'] 
-      },
-      {
-        path: '/competition/audit',
-        title: '赛事审核',
-        roles: ['school_admin', 'college_admin']
       },
       {
         path: '/competition/register/edit',
@@ -90,14 +95,14 @@ const breadcrumbs = computed(() => {
   // 1. 获取当前路由匹配到的所有嵌套路径（过滤掉没有 title 的）
   let matched = route.matched.filter(item => item.meta && item.meta.title);
   
-  // 2. 处理父级插入逻辑 (保持不变，用于支持“新增赛事”显示父级)
+  // 2. 处理父级插入逻辑
   const currentRouteMeta = route.meta;
   if (currentRouteMeta && currentRouteMeta.parent) {
     const parentRoute = router.getRoutes().find(r => r.name === currentRouteMeta.parent);
     if (parentRoute) {
       const last = matched.pop();
-      matched.push(parentRoute); // 插入 赛事目录
-      matched.push(last);        // 放回 新增赛事
+      matched.push(parentRoute); // 插入父级路由
+      matched.push(last);        // 放回当前路由
     }
   }
   return matched;
@@ -111,6 +116,16 @@ const handleLink = (item) => {
     return;
   }
   router.push(path);
+}
+
+// 获取面包屑项的显示标题
+const getBreadcrumbTitle = (item) => {
+  // 如果是 CompetitionAudit 路由，根据角色显示不同的标题
+  if (item.name === 'CompetitionAudit') {
+    return userStore.role === 'school_admin' ? '赛事审核' : '赛事申报';
+  }
+  // 默认显示 meta.title
+  return item.meta.title;
 }
 </script>
 
@@ -131,10 +146,10 @@ const handleLink = (item) => {
             <span 
               v-if="index === breadcrumbs.length - 1 || item.meta.redirect === 'noRedirect'" 
               class="no-redirect">
-              {{ item.meta.title }}
+              {{ getBreadcrumbTitle(item) }}
             </span>
             <a v-else @click.prevent="handleLink(item)" class="redirect">
-              {{ item.meta.title }}
+              {{ getBreadcrumbTitle(item) }}
             </a>
           </el-breadcrumb-item>
         </el-breadcrumb>
