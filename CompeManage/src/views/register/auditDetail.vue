@@ -20,25 +20,6 @@ const route = useRoute()
 const router = useRouter()
 const loading = ref(false)
 
-// --- 1. 模拟数据 (Mock Data) ---
-const mockData = {
-  id: 101,
-  comp_name: '第十五届蓝桥杯全国软件和信息技术专业人才大赛',
-  team_name: '无敌风火轮队',
-  leader_name: '张三',
-  stu_id: '2023001',
-  phone: '13800138000',
-  email: 'zhangsan@edu.cn',
-  create_time: '2026-01-23 10:30:00',
-  status: 0, // 0:待审核, 1:已通过, 2:已驳回
-  attachment_url: '/static/reg_attachments/demo_plan.pdf',
-  members: [
-    { name: '张三', stu_id: '2023001', phone: '13800138000', is_leader: true },
-    { name: '李四', stu_id: '2023002', phone: '13900139000', is_leader: false },
-    { name: '王五', stu_id: '2023003', phone: '13700137000', is_leader: false },
-  ],
-}
-
 const detail = ref({})
 
 // 驳回弹窗控制
@@ -61,8 +42,8 @@ const statusMap = {
   2: { label: '已驳回', type: 'danger', icon: CircleClose },
 }
 
-// --- 3. 逻辑方法 ---
-async function fetchDetail(){
+// --- 函数区 ---
+async function fetchDetail() {
   loading.value = true
   try {
     const res = await api.getRegDetail(route.params.id)
@@ -108,6 +89,7 @@ const handlePass = () => {
 const handleReject = async () => {
   if (!rejectReason.value) return ElMessage.warning('请输入驳回原因')
   detail.value.status = 2
+  detail.value.reject_reason = rejectReason.value
   await auditReg()
   ElMessage.success('已驳回申请')
   rejectDialogVisible.value = false
@@ -117,29 +99,31 @@ const attachmentList = computed(() => {
   const urlStr = detail.value.attachment_url
   if (!urlStr) return []
 
-  // 1. 假设多个附件用逗号分隔 (为了兼容未来)
+  //  多个附件用逗号分隔
   const urls = urlStr.split(',')
 
-  return urls.map(url => {
-    url = url.trim()
-    if (!url) return null
+  return urls
+    .map((url) => {
+      url = url.trim()
+      if (!url) return null
 
-    // 2. 获取文件名 (去掉路径)
-    // 例如: /static/202601/123456_需求.docx -> 123456_需求.docx
-    let fileName = url.substring(url.lastIndexOf('/') + 1)
+      //  获取文件名 (去掉路径)
+      // 例如: /static/202601/123456_需求.docx -> 123456_需求.docx
+      let fileName = url.substring(url.lastIndexOf('/') + 1)
 
-    // 3. 去掉时间戳/ID前缀 (去掉第一个下划线前的内容)
-    // 例如: 123456_需求.docx -> 需求.docx
-    // 如果你不想去掉前缀，注释掉下面这行即可
-    if (fileName.indexOf('_') > -1) {
-      fileName = fileName.substring(fileName.indexOf('_') + 1)
-    }
+      // 3. 去掉时间戳/ID前缀 (去掉第一个下划线前的内容)
+      // 例如: 123456_需求.docx -> 需求.docx
+      // 如果你不想去掉前缀，注释掉下面这行即可
+      if (fileName.indexOf('_') > -1) {
+        fileName = fileName.substring(fileName.indexOf('_') + 1)
+      }
 
-    return {
-      name: fileName,
-      url: url
-    }
-  }).filter(item => item !== null)
+      return {
+        name: fileName,
+        url: url,
+      }
+    })
+    .filter((item) => item !== null)
 })
 
 // 修改打开附件的方法，支持传入具体的 URL
@@ -253,30 +237,45 @@ onMounted(() => {
         <h3 class="section-title">附件材料</h3>
 
         <div v-if="attachmentList.length > 0" class="attachment-list">
-          <div 
-            v-for="(file, index) in attachmentList" 
+          <div
+            v-for="(file, index) in attachmentList"
             :key="index"
-            class="attachment-box" 
+            class="attachment-box"
             @click="openAttachment(file.url)"
           >
             <div class="file-icon-area">
               <el-icon><Document /></el-icon>
             </div>
             <div class="file-content">
-              <div class="file-name">{{ file.name }}</div> 
+              <div class="file-name">{{ file.name }}</div>
               <div class="file-desc">点击预览或下载</div>
             </div>
             <el-icon class="download-icon"><Download /></el-icon>
           </div>
         </div>
-        
+
         <div v-else class="empty-attachment">未上传附件</div>
+      </div>
+
+      <div class="info-section" v-if="detail.status == 2">
+        <h3 class="section-title">驳回原因</h3>
+        <div class="reject-box">
+         <div class="reject-content">
+              {{ detail.reject_reason || '未填写驳回原因' }}
+            </div>
         </div>
+      </div>
 
       <div v-if="detail.status === 0" class="action-footer">
         <el-divider />
         <div class="btn-group">
-          <el-button type="danger" plain size="large" @click="rejectDialogVisible = true" align-center>
+          <el-button
+            type="danger"
+            plain
+            size="large"
+            @click="rejectDialogVisible = true"
+            align-center
+          >
             驳回报名
           </el-button>
           <el-button type="primary" size="large" @click="handlePass"> 通过审核 </el-button>
@@ -341,15 +340,15 @@ onMounted(() => {
     .status-tag {
       border: none;
       padding: 0 12px;
-      height: 32px; 
+      height: 32px;
       :deep(.el-tag__content) {
-        display: flex; 
+        display: flex;
         align-items: center; /* 垂直绝对居中 */
         height: 100%; /* 撑满高度 */
       }
 
       .tag-content {
-        display: flex; 
+        display: flex;
         align-items: center; /* 图标和文字对齐 */
         gap: 6px; /* 图标文字间距 */
         font-size: 14px;
@@ -517,6 +516,32 @@ onMounted(() => {
   cursor: pointer;
   transition: all 0.3s;
   max-width: 600px;
+}
+/* 驳回原因样式 - 平和版 */
+.reject-box {
+  /* 复用附件盒子的边框和圆角 */
+  border: 1px solid #ebeef5;
+  border-radius: 6px;
+  background-color: #fff; /* 纯白背景，或者用 #fcfcfc 微灰 */
+  padding: 16px 20px;
+  
+  /* 布局 */
+  display: flex;
+  align-items: flex-start; /* 文字多的时候图标置顶 */
+  gap: 12px;
+}
 
+.reject-icon {
+  font-size: 18px;
+  color: var(--text-secondary); 
+  margin-top: 3px; 
+}
+
+.reject-content {
+  font-size: 14px;
+  color: #606266; 
+  line-height: 1.6;
+  white-space: pre-wrap; /* 保留换行符 */
+  word-break: break-all; /* 防止长英文不换行 */
 }
 </style>

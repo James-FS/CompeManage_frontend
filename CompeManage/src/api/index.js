@@ -27,10 +27,13 @@ export const api = {
   // ==================== 报名相关 ====================
   saveRegConfig: (data) => post('/api/reg/config', data),
   getRegConfig: (compID) => get(`/api/reg/config/get?comp_id=${compID}`),
+  getRegStatus: (comp_id) => get(`/api/reg/status?comp_id=${comp_id}`),
   submitReg:(data) => post('/api/reg/submit', data),
+  reSubmitReg:(data) => put('/api/reg/resubmit', data),
   getRegList:(params) => get('/api/reg/list', params),
   getRegDetail:(id) => get(`/api/reg/detail?id=${id}`),
   auditReg:(data) => put('/api/reg/audit', data),
+  
   // ==================== 通知相关 ====================
 }
 

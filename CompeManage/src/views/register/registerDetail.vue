@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted,computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { api } from '@/api'
 import {
@@ -30,10 +30,11 @@ const token = localStorage.getItem('token')
 const uploadHeaders = {
   Authorization: `Bearer ${token}`,
 }
+const pageStatus = ref(0) // 0(未报名), 1(已报名/待审), 2(被驳回)
+const rejectReason = ref('') // 驳回理由
+const isReadOnly = computed(() => pageStatus.value === 1) // 是否只读
 
-/* --- 1. 固定赛事信息 --- */
 const compInfo = ref({})
-/* --- 2. 表单数据 --- */
 const formData = reactive({
   teamName: '',
   leader: {
@@ -45,7 +46,7 @@ const formData = reactive({
     is_leader: true,
   },
   // 队员列表
-  members: [{ name: '', stuID: '', phone: '',email:'',college:'' }],
+  members: [{ name: '', stuID: '', phone: '', email: '', college: '' }],
   fileList: [],
 })
 
@@ -65,12 +66,12 @@ const handleUploadSuccess = (response, uploadFile, uploadFiles) => {
     return
   }
 
-  // 1. 检查是否所有文件都上传完成了
+  // 检查是否所有文件都上传完成了
   // Element Plus 会把文件状态更新为 'success'
-  const isAllSuccess = uploadFiles.every(item => item.status === 'success')
+  const isAllSuccess = uploadFiles.every((item) => item.status === 'success')
 
   if (isAllSuccess) {
-    const urls = uploadFiles.map(item => {
+    const urls = uploadFiles.map((item) => {
       return item.response?.data?.url || item.url
     })
 
@@ -98,6 +99,63 @@ function removeMember(index) {
   formData.members.splice(index, 1)
 }
 
+async function checkRegStatus() {
+  const compID = Number(route.params.id)
+  try {
+    const response = await api.getRegStatus(compID)
+    if (response.code == 200) {
+      const data = response.data
+      if (!data) {
+        pageStatus.value = 0
+        return 
+      }
+     if (data.status == 2) {
+        pageStatus.value = 2 // 被驳回 (编辑模式)
+        rejectReason.value = data.reject_reason || ''
+      } else {
+        pageStatus.value = 1 
+      }
+      formData.teamName = data.team_name
+      if (data.attachment_url) {
+        const urls = data.attachment_url.split(',')
+        formData.fileList = urls.map((url) => ({
+          name: url.substring(url.lastIndexOf('/') + 1),
+          url: url,
+          status: 'success', // 标记为已成功，防止重复上传
+        }))
+      }
+      const leaderData = data.members.find((m) => m.is_leader)
+      const memberData = data.members.filter((m) => !m.is_leader)
+      if (leaderData) {
+        formData.leader = {
+          name: leaderData.name,
+          stuID: leaderData.student_id || leaderData.stu_id, // 兼容后端字段名
+          phone: leaderData.phone,
+          email: leaderData.email,
+          college: leaderData.college,
+          is_leader: true,
+        }
+      }
+
+      // 映射队员
+      if (memberData.length > 0) {
+        formData.members = memberData.map((m) => ({
+          name: m.name,
+          stuID: m.student_id || m.stu_id,
+          phone: m.phone,
+          email: m.email,
+          college: m.college,
+        }))
+      } else {
+        // 如果没有队员(比如个人赛)，清空默认的一个空对象
+        formData.members = []
+      }
+    }
+  } catch (error) {
+    ElMessage.error(error.message || '获取报名状态失败')
+  }
+}
+
 async function fetchRegSettings() {
   const compID = Number(route.params.id)
   const response = await api.getRegConfig(compID)
@@ -122,10 +180,11 @@ async function submitVerify() {
   await formRef.value.validate((valid) => {
     if (valid) {
       // 核心判断：有没有待上传的文件？
-      if (formData.fileList.length > 0) {
+      if (formData.fileList.some((f) => f.status === 'ready')) {
         uploadRef.value.submit()
       } else {
-        submitForm('')
+        const urls = formData.fileList.map((f) => f.response?.data?.url || f.url)
+        submitForm(urls.join(','))
       }
     } else {
       ElMessage.error('请完善表单信息')
@@ -143,9 +202,15 @@ async function submitForm(attachmentURL) {
     attachment_url: attachmentURL,
   }
   try {
-    const response = await api.submitReg(submitData)
+    let response
+    if (pageStatus.value === 2) {
+      // 驳回状态 -> 调用重新提交接口 (PUT)
+      response = await api.resubmitReg(submitData)
+    } else {
+      response = await api.submitReg(submitData)
+    }
     if (response.code == 200) {
-      ElMessage.success('报名成功！')
+      ElMessage.success(pageStatus.value === 2 ? '重新提交成功！' : '报名成功！')
       router.back()
     }
   } catch (error) {
@@ -154,6 +219,7 @@ async function submitForm(attachmentURL) {
 }
 
 onMounted(() => {
+  checkRegStatus()
   fetchRegSettings()
 })
 </script>
@@ -180,6 +246,32 @@ onMounted(() => {
     </div>
 
     <div class="content-area">
+    <div v-if="pageStatus === 2" class="status-alert" style="margin-bottom: 20px;">
+    <el-alert
+      title="报名被驳回"
+      type="error"
+      show-icon
+      :closable="false"
+    >
+      <template #default>
+        <div>
+          驳回原因：<strong>{{ rejectReason || '无' }}</strong>
+          <div style="margin-top: 4px; font-size: 12px">请修改下方信息后重新提交</div>
+        </div>
+      </template>
+    </el-alert>
+  </div>
+
+  <div v-if="pageStatus === 1" class="status-alert" style="margin-bottom: 20px;">
+    <el-alert
+      title="您已报名该赛事"
+      type="success"
+      description="如需修改请联系管理员。"
+      show-icon
+      :closable="false"
+    />
+  </div>
+
       <div class="form-card">
         <el-form
           ref="formRef"
@@ -189,12 +281,13 @@ onMounted(() => {
           size="large"
           class="main-form"
           :hide-required-asterisk="true"
+          :disabled="isReadOnly"
         >
           <div class="form-section" v-if="compInfo.compType === 2">
             <h3 class="section-title">团队名称</h3>
             <el-row>
               <el-col :span="24">
-                <el-form-item label="团队名称" prop="teamName">
+                <el-form-item label="团队名称" prop="teamName" :disabled="isReadOnly">
                   <el-input v-model="formData.teamName" prefix-icon="Trophy" />
                 </el-form-item>
               </el-col>
@@ -207,36 +300,27 @@ onMounted(() => {
               <el-row :gutter="20">
                 <el-col :span="8" :xs="24">
                   <el-form-item label="姓名">
-                    <el-input v-model="formData.leader.name"  prefix-icon="User" />
+                    <el-input v-model="formData.leader.name" prefix-icon="User" :disabled="isReadOnly" />
                   </el-form-item>
                 </el-col>
                 <el-col :span="8" :xs="24">
                   <el-form-item label="学号">
-                    <el-input v-model="formData.leader.stuID"  prefix-icon="Postcard" />
+                    <el-input v-model="formData.leader.stuID" prefix-icon="Postcard" :disabled="isReadOnly" />
                   </el-form-item>
                 </el-col>
                 <el-col :span="8" :xs="24">
                   <el-form-item label="联系电话" prop="leader.phone">
-                    <el-input
-                      v-model="formData.leader.phone"
-                      placeholder="请输入手机号"
-                    />
+                    <el-input v-model="formData.leader.phone" placeholder="请输入手机号" :disabled="isReadOnly" />
                   </el-form-item>
                 </el-col>
                 <el-col :span="8" :xs="24">
                   <el-form-item label="联系邮箱" prop="leader.email">
-                    <el-input
-                      v-model="formData.leader.email"
-                      placeholder="请输入邮箱"
-                    />
+                    <el-input v-model="formData.leader.email" placeholder="请输入邮箱" :disabled="isReadOnly" />
                   </el-form-item>
                 </el-col>
                 <el-col :span="8" :xs="24">
                   <el-form-item label="所属学院" prop="leader.college">
-                    <el-input
-                      v-model="formData.leader.college"
-                      placeholder="请输入所属学院"
-                    />
+                    <el-input v-model="formData.leader.college" placeholder="请输入所属学院" :disabled="isReadOnly" />
                   </el-form-item>
                 </el-col>
               </el-row>
@@ -276,7 +360,7 @@ onMounted(() => {
                         :prop="'members.' + i + '.name'"
                         :rules="{ required: true, message: '请输入姓名', trigger: 'blur' }"
                       >
-                        <el-input v-model="m.name" placeholder="填写真实姓名" prefix-icon="User" />
+                        <el-input v-model="m.name" placeholder="填写真实姓名" prefix-icon="User" :disabled="isReadOnly" />
                       </el-form-item>
                     </el-col>
 
@@ -286,7 +370,7 @@ onMounted(() => {
                         :prop="'members.' + i + '.stuID'"
                         :rules="{ required: true, message: '请输入学号', trigger: 'blur' }"
                       >
-                        <el-input v-model="m.stuID" placeholder="填写学号" prefix-icon="Postcard" />
+                        <el-input v-model="m.stuID" placeholder="填写学号" prefix-icon="Postcard" :disabled="isReadOnly" />
                       </el-form-item>
                     </el-col>
 
@@ -296,7 +380,7 @@ onMounted(() => {
                         :prop="'members.' + i + '.phone'"
                         :rules="{ required: true, message: '请输入手机号', trigger: 'blur' }"
                       >
-                        <el-input v-model="m.phone" placeholder="填写手机号" prefix-icon="Iphone" />
+                        <el-input v-model="m.phone" placeholder="填写手机号" prefix-icon="Iphone" :disabled="isReadOnly" />
                       </el-form-item>
                     </el-col>
 
@@ -310,6 +394,7 @@ onMounted(() => {
                           v-model="m.college"
                           placeholder="例如：计算机科学与网络工程学院"
                           prefix-icon="School"
+                          :disabled="isReadOnly"
                         />
                       </el-form-item>
                     </el-col>
@@ -357,6 +442,7 @@ onMounted(() => {
               :on-error="handleUploadError"
               :on-exceed="handleExceed"
               v-model:file-list="formData.fileList"
+              :disabled="isReadOnly"
             >
               <el-icon class="el-icon--upload"><upload-filled /></el-icon>
               <div class="el-upload__text">将项目计划书拖拽至此处，或 <em>点击上传</em></div>
@@ -365,7 +451,7 @@ onMounted(() => {
 
           <div class="form-actions">
             <el-button size="large" @click="router.back()">取消</el-button>
-            <el-button type="primary" size="large" style="width: 180px" @click="submitVerify">
+            <el-button v-if="isReadOnly" type="primary" size="large" style="width: 180px" @click="submitVerify">
               确认报名
             </el-button>
           </div>
