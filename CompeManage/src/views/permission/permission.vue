@@ -1,36 +1,36 @@
 <script setup>
 import { onMounted, ref, nextTick } from 'vue'
 import { UserFilled, Plus, ArrowRight, Lock, Folder, Document } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import api from '@/api'
+
 const treeRef = ref(null)
 const isSaving = ref(false)
 const checkStrictly = ref(false)
-// 告诉 el-tree 哪个字段是名字，哪个字段是子节点
+
+// ✨ 修改 1: label 对应后端返回的 'name'
 const defaultProps = {
   children: 'children',
-  label: 'Name',
+  label: 'name',
 }
-const roleList = ref([
-  // { id: 101, name: '超级管理员', code: 'admin', tagType: 'danger' },
-  // { id: 102, name: '指导教师', code: 'teacher', tagType: 'warning' },
-  // { id: 103, name: '普通学生', code: 'student', tagType: 'success' },
-  // { id: 104, name: '教务处', code: 'dean', tagType: 'info' },
-  // { id: 105, name: '访客', code: 'guest', tagType: 'info' },
-])
+
+const tagTypes = ['danger', 'warning', '', 'success', 'info']
+const getTagTypeByIndex = (index) => {
+  return tagTypes[index % tagTypes.length]
+}
+const roleList = ref([])
 const permissionData = ref([])
-const currentRole = ref(null) // 定义当前选中的角色 (初始为空)
+const currentRole = ref(null) 
 
 const handleRoleClick = (role) => {
   currentRole.value = role
-  // 从当前点击的角色对象中提取拥有的权限 ID 列表
-  const rolePermIds = role.Permissions ? role.Permissions.map((p) => p.ID) : []
-  // 切断父子关联
+  // ✨ 修改 2: role.Permissions -> role.permissions, p.ID -> p.id
+  const rolePermIds = role.permissions ? role.permissions.map((p) => p.id) : []
+  
   checkStrictly.value = true
-
   nextTick(() => {
     if (treeRef.value) {
       treeRef.value.setCheckedKeys(rolePermIds)
-      // 恢复关联，方便用户手动操作
       checkStrictly.value = false
     }
   })
@@ -38,11 +38,9 @@ const handleRoleClick = (role) => {
 
 /**
  * 扁平数组转树形结构
- * @param {Array} list  后端返回的扁平数组
- * @param {String} idKey ID字段名 (你的后端是 "ID")
- * @param {String} pidKey 父ID字段名 (你的后端是 "ParentID")
+ * ✨ 修改 3: 默认 key 改为 id 和 parent_id
  */
-function listToTree(list, idKey = 'ID', pidKey = 'ParentID') {
+function listToTree(list, idKey = 'id', pidKey = 'parent_id') {
   const map = {}
   const tree = []
 
@@ -51,15 +49,11 @@ function listToTree(list, idKey = 'ID', pidKey = 'ParentID') {
     map[item[idKey]] = item
   })
 
-  // 2. 再次遍历，将元素放入父节点的 children 中
   list.forEach((item) => {
     const parentId = item[pidKey]
-
-    // 如果 ParentID 不为 0 且 Map 中能找到父亲
     if (parentId && parentId !== 0 && map[parentId]) {
       map[parentId].children.push(item)
     } else {
-      // 否则，它就是根节点
       tree.push(item)
     }
   })
@@ -94,21 +88,19 @@ async function handleSaveClick() {
 
   isSaving.value = true
   try {
-    // getCheckedKeys() 拿到底层叶子节点
-    // getHalfCheckedKeys() 拿到半选的父节点 (目录)
     const checkedKeys = treeRef.value.getCheckedKeys()
     const halfCheckedKeys = treeRef.value.getHalfCheckedKeys()
     const finalPermIds = [...checkedKeys, ...halfCheckedKeys]
 
     const res = await api.assignPermissions({
-      role_id: currentRole.value.ID, // 注意大小写 ID
+      // ✨ 修改 4: ID -> id
+      role_id: currentRole.value.id, 
       perm_ids: finalPermIds,
     })
 
     if (res.code === 200) {
       ElMessage.success('权限分配成功')
       await fetchRoles()
-      // currentRole.value = roleList.value.find(r => r.ID === currentRole.value.ID)
     }
   } catch (error) {
     ElMessage.error(error.message || '保存失败')
@@ -132,25 +124,24 @@ onMounted(() => {
             <el-icon class="header-icon"><UserFilled /></el-icon>
             <span>角色管理</span>
           </div>
-          <!-- <el-button type="primary" link icon="Plus" size="small">新建</el-button> -->
         </div>
       </template>
 
       <div class="scroll-content role-list">
         <div
-          v-for="role in roleList"
-          :key="role.ID"
+          v-for="(role, index) in roleList"
+          :key="role.id"
           class="role-item"
-          :class="{ 'is-active': currentRole?.ID === role.ID }"
+          :class="{ 'is-active': currentRole?.id === role.id }"
           @click="handleRoleClick(role)"
         >
           <div class="role-info">
-            <span class="role-name">{{ role.RoleName }}</span>
-            <el-tag size="small" :type="role.tagType" effect="plain">
-              {{ role.RoleCode }}
+            <span class="role-name">{{ role.role_name }}</span>
+            <el-tag size="small" :type="getTagTypeByIndex(index)" effect="plain">
+              {{ role.role_code }}
             </el-tag>
           </div>
-          <el-icon v-if="currentRole?.ID === role.ID" class="arrow-icon">
+          <el-icon v-if="currentRole?.id === role.id" class="arrow-icon">
             <ArrowRight />
           </el-icon>
         </div>
@@ -165,7 +156,7 @@ onMounted(() => {
             <span>权限配置</span>
 
             <span v-if="currentRole" class="current-role-tip">
-              - 当前正在编辑：<span class="highlight">{{ currentRole.RoleName }}</span>
+              - 当前正在编辑：<span class="highlight">{{ currentRole.role_name }}</span>
             </span>
           </div>
 
@@ -189,7 +180,7 @@ onMounted(() => {
           ref="treeRef"
           :data="permissionData"
           show-checkbox
-          node-key="ID"
+          node-key="id" 
           default-expand-all
           :props="defaultProps"
           :check-strictly="checkStrictly"
@@ -209,6 +200,7 @@ onMounted(() => {
 </template>
 
 <style lang="scss" scoped>
+/* 样式保持不变 */
 .rbac-container {
   display: flex;
   gap: 16px;
@@ -216,21 +208,18 @@ onMounted(() => {
 }
 .role-panel {
   width: 300px;
-  height: 100%; /* 依赖父级的高度 */
+  height: 100%; 
   display: flex;
   flex-direction: column;
   border: none;
 }
-
 :deep(.el-card__body) {
-  flex: 1; /* 占据剩余空间 */
-  overflow: hidden; /* 隐藏 body 自身的溢出 */
-  padding: 0; /* 去掉默认 padding，让滚动条贴边 */
-  display: flex; /* 让内部元素可以使用 flex 布局 */
+  flex: 1; 
+  overflow: hidden; 
+  padding: 0; 
+  display: flex; 
   flex-direction: column;
 }
-
-/* 3. 头部美化 */
 .panel-header {
   display: flex;
   justify-content: space-between;
@@ -243,15 +232,11 @@ onMounted(() => {
     color: var(--text-primary);
   }
 }
-
-/* 4. 滚动区域样式 */
 .scroll-content {
-  flex: 1; /* 撑满 body */
-  overflow-y: auto; /* 超出垂直方向自动显示滚动条 */
+  flex: 1; 
+  overflow-y: auto; 
   padding: 15px;
 }
-
-/* 5. 列表项交互样式 */
 .role-item {
   display: flex;
   justify-content: space-between;
@@ -261,55 +246,45 @@ onMounted(() => {
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
-  border: 1px solid transparent; /* 预留边框位置防止抖动 */
+  border: 1px solid transparent; 
 }
-
-/* 鼠标悬停 */
 .role-item:hover {
   background-color: #f5f7fa;
 }
-
-/* 选中状态 (高亮) */
 .role-item.is-active {
-  background-color: #ecf5ff; /* 浅蓝背景 */
+  background-color: #ecf5ff; 
   border-color: #d9ecff;
 }
-
 .role-item.is-active .role-name {
-  color: #409eff; /* 蓝色字体 */
+  color: #409eff; 
   font-weight: bold;
 }
-
 .role-info {
   display: flex;
   align-items: center;
   gap: 10px;
 }
-
 .permission-panel {
-  flex: 1; /* 自动撑满剩余宽度 */
-  height: 100%; /* 高度跟随父容器 */
+  flex: 1; 
+  height: 100%; 
   display: flex;
   flex-direction: column;
   border: none;
   .scroll-content {
     flex: 1;
-    overflow-y: auto; /* 开启滚动 */
+    overflow-y: auto; 
     padding: 20px;
   }
 }
-
 .custom-tree-node {
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 14px;
   .node-icon {
-    color: #909399; /* 灰色图标 */
+    color: #909399; 
   }
 }
-
-/* 5. 顶部提示文字 */
 .current-role-tip {
   font-size: 13px;
   color: #909399;

@@ -1,30 +1,25 @@
 <script setup>
 import { onMounted, ref } from 'vue'
-import { Calendar, User, Bell, Setting } from '@element-plus/icons-vue' // 引入 Setting 图标
+import { Calendar, User, Bell, Setting } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { formatTimeRange } from '@/utils/format'
 import api from '@/api'
 import { 
   getParticipantType,
-  getStatusConfig
+  getStatusConfig,
+  getTimeState,
 } from '@/utils/competition'
 const router = useRouter()
 
-// 1. 模拟赛事列表数据 (复用之前的结构)
 const compList = ref([])
 
 const queryParams = ref({
   page: 1,
   page_size: 10,
   keyword: '',
-  category: '全部',
-})
-
-const query = ref({
-  page: 1,
-  page_size: 10,
-  is_my: false,
+  is_my: true,
+  is_reg: true,
 })
 
 let total = ref(100)
@@ -35,7 +30,6 @@ function NavigateToSettings(compID) {
 }
 
 function NavigateToNotice(compID) {
-    // 发布通知逻辑
     router.push({name: 'NoticeDetail', params: { id: compID } })
 }
 
@@ -44,10 +38,18 @@ async function fetchCompList() {
     const response = await api.getCompetitionList(queryParams.value)
     if (response.code == 200) {
       compList.value = response.data.list.map((item) => {
-        const detail=item.Detail||{}
-        return{
-        ...item,
-        timeRange: formatTimeRange(detail.RegStartTime, detail.RegEndTime),
+        // ✨ 修改 1: Detail -> detail
+        const detail = item.detail || {}
+        // ✨ 修改 2: RegStartTime -> reg_start_time
+        const timeState = getTimeState(
+          detail.reg_start_time,
+          detail.reg_end_time
+        )
+        return {
+          ...item,
+          timeState,
+          // ✨ 修改 3: 格式化时间字段名修正
+          timeRange: formatTimeRange(detail.reg_start_time, detail.reg_end_time),
         }
       })
       total.value = response.data.total
@@ -66,33 +68,32 @@ onMounted(() => {
   <div class="page-container">
     
     <div class="page-header">
-      <h2>赛事管理与设置</h2>
-      <el-button type="primary" plain>+ 新增赛事</el-button>
+      <h2>赛事通知与报名设置</h2>
     </div>
 
     <div class="comp-list">
-      <div class="comp-item" v-for="item in compList" :key="item.ID">
+      <div class="comp-item" v-for="item in compList" :key="item.id">
         <div class="comp-info">
           <div class="name-row">
             <el-tag
-              :type="getStatusConfig(item.Status).tagType"
+              :type="item.timeState.tagType"
               effect="dark"
               size="small"
               class="status-badge"
             >
-              {{ getStatusConfig(item.Status).tagText }}
+              {{ item.timeState.tagText }}
             </el-tag>
-            <h3 class="comp-name">{{ item.CompName }}</h3>
+            <h3 class="comp-name">{{ item.comp_name }}</h3>
           </div>
           
           <div class="meta-row">
             <el-tag effect="plain" type="primary" size="small" class="level-tag">
-              {{ item.CompLevel }}
+              {{ item.comp_level }}
             </el-tag>
 
             <span class="divider"></span>
             <span class="meta-text">
-              <el-icon><User /></el-icon> {{ item.Organizer }}
+              <el-icon><User /></el-icon> {{ item.organizer }}
             </span>
 
             <span class="divider"></span>
@@ -104,21 +105,21 @@ onMounted(() => {
           
          <div class="tag-row">
             <el-tag  size="small" type="info" class="extra-tag">
-              {{ getParticipantType(item.Detail.ParticipantType) }}
+              {{ getParticipantType(item.detail?.participant_type) }}
             </el-tag>
           </div>
         </div>
 
         <div class="comp-action">
           <div class="btn-group">
-            <el-button link type="info" class="sub-btn" @click.stop="NavigateToNotice(item.ID)">
+            <el-button link type="info" class="sub-btn" @click.stop="NavigateToNotice(item.id)">
               <el-icon><Bell /></el-icon> 发布通知
             </el-button>
 
             <el-button
               type="primary"
               class="primary-btn"
-              @click.stop="NavigateToSettings(item.ID)"
+              @click.stop="NavigateToSettings(item.id)"
             >
               <el-icon style="margin-right: 6px"><Setting /></el-icon>
               报名设置
@@ -141,6 +142,7 @@ onMounted(() => {
 </template>
 
 <style lang="scss" scoped>
+/* 样式保持不变 */
 .page-container {
   box-sizing: border-box;
   display: flex;
@@ -149,8 +151,6 @@ onMounted(() => {
   padding: 20px;
   min-height: 100vh;
 }
-
-/* 简单的头部样式 */
 .page-header {
   display: flex;
   justify-content: space-between;
@@ -163,7 +163,6 @@ onMounted(() => {
     font-weight: 600;
   }
 }
-
 .comp-list {
   display: flex;
   flex-direction: column;
@@ -274,7 +273,6 @@ onMounted(() => {
           height: 38px;
           font-weight: 600;
           border: none;
-          /* 保持原有的青色渐变风格 */
           background: linear-gradient(135deg, #13c2c2 0%, #36cfc9 100%);
           box-shadow: 0 4px 12px rgba(19, 194, 194, 0.3);
           transition: all 0.3s;
@@ -288,7 +286,6 @@ onMounted(() => {
     }
   }
 }
-
 .pagination-container{
     display: flex;
     justify-content: center;

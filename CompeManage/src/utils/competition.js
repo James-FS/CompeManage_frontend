@@ -27,8 +27,8 @@ export const COMP_CATEGORIES = [
 export const getStatusConfig = (status) => {
   const map = {
     1: { label: '立即报名', tagType: 'success', tagText: '报名中' },
-    2: { label: '立即报名', tagType: 'danger', tagText: '急' },
-    3: { label: '等待开始', tagType: 'info', tagText: '筹备中' },
+    2: { label: '等待开始', tagType: 'info', tagText: '筹备中' },
+    3: { label: '报名截止', tagType: 'info', tagText: '已截止' },
     0: { label: '查看公示', tagType: 'info', tagText: '已结束' },
   }
   return map[status]
@@ -58,4 +58,48 @@ export const FILTER_STATUS_OPTIONS = {
   upcoming: '未开始',
   ongoing: '进行中',
   ended: '已结束',
+}
+
+/**
+ * 根据时间计算赛事报名状态
+ * @param {string} startTime - 报名开始时间 (ISO 格式)
+ * @param {string} endTime - 报名结束时间 (ISO 格式)
+ * @returns {Object} { label, type, disabled, tagText, tagType }
+ */
+export const getTimeState = (startTime, endTime) => {
+  const now = new Date().getTime()
+  const start = new Date(startTime).getTime()
+  const end = new Date(endTime).getTime()
+
+  // 1. 等待开始 (当前时间 < 开始时间)
+  if (now < start) {
+    return {
+      label: '等待开始',
+      type: 'info',       // 按钮颜色：灰色
+      disabled: true,     // 按钮不可点
+      tagText: '筹备中',
+      tagType: 'info'
+    }
+  }
+  
+  // 2. 报名截止 (当前时间 > 结束时间)
+  if (now > end) {
+    return {
+      label: '报名截止',
+      type: 'info',       // 按钮颜色：灰色
+      disabled: true,     // 按钮不可点
+      tagText: '已结束',
+      tagType: 'info'
+    }
+  }
+
+  const isUrgent = (end - now) < (3 * 24 * 60 * 60 * 1000); // 剩余不足3天
+  
+  return {
+    label: '立即报名',
+    type: 'primary',      // 按钮颜色：主色
+    disabled: false,      // 按钮可点
+    tagText: isUrgent ? '即将截止' : '报名中',
+    tagType: isUrgent ? 'danger' : 'success'
+  }
 }
