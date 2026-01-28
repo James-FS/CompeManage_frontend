@@ -449,9 +449,9 @@ onMounted(() => {
             </el-upload>
           </div>
 
-          <div class="form-actions">
+          <div  v-if="!isReadOnly" class="form-actions">
             <el-button size="large" @click="router.back()">取消</el-button>
-            <el-button v-if="isReadOnly" type="primary" size="large" style="width: 180px" @click="submitVerify">
+            <el-button  type="primary" size="large" style="width: 120px" @click="submitVerify">
               确认报名
             </el-button>
           </div>

@@ -33,7 +33,8 @@ export const api = {
   getRegList:(params) => get('/api/reg/list', params),
   getRegDetail:(id) => get(`/api/reg/detail?id=${id}`),
   auditReg:(data) => put('/api/reg/audit', data),
-  
+  getMyReg:(id) => get(`/api/reg/my-reg`,id),
+  submitWork:(data) => put('/api/reg/work-submit', data),
   // ==================== 通知相关 ====================
 }
 
