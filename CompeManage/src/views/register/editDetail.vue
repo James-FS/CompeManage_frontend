@@ -33,6 +33,7 @@ const form = reactive({
   minMember: 1,
   maxMember: 3,
   timeRange: [], // [开始时间, 结束时间]
+  workTimeRange: [], // 作品提交时间范围
   grades: [], // 限制年级
   advisorRequired: 0, // 指导老师是否必填
   attachmentType: 1, // 0:无, 1:选填, 2:必填
@@ -74,6 +75,8 @@ async function handleSave() {
         need_attachment: form.attachmentType,
         reg_start_time: formatToGoTime(form.timeRange[0]),
         reg_end_time: formatToGoTime(form.timeRange[1]),
+        submit_start_time: form.workTimeRange.length === 2 ? formatToGoTime(form.workTimeRange[0]) : null,
+        submit_end_time: form.workTimeRange.length === 2 ? formatToGoTime(form.workTimeRange[1]) : null,
       }
 
       try {
@@ -103,6 +106,7 @@ async function fetchConfig() {
       form.minMember = data.min_team_member || 1
       form.maxMember = data.max_team_member || 1
       form.timeRange = [data.reg_start_time, data.reg_end_time]
+      form.workTimeRange = [data.submit_start_time, data.submit_end_time]
       form.grades = data.grade_requirement || []
       form.advisorRequired = data.need_advisor
       form.attachmentType = data.need_attachment
@@ -117,6 +121,12 @@ async function fetchConfig() {
         form.timeRange = [new Date(data.reg_start_time), new Date(data.reg_end_time)]
       } else {
         form.timeRange = []
+      }
+
+      if(data.submit_start_time && data.submit_end_time) {
+        form.workTimeRange = [new Date(data.submit_start_time), new Date(data.submit_end_time)]
+      } else {
+        form.workTimeRange = []
       }
     }
   } catch (error) {
@@ -202,6 +212,20 @@ onMounted(() => {
             range-separator="至"
             start-placeholder="开始报名"
             end-placeholder="报名截止"
+            format="YYYY-MM-DD HH:mm"
+           
+            :default-time="defaultTime"
+            style="width: 100%; max-width: 400px"
+          />
+        </el-form-item>
+
+        <el-form-item label="作品提交时间" prop="workTimeRange">
+          <el-date-picker
+            v-model="form.workTimeRange"
+            type="datetimerange"
+            range-separator="至"
+            start-placeholder="开始提交"
+            end-placeholder="提交截止"
             format="YYYY-MM-DD HH:mm"
            
             :default-time="defaultTime"

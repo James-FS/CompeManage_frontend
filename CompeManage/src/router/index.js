@@ -115,8 +115,31 @@ const routes = [
         name:'audit-detail',
         component: () => import('@/views/register/auditDetail.vue'),
         props: true,
+      },
+      {
+        path:'/register/work',
+        name:'register-work',
+        component: () => import('@/views/register/work.vue'),
+      },
+      {
+        path:'/register/work/detail/:id',
+        name:'work-detail',
+        component: () => import('@/views/register/workDetail.vue'),
+        props: true,
       }
     ],
+  },
+  {
+    path: '/award',
+    component:MainLayout,
+    children:[
+      {
+        path:'list',
+        name:'AwardList',
+        component: () => import('@/views/award/list.vue'),
+        meta:{ title:'获奖填报', roles:['school_admin','college_admin','competition_manager','student']},
+      },
+    ]
   },
   {
     path: '/permission',
