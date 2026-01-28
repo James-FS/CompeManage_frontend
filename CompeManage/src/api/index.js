@@ -40,6 +40,21 @@ export const api = {
   getRegList:(params) => get('/api/reg/list', params),
   getRegDetail:(id) => get(`/api/reg/detail?id=${id}`),
   auditReg:(data) => put('/api/reg/audit', data),
+
+  // ==================== 赛事申报相关 ====================
+  // 院级申报
+  createDeclare: (data) => post('/api/declare', data),
+  getDeclareDetail: (id) => get(`/api/declare/${id}`),
+  updateDeclare: (id, data) => put(`/api/declare/${id}`, data),
+  submitDeclare: (id) => post(`/api/declare/${id}/submit`),
+  getMyDeclares: (params) => get('/api/declare/my/list', params),
+  deleteDeclare: (id) => del(`/api/declare/${id}`),
+  // 校级审核
+  getPendingDeclares: (params) => get('/api/declare/pending/list', params),
+  auditDeclare: (data) => post('/api/declare/audit', data),
+  getAllDeclares: (params) => get('/api/declare/all', params),
+
+  //==================== 报名相关 ====================
   getMyReg:(id) => get(`/api/reg/my-reg`,id),
   submitWork:(data) => put('/api/reg/work-submit', data),
   // ==================== 通知相关 ====================
