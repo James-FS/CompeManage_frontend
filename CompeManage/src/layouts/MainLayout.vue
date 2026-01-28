@@ -68,6 +68,19 @@ const allMenus = [
     ],
   },
   {
+    path: '/award',
+    title: '获奖填报',
+    roles: ['school_admin', 'college_admin', 'competition_manager', 'student'],
+    icon: Trophy,
+    children: [
+      {
+        path: '/award/list',
+        title:'校赛填报',
+        roles: ['school_admin', 'college_admin', 'competition_manager', 'student'],
+      },
+    ]
+  },
+  {
     path: '/permission',
     title: '权限管理',
     icon: Key,

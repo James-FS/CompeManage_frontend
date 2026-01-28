@@ -36,6 +36,11 @@ export const api = {
   getMyReg:(id) => get(`/api/reg/my-reg`,id),
   submitWork:(data) => put('/api/reg/work-submit', data),
   // ==================== 通知相关 ====================
+
+  // ==================== 获奖相关 ====================
+  getAwardCompList:(params) => get('/api/award/list', params),
+  getCompAwards:(comp_id) => get(`/api/award/comp-awards?comp_id=${comp_id}`),
+  getAwardTemplate:(comp_id) => get(`/api/award/export-template?comp_id=${comp_id}`, {},{ responseType: 'blob' }),
 }
 
 export default api

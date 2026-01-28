@@ -109,6 +109,18 @@ const routes = [
     ],
   },
   {
+    path: '/award',
+    component:MainLayout,
+    children:[
+      {
+        path:'list',
+        name:'AwardList',
+        component: () => import('@/views/award/list.vue'),
+        meta:{ title:'获奖填报', roles:['school_admin','college_admin','competition_manager','student']},
+      },
+    ]
+  },
+  {
     path: '/permission',
     component: MainLayout,
     children: [
