@@ -73,6 +73,7 @@ const allMenus = [
     roles: ['school_admin'],
   },
 ]
+
 // 深拷贝菜单但保留icon组件引用
 const deepCloneMenus = (menus) => {
   return menus.map((item) => ({
