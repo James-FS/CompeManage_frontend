@@ -63,8 +63,9 @@ const selectedHistoryRows = ref([]);
 const importList = ref([]); // 导入列表，用于第二步编辑
 const yearOptions = ref([]); // 年份选项列表
 const yearsLoading = ref(false); // 年份加载状态
+const collegeList = ref([]); // 学院列表
 
-// 初始化时获取年份列表
+// 下载年份列表
 const initializeYears = async () => {
     yearsLoading.value = true;
     try {
@@ -81,10 +82,21 @@ const initializeYears = async () => {
     yearsLoading.value = false;
 };
 
+// 加载学院列表
+const loadColleges = async () => {
+    try {
+        const res = await api.getCollegeList();
+        if (res.code === 0 || res.code === 200) {
+            collegeList.value = res.data || [];
+        }
+    } catch (error) {
+        console.error('加载学院列表失败:', error);
+    }
+};
+
 // 组件挂载时初始化
 onMounted(() => {
-    initializeYears();
-    // 从路由参数中读取年份，如果有的话直接填充
+    initializeYears();    loadColleges();    // 从路由参数中读取年份，如果有的话直接填充
     if (route.query.year) {
         form.year = route.query.year;
     }
@@ -336,10 +348,9 @@ const selectTeacher = (row) => {
                                 </el-col>
                                 <el-col :span="12">
                                     <el-form-item label="所属学院" prop="college">
-                                        <el-select v-model="form.college" placeholder="请选择学院" style="width: 100%">
-                                            <el-option label="计算机科学与网络工程学院" value="计算机科学与网络工程学院" />
-                                            <el-option label="电子信息工程学院" value="电子信息工程学院" />
-                                            <el-option label="经济管理学院" value="经济管理学院" />
+                                        <el-select v-model="form.college" placeholder="请选择学院" style="width: 100%" clearable>
+                                            <el-option v-for="college in collegeList" :key="college.id" :label="college.name"
+                                                :value="college.name" />
                                         </el-select>
                                     </el-form-item>
                                 </el-col>
