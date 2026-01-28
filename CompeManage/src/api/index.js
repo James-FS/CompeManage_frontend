@@ -34,7 +34,9 @@ export const api = {
   // ==================== 报名相关 ====================
   saveRegConfig: (data) => post('/api/reg/config', data),
   getRegConfig: (compID) => get(`/api/reg/config/get?comp_id=${compID}`),
+  getRegStatus: (comp_id) => get(`/api/reg/status?comp_id=${comp_id}`),
   submitReg:(data) => post('/api/reg/submit', data),
+  reSubmitReg:(data) => put('/api/reg/resubmit', data),
   getRegList:(params) => get('/api/reg/list', params),
   getRegDetail:(id) => get(`/api/reg/detail?id=${id}`),
   auditReg:(data) => put('/api/reg/audit', data),
@@ -52,7 +54,15 @@ export const api = {
   auditDeclare: (data) => post('/api/declare/audit', data),
   getAllDeclares: (params) => get('/api/declare/all', params),
 
+  //==================== 报名相关 ====================
+  getMyReg:(id) => get(`/api/reg/my-reg`,id),
+  submitWork:(data) => put('/api/reg/work-submit', data),
   // ==================== 通知相关 ====================
+
+  // ==================== 获奖相关 ====================
+  getAwardCompList:(params) => get('/api/award/list', params),
+  getCompAwards:(comp_id) => get(`/api/award/comp-awards?comp_id=${comp_id}`),
+  getAwardTemplate:(comp_id) => get(`/api/award/export-template?comp_id=${comp_id}`, {},{ responseType: 'blob' }),
 }
 
 export default api

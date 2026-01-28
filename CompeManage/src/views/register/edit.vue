@@ -38,9 +38,7 @@ async function fetchCompList() {
     const response = await api.getCompetitionList(queryParams.value)
     if (response.code == 200) {
       compList.value = response.data.list.map((item) => {
-        // ✨ 修改 1: Detail -> detail
         const detail = item.detail || {}
-        // ✨ 修改 2: RegStartTime -> reg_start_time
         const timeState = getTimeState(
           detail.reg_start_time,
           detail.reg_end_time
@@ -135,7 +133,9 @@ onMounted(() => {
           v-model:page-size="queryParams.page_size"
           :total="total"
           layout="total, sizes, prev, pager, next, jumper"
-          :page-sizes="[10, 20, 50, 100]"
+          :page-sizes="[10, 20, 50]"
+          @current-change="fetchCompList"
+          @size-change="fetchCompList"
         />
     </div>
   </div>

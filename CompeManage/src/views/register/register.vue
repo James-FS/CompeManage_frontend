@@ -189,7 +189,9 @@ onMounted(() => {
         v-model:page-size="queryParams.page_size"
         :total="total"
         layout="total, sizes, prev, pager, next, jumper"
-        :page-sizes="[10, 20, 50, 100]"
+        :page-sizes="[10, 20, 50]"
+        @current-change="fetchCompList"
+        @size-change="fetchCompList"
       />
     </div>
   </div>
