@@ -26,7 +26,7 @@ const detail = ref({})
 const rejectDialogVisible = ref(false)
 const rejectReason = ref('')
 
-// --- 2. 计算属性 ---
+// --- 计算属性 ---
 const teamMembers = computed(() => {
   if (!detail.value.members) return []
   return detail.value.members.filter((m) => !m.is_leader)
@@ -98,10 +98,8 @@ const handleReject = async () => {
 const attachmentList = computed(() => {
   const urlStr = detail.value.attachment_url
   if (!urlStr) return []
-
   //  多个附件用逗号分隔
   const urls = urlStr.split(',')
-
   return urls
     .map((url) => {
       url = url.trim()
@@ -110,10 +108,8 @@ const attachmentList = computed(() => {
       //  获取文件名 (去掉路径)
       // 例如: /static/202601/123456_需求.docx -> 123456_需求.docx
       let fileName = url.substring(url.lastIndexOf('/') + 1)
-
-      // 3. 去掉时间戳/ID前缀 (去掉第一个下划线前的内容)
+      //  去掉时间戳/ID前缀 (去掉第一个下划线前的内容)
       // 例如: 123456_需求.docx -> 需求.docx
-      // 如果你不想去掉前缀，注释掉下面这行即可
       if (fileName.indexOf('_') > -1) {
         fileName = fileName.substring(fileName.indexOf('_') + 1)
       }

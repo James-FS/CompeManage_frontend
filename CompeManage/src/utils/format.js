@@ -11,6 +11,10 @@ export function formatTime(time, template = 'YYYY-MM-DD') {
         return '待定'
     }
 
+    if (time instanceof Date) {
+        return dayjs(time).format(template)
+    }
+    
     if (time.startsWith('0001') || time === '0000-00-00 00:00:00') {
     return '待定'
   }

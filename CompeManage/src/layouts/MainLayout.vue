@@ -78,6 +78,11 @@ const allMenus = [
         title:'校赛填报',
         roles: ['school_admin', 'college_admin', 'competition_manager', 'student'],
       },
+      {
+        path:'/award/student',
+        title:'学生申报',
+        roles: ['school_admin', 'college_admin', 'competition_manager','student'],
+      }
     ]
   },
   {
