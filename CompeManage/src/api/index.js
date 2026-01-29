@@ -23,6 +23,13 @@ export const api = {
 
   // ==================== 竞赛相关 ====================
   getCompetitionList: (params) => get('/api/comp/list',params),
+  createCompetition: (data) => post('/api/comp/create', data),
+  batchImportCompetition: (data) => post('/api/comp/batch-import', data),
+  deleteCompetition: (id) => del(`/api/comp/${id}`),
+  batchDeleteCompetition: (ids) => post('/api/comp/batch-delete', { ids }),
+  restoreCompetition: (id) => put(`/api/comp/${id}/restore`),
+  getManagerList: (params) => get('/api/comp/manager/list', params),
+  getCompetitionYears: () => get('/api/comp/years'),
 
   // ==================== 报名相关 ====================
   saveRegConfig: (data) => post('/api/reg/config', data),
@@ -33,6 +40,21 @@ export const api = {
   getRegList:(params) => get('/api/reg/list', params),
   getRegDetail:(id) => get(`/api/reg/detail?id=${id}`),
   auditReg:(data) => put('/api/reg/audit', data),
+
+  // ==================== 赛事申报相关 ====================
+  // 院级申报
+  createDeclare: (data) => post('/api/declare', data),
+  getDeclareDetail: (id) => get(`/api/declare/${id}`),
+  updateDeclare: (id, data) => put(`/api/declare/${id}`, data),
+  submitDeclare: (id) => post(`/api/declare/${id}/submit`),
+  getMyDeclares: (params) => get('/api/declare/my/list', params),
+  deleteDeclare: (id) => del(`/api/declare/${id}`),
+  // 校级审核
+  getPendingDeclares: (params) => get('/api/declare/pending/list', params),
+  auditDeclare: (data) => post('/api/declare/audit', data),
+  getAllDeclares: (params) => get('/api/declare/all', params),
+
+  //==================== 报名相关 ====================
   getMyReg:(id) => get(`/api/reg/my-reg`,id),
   submitWork:(data) => put('/api/reg/work-submit', data),
   // ==================== 通知相关 ====================

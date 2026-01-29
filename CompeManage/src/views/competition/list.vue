@@ -26,17 +26,23 @@ const handleReset = () => {
     searchForm.college = '';
     searchForm.manager = '';
     searchForm.status = '';
-    
+
     // 重置分页
     current_page.value = 1;
     page_size.value = 10;
-    
+
     // 重新搜索以加载第一页数据
     handleSearch();
 };
 
 // 表格数据
 const tableData = ref([])
+
+// 表格引用
+const tableRef = ref(null)
+
+// 多选选中的数据
+const selectedRows = ref([])
 
 // 学院列表
 const collegeList = ref([]);
@@ -52,17 +58,22 @@ const userStore = useUserStore();
 
 // 新增赛事
 const handleAddCompetition = () => {
-    router.push({ name: 'CompetitionAdd' });
+    router.push({ name: 'CompetitionAdd', query: { year: currentYear.value } });
+};
+
+// 赛事申报
+const handleDeclare = () => {
+    router.push('/competition/audit');
 };
 
 // 年份切换
 const handleYearSwitch = (year) => {
     currentYear.value = year;
     searchForm.year = year;
-    
+
     // 重置分页到第一页
     current_page.value = 1;
-    
+
     // 重新加载数据
     handleSearch();
 };
@@ -209,19 +220,53 @@ const handleManageClose = () => {
 };
 
 // 删除操作
-const handleDelete = (row) => {
+const handleDelete = async (row) => {
     ElMessageBox.confirm(
         `确定要删除 "${row.comp_name}" 吗?`,
         '警告',
         { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
-    ).then(() => {
-        //TODO: 调用删除接口
-        ElMessage.success('删除成功');
+    ).then(async () => {
+        try {
+            await api.deleteCompetition(row.id);
+            ElMessage.success('删除成功');
+            // 重新加载列表
+            handleSearch();
+        } catch (error) {
+            ElMessage.error(error.message || '删除失败');
+        }
     }).catch(() => { });
 };
 
-// TODO:批量删除
+// 处理表格选择变化
+const handleSelectionChange = (selection) => {
+    selectedRows.value = selection;
+};
 
+// 批量删除
+const handleBatchDelete = async () => {
+    if (selectedRows.value.length === 0) {
+        ElMessage.warning('请先选择要删除的赛事');
+        return;
+    }
+
+    ElMessageBox.confirm(
+        `确定要删除选中的 ${selectedRows.value.length} 条赛事吗?`,
+        '警告',
+        { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
+    ).then(async () => {
+        try {
+            const ids = selectedRows.value.map(row => row.id);
+            await api.batchDeleteCompetition(ids);
+            ElMessage.success('批量删除成功');
+            // 清空选中
+            tableRef.value.clearSelection();
+            // 重新加载列表
+            handleSearch();
+        } catch (error) {
+            ElMessage.error(error.message || '批量删除失败');
+        }
+    }).catch(() => { });
+};
 
 // 分页数据
 const current_page = ref(1);
@@ -248,7 +293,7 @@ const handleSearch = async () => {
             page_size: page_size.value,
             year: currentYear.value, // 添加年份筛选
         };
-        
+
         // 添加可选的搜索和筛选参数
         if (searchForm.comp_name) {
             params.comp_name = searchForm.comp_name;
@@ -265,13 +310,13 @@ const handleSearch = async () => {
         if (searchForm.status) {
             params.status = searchForm.status;
         }
-        
+
         console.log('调用赛事列表接口，参数：', params);
-        
+
         // 调用后端接口获取数据
         const response = await api.getCompetitionList(params);
         console.log('赛事列表API响应：', response);
-        
+
         if (response.code === 200 || response.code === 0) {
             tableData.value = response.data.list || [];
             total.value = response.data.total || 0;
@@ -328,7 +373,8 @@ onMounted(() => {
                 </el-form-item>
                 <el-form-item label="所属学院">
                     <el-select v-model="searchForm.college" placeholder="请选择所属学院" clearable="true" style="width: 220px">
-                        <el-option v-for="college in collegeList" :key="college.id" :label="college.name" :value="college.name"></el-option>
+                        <el-option v-for="college in collegeList" :key="college.id" :label="college.name"
+                            :value="college.name"></el-option>
                     </el-select>
                 </el-form-item>
                 <el-form-item label="赛事负责人">
@@ -353,10 +399,14 @@ onMounted(() => {
         <div class="competition-table-container">
             <div class="table-toolbar">
                 <div class="left-actions">
-                    <el-button type="primary" :icon="Plus" @click="handleAddCompetition">新增赛事</el-button>
-                    <el-button type="danger" plain :icon="Delete">批量删除</el-button>
+                    <el-button v-if="userStore.role === 'school_admin'" type="primary" :icon="Plus" @click="handleAddCompetition">新增赛事</el-button>
+                    <el-button v-if="userStore.role === 'college_admin'" type="primary" :icon="Plus"
+                        @click="handleDeclare">
+                        赛事申报
+                    </el-button>
+                    <el-button v-if="userStore.role === 'school_admin'" type="danger" plain :icon="Delete" @click="handleBatchDelete">批量删除</el-button>
                     <el-button type="info" plain :icon="Download">导出数据</el-button>
-                    <el-button type="default" :icon="Upload" plain>导入数据</el-button>
+                    <el-button v-if="userStore.role === 'school_admin'" type="default" :icon="Upload" plain>导入数据</el-button>
                 </div>
                 <div class="right-info">
                     <el-dropdown trigger="click" @command="handleYearCommand">
@@ -394,7 +444,7 @@ onMounted(() => {
                 <el-table :data="yearTableData" border stripe style="width: 100%" max-height="400">
                     <el-table-column prop="year" label="年份目录" align="center">
                         <template #default="scope">
-                            <el-input v-if="scope.row.isEditing" v-model="scope.row.editValue" size="small" autofocus/>
+                            <el-input v-if="scope.row.isEditing" v-model="scope.row.editValue" size="small" autofocus />
                             <span v-else>{{ scope.row.year }}年度</span>
                         </template>
                     </el-table-column>
@@ -418,8 +468,7 @@ onMounted(() => {
                 </el-table>
             </el-dialog>
 
-            <el-table v-loading="loading" :data="tableData" stripe max-height="400"
-                style="width: 100%">
+            <el-table v-loading="loading" ref="tableRef" :data="tableData" stripe max-height="400" style="width: 100%" @selection-change="handleSelectionChange">
                 <el-table-column type="selection" width="40" />
                 <el-table-column label="序号" width="60" align="center">
                     <template #default="scope">
