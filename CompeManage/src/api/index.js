@@ -47,10 +47,14 @@ export const api = {
   getDeclareDetail: (id) => get(`/api/declare/${id}`),
   updateDeclare: (id, data) => put(`/api/declare/${id}`, data),
   submitDeclare: (id) => post(`/api/declare/${id}/submit`),
+  revokeDeclare: (id) => post(`/api/declare/${id}/revoke`),
   getMyDeclares: (params) => get('/api/declare/my/list', params),
+  getMyPendingDeclares: (params) => get('/api/declare/my/pending', params),
+  getMyPublishedDeclares: (params) => get('/api/declare/my/published', params),
   deleteDeclare: (id) => del(`/api/declare/${id}`),
   // 校级审核
   getPendingDeclares: (params) => get('/api/declare/pending/list', params),
+  getAuditedDeclares: (params) => get('/api/declare/audited/list', params),
   auditDeclare: (data) => post('/api/declare/audit', data),
   getAllDeclares: (params) => get('/api/declare/all', params),
 
