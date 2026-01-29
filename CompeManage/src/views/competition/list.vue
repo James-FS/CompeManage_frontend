@@ -5,6 +5,7 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { Search, Refresh, Download, Upload, Plus, Delete, ArrowDown, Edit, Setting } from '@element-plus/icons-vue';
 import { useUserStore } from '@/stores/user';
 import api from '@/api/index';
+import * as XLSX from 'xlsx';
 
 // 搜索表单数据
 const searchForm = reactive({
@@ -268,6 +269,98 @@ const handleBatchDelete = async () => {
     }).catch(() => { });
 };
 
+// 获取项目来源文本
+const getSourceText = (source) => {
+    const sourceMap = {
+        1: '学校导入',
+        2: '学院申报'
+    };
+    return sourceMap[source] || '-';
+};
+
+// 导出数据
+const handleExport = async () => {
+    try {
+        loading.value = true;
+        // 1. 构造查询参数，但将 page_size 设置得很大，或者后端支持 page_size=-1 代表全部
+        const params = {
+            page: 1,
+            page_size: 2000, // 强行获取所有数据
+            year: currentYear.value,
+            comp_name: searchForm.comp_name,
+            comp_level: searchForm.comp_level,
+            college: searchForm.college,
+            manager: searchForm.manager,
+            status: searchForm.status,
+        };
+
+        // 2. 调用 API 获取所有数据
+        const response = await api.getCompetitionList(params);
+
+        if (response.code !== 200 && response.code !== 0) {
+            throw new Error(response.message || '获取导出数据失败');
+        }
+
+        const allList = response.data.list || [];
+
+        if (allList.length === 0) {
+            ElMessage.warning('暂无数据可导出');
+            return;
+        }
+
+        // 3. 数据格式化
+        const dataTOExport = allList.map(item => {
+            let statusText = '';
+            if (item.status === 1) statusText = '进行中';
+            else if (item.status === 2) statusText = '已结束';
+            else statusText = '未开始';
+
+            return {
+                '赛事编号': item.comp_code || '-',
+                '赛事名称': item.comp_name || '-',
+                '赛事级别': item.comp_level || '-',
+                '主办单位': item.organizer || '-',
+                '承办单位': item.undertaker || '-',
+                '赛事负责人': item.manager?.realname || '-',
+                '所属学院': item.college_info?.name || '-',
+                '项目来源': getSourceText(item.source),
+                '状态': statusText,
+            };
+        });
+
+        // 4.创建工作簿和工作表
+        const worksheet = XLSX.utils.json_to_sheet(dataTOExport);
+        const workbook = XLSX.utils.book_new();
+
+        // 设置列宽
+        const wscols = [
+            { wch: 15 }, // 赛事编号
+            { wch: 30 }, // 赛事名称
+            { wch: 15 }, // 赛事级别
+            { wch: 25 }, // 主办单位
+            { wch: 25 }, // 承办单位
+            { wch: 20 }, // 赛事负责人
+            { wch: 25 }, // 所属学院
+            { wch: 20 }, // 项目来源
+            { wch: 10 }, // 状态
+        ];
+        worksheet['!cols'] = wscols;
+
+        // 将工作表添加到工作簿，命名为“赛事列表”
+        XLSX.utils.book_append_sheet(workbook, worksheet, '赛事列表');
+
+        // 5. 导出为Excel文件
+        XLSX.writeFile(workbook, `赛事列表_${currentYear.value}年度.xlsx`);
+
+        ElMessage.success('导出成功');
+    } catch (error) {
+        console.error('导出失败：', error);
+        ElMessage.error('导出失败');
+    } finally {
+        loading.value = false;
+    }
+};
+
 // 分页数据
 const current_page = ref(1);
 const page_size = ref(10);
@@ -399,14 +492,17 @@ onMounted(() => {
         <div class="competition-table-container">
             <div class="table-toolbar">
                 <div class="left-actions">
-                    <el-button v-if="userStore.role === 'school_admin'" type="primary" :icon="Plus" @click="handleAddCompetition">新增赛事</el-button>
+                    <el-button v-if="userStore.role === 'school_admin'" type="primary" :icon="Plus"
+                        @click="handleAddCompetition">新增赛事</el-button>
                     <el-button v-if="userStore.role === 'college_admin'" type="primary" :icon="Plus"
                         @click="handleDeclare">
                         赛事申报
                     </el-button>
-                    <el-button v-if="userStore.role === 'school_admin'" type="danger" plain :icon="Delete" @click="handleBatchDelete">批量删除</el-button>
-                    <el-button type="info" plain :icon="Download">导出数据</el-button>
-                    <el-button v-if="userStore.role === 'school_admin'" type="default" :icon="Upload" plain>导入数据</el-button>
+                    <el-button v-if="userStore.role === 'school_admin'" type="danger" plain :icon="Delete"
+                        @click="handleBatchDelete">批量删除</el-button>
+                    <el-button type="info" plain :icon="Download" @click="handleExport">导出数据</el-button>
+                    <el-button v-if="userStore.role === 'school_admin'" type="default" :icon="Upload"
+                        plain>导入数据</el-button>
                 </div>
                 <div class="right-info">
                     <el-dropdown trigger="click" @command="handleYearCommand">
@@ -468,13 +564,9 @@ onMounted(() => {
                 </el-table>
             </el-dialog>
 
-            <el-table v-loading="loading" ref="tableRef" :data="tableData" stripe max-height="400" style="width: 100%" @selection-change="handleSelectionChange">
+            <el-table v-loading="loading" ref="tableRef" :data="tableData" stripe max-height="400" style="width: 100%"
+                @selection-change="handleSelectionChange">
                 <el-table-column type="selection" width="40" />
-                <el-table-column label="序号" width="60" align="center">
-                    <template #default="scope">
-                        {{ scope.row.id || '-' }}
-                    </template>
-                </el-table-column>
                 <el-table-column label="赛事编号" min-width="100" align="center">
                     <template #default="scope">
                         {{ scope.row.comp_code || '-' }}
@@ -512,7 +604,7 @@ onMounted(() => {
                 </el-table-column>
                 <el-table-column label="项目来源" min-width="90" align="center">
                     <template #default="scope">
-                        {{ scope.row.project_source || '-' }}
+                        {{ getSourceText(scope.row.source) }}
                     </template>
                 </el-table-column>
                 <el-table-column label="状态" width="90" align="center">
@@ -533,7 +625,7 @@ onMounted(() => {
                     <el-empty description="暂无数据" />
                 </template>
             </el-table>
-            <div v-if="tableData.length > 0" class="pagination-wrapper">
+            <div class="pagination-wrapper">
                 <el-pagination v-model:current-page="current_page" v-model:page-size="page_size"
                     :page-sizes="[10, 20, 30, 50]" layout="total, sizes, prev, pager, next, jumper" :total="total"
                     @size-change="handleSizeChange" @current-change="handleCurrentChange" />

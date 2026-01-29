@@ -102,7 +102,7 @@ onMounted(() => {
     }
 });
 
-// 模拟查询历史数据
+// 查询历史数据
 const fetchHistoryData = () => {
     if (!copySourceYear.value) return;
     historyLoading.value = true;
