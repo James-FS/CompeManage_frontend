@@ -67,7 +67,7 @@ const routes = [
                 component: () => import('@/views/competition/declare.vue'),
                 meta: { 
                     title: '新增申报',
-                    roles: ['college_admin'],
+                    roles: ['college_admin','school_admin'],
                     parent: 'CompetitionAudit',
                     activeMenu: '/competition/audit'
                 }
