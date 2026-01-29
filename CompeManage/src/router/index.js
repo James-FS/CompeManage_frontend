@@ -139,6 +139,12 @@ const routes = [
         component: () => import('@/views/award/list.vue'),
         meta:{ title:'获奖填报', roles:['school_admin','college_admin','competition_manager','student']},
       },
+      {
+        path:'student',
+        name:'AwardStudent',
+        component: () => import('@/views/award/studentDeclare.vue'),
+        meta:{ title:'学生申报', roles:['school_admin','college_admin','competition_manager','student']},
+      },
     ]
   },
   {
