@@ -44,17 +44,17 @@ const rules = {
 
 // 选项数据
 const levelOptions = [
-    { label: '校级', value: 'school' },
-    { label: '省级', value: 'province' },
-    { label: '国家级', value: 'national' },
-    { label: '国际级', value: 'international' }
+    { label: '校级', value: '校级' },
+    { label: '省级', value: '省级' },
+    { label: '国家级', value: '国家级' },
+    { label: '国际级', value: '国际级' }
 ];
 
 const typeOptions = [
-    { label: '学科竞赛', value: 'discipline' },
-    { label: '创新创业竞赛', value: 'innovation' },
-    { label: '体育竞赛', value: 'sports' },
-    { label: '其他', value: 'other' }
+    { label: '学科竞赛', value: '学科竞赛' },
+    { label: '创新创业竞赛', value: '创新创业竞赛' },
+    { label: '体育竞赛', value: '体育竞赛' },
+    { label: '其他', value: '其他' }
 ];
 
 const collegeList = ref([]);
@@ -145,7 +145,7 @@ const handleSave = async (formEl) => {
                     undertaker: form.undertaker,
                     college_id: form.college,
                     manager_id: form.manager_id,
-                    year: form.comp_date,
+                    year: parseInt(form.comp_date) || new Date().getFullYear(),
                     desc: form.description
                 };
 
@@ -283,7 +283,7 @@ const selectTeacher = (row) => {
                             <el-form-item label="所属学院" prop="college">
                                 <el-select v-model="form.college" placeholder="请选择所属学院" clearable style="width: 100%">
                                     <el-option v-for="college in collegeList" :key="college.id" :label="college.name"
-                                        :value="college.name" />
+                                        :value="college.id" />
                                 </el-select>
                             </el-form-item>
                         </el-col>
