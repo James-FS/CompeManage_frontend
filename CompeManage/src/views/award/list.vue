@@ -19,8 +19,6 @@ const fetchList = async () => {
   try {
     const res = await api.getAwardCompList()
     if (res.code === 200) {
-      // 后端返回结构: { code: 200, data: { list: [], total: 0 } }
-      // 注意检查你的后端返回结构，这里假设 data.list 是数组
       compList.value = res.data.list || []
     }
   } catch (error) {

@@ -1,6 +1,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import api from '@/api'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Plus,
@@ -17,7 +18,7 @@ const router = useRouter()
 
 // 1. 状态定义
 const loading = ref(false)
-const compID = route.params.ID // 从路由获取当前赛事ID
+const compID = route.params.id // 从路由获取当前赛事ID
 const competitionTitle = ref('加载中...') // 页面顶部显示的赛事名称
 const searchKeyword = ref('')
 
@@ -63,9 +64,20 @@ const fetchData = () => {
   }, 500)
 }
 
+async function fetchNoticeList(){
+  try{
+    console.log('compID',route.params.id)
+    const res = await api.getNoticeList({compID: route.params.id})
+    tableData.value = res.data.list
+  }
+  catch(err){
+    ElMessage.error('获取通知列表失败')
+  }
+}
+
 onMounted(() => {
+  // fetchNoticeList()
   fetchData()
-  
 })
 
 // 4. 操作逻辑

@@ -46,7 +46,6 @@ async function fetchCompList() {
         return {
           ...item,
           timeState,
-          // ✨ 修改 3: 格式化时间字段名修正
           timeRange: formatTimeRange(detail.reg_start_time, detail.reg_end_time),
         }
       })

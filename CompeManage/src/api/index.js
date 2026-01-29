@@ -58,7 +58,9 @@ export const api = {
   getMyReg:(id) => get(`/api/reg/my-reg`,id),
   submitWork:(data) => put('/api/reg/work-submit', data),
   // ==================== 通知相关 ====================
-
+  getNoticeList:(params) => get('/api/notice/list', params),
+  getNoticeDetail:(id) => get(`/api/notice/detail/${id}`),
+  createNotice:(data) => post('/api/notice/create', data,{headers: { 'Content-Type': 'multipart/form-data' } }),
   // ==================== 获奖相关 ====================
   getAwardCompList:(params) => get('/api/award/list', params),
   getCompAwards:(comp_id) => get(`/api/award/comp-awards?comp_id=${comp_id}`),
