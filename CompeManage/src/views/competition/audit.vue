@@ -394,7 +394,7 @@ watch(() => activeTab.value, () => {
                 </div>
             </div>
 
-            <el-table v-loading="loading" :data="filteredTableData" stripe max-height="400" style="width: 100%"
+            <el-table v-loading="loading" :data="filteredTableData" stripe height="400"  style="width: 100%"
                 @selection-change="handleSelectionChange">
                 <el-table-column type="selection" width="50" align="center" />
                 <el-table-column label="状态" width="80" align="center">
@@ -445,7 +445,7 @@ watch(() => activeTab.value, () => {
                     <el-empty description="暂无数据" />
                 </template>
             </el-table>
-            <div v-if="tableData.length > 0" class="pagination-wrapper">
+            <div class="pagination-wrapper">
                 <el-pagination v-model:current-page="current_page" v-model:page-size="page_size"
                     :page-sizes="[10, 20, 30, 50]" layout="total, sizes, prev, pager, next, jumper" :total="total"
                     @size-change="handleSizeChange" @current-change="handleCurrentChange" />
@@ -473,14 +473,21 @@ watch(() => activeTab.value, () => {
 .audit-container {
     padding: 20px;
     min-height: 100%;
+    box-sizing: border-box;
 }
 
-.filter-card,
-.content-card {
+.filter-card{
     background-color: #fff;
     padding: 20px;
     border-radius: 4px;
     box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
+}
+.content-card {
+    background-color: #fff;
+    padding: 20px 20px 10px 20px;
+    border-radius: 4px;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
+    
 }
 
 .filter-card {
@@ -492,7 +499,6 @@ watch(() => activeTab.value, () => {
 }
 
 .toolbar {
-    margin: 10px 0;
     display: flex;
     justify-content: space-between;
 }
@@ -505,9 +511,8 @@ watch(() => activeTab.value, () => {
 }
 
 .pagination-wrapper {
-    display: flex;
-    justify-content: flex-end;
-    padding: 20px;
+    margin-top: 10px;
+    margin-left: 20px;
 }
 
 
