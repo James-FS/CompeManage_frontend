@@ -62,6 +62,11 @@ const handleAddCompetition = () => {
     router.push({ name: 'CompetitionAdd', query: { year: currentYear.value } });
 };
 
+// 导入数据
+const handleImport = () => {
+    router.push({ name: 'CompetitionAdd', query: { year: currentYear.value, tab: 'import' } });
+};
+
 // 赛事申报
 const handleDeclare = () => {
     router.push('/competition/audit');
@@ -502,7 +507,7 @@ onMounted(() => {
                         @click="handleBatchDelete">批量删除</el-button>
                     <el-button type="info" plain :icon="Download" @click="handleExport">导出数据</el-button>
                     <el-button v-if="userStore.role === 'school_admin'" type="default" :icon="Upload"
-                        plain>导入数据</el-button>
+                        plain @click="handleImport">导入数据</el-button>
                 </div>
                 <div class="right-info">
                     <el-dropdown trigger="click" @command="handleYearCommand">

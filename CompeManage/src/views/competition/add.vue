@@ -2,9 +2,10 @@
 import { ref, reactive, computed, renderList, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { ElMessage, ElMessageBox, ElTableColumn } from 'element-plus';
-import { Plus, DocumentCopy, ArrowRight, Check, Delete, ArrowLeft } from '@element-plus/icons-vue';
+import { Plus, DocumentCopy, ArrowRight, Check, Delete, ArrowLeft, UploadFilled, Download, FolderOpened, Warning, CircleCheck } from '@element-plus/icons-vue';
 import { debounce } from '@/utils/debounce';
 import api from '@/api/index';
+import * as XLSX from 'xlsx';
 
 const router = useRouter();
 const route = useRoute();
@@ -39,11 +40,12 @@ const handleSubmit = async (formEl) => {
                     desc: form.desc,
                     year: form.year
                 });
-                
+
                 ElMessage.success('赛事新增成功！');
                 router.push({ name: 'CompetitionList' });
             } catch (error) {
-                ElMessage.error(error.message || '新增失败');
+                ElMessage.error('新增失败，请检查信息是否完整');
+                console.error('创建赛事失败:', error);
             }
         }
     });
@@ -96,9 +98,13 @@ const loadColleges = async () => {
 
 // 组件挂载时初始化
 onMounted(() => {
-    initializeYears();    loadColleges();    // 从路由参数中读取年份，如果有的话直接填充
+    initializeYears(); loadColleges();    // 从路由参数中读取年份，如果有的话直接填充
     if (route.query.year) {
         form.year = route.query.year;
+    }
+    // 从路由参数中读取tab标识，设置激活的Tab
+    if (route.query.tab) {
+        activeTab.value = route.query.tab;
     }
 });
 
@@ -106,7 +112,7 @@ onMounted(() => {
 const fetchHistoryData = () => {
     if (!copySourceYear.value) return;
     historyLoading.value = true;
-    
+
     // 调用后端接口，按年份筛选竞赛数据
     api.getCompetitionList({
         page: 1,
@@ -126,12 +132,14 @@ const fetchHistoryData = () => {
                 college: item.college_info?.name || '-'
             }));
         } else {
-            ElMessage.error(response.msg || '获取历史数据失败');
+            ElMessage.error(response.msg || '获取历史数据失败，请稍后重试');
+            console.error('获取历史数据失败:', response);
             historyTableData.value = [];
         }
         historyLoading.value = false;
     }).catch(error => {
-        ElMessage.error('获取历史数据失败: ' + error.message);
+        ElMessage.error('获取历史数据失败，请稍后重试');
+        console.error('获取历史数据失败:', error);
         historyTableData.value = [];
         historyLoading.value = false;
     });
@@ -169,7 +177,7 @@ const handleNextStep = () => {
             // 赋上处理过的新名称
             comp_name: newName,            // 标记原始ID，方便后端溯源
             source_id: item.id,
-            manager_id: item.manager_id,            
+            manager_id: item.manager_id,
             year: calculatedTargetYear
         };
     });
@@ -203,7 +211,7 @@ const handleFinalImport = () => {
             await api.batchImportCompetition({
                 items: importList.value
             });
-            
+
             ElMessage.success('批量导入成功！');
             router.push({ name: 'CompetitionList' });
         } catch (error) {
@@ -258,7 +266,8 @@ const getManagerList = () => {
         }
         managerLoading.value = false;
     }).catch(error => {
-        ElMessage.error('获取负责人列表失败: ' + error.message);
+        ElMessage.error('获取负责人列表失败，请稍后重试');
+        console.error('获取负责人列表失败:', error);
         managerLoading.value = false;
     });
 };
@@ -294,18 +303,213 @@ const resetSearch = () => {
 
 // 确认选择某位教师
 const selectTeacher = (row) => {
-    if (currentManagerEditIndex.value === -1) {
-        // 手动新增的情况
-        form.manager = row.name; // 回填姓名到主表单
-        form.manager_id = row.id; // 保存负责人ID
+    if (activeSourceType.value === 'excel') {
+        // Excel 导入 Tab 的逻辑
+        if (currentManagerEditIndex.value !== -1 && excelList.value[currentManagerEditIndex.value]) {
+            excelList.value[currentManagerEditIndex.value].manager = row.name;
+            excelList.value[currentManagerEditIndex.value].manager_id = row.id;
+            // Excel 导入时，自动更新工号
+            excelList.value[currentManagerEditIndex.value].work_id = row.work_id || '';
+        }
+    } else if (currentManagerEditIndex.value === -1) {
+        // 手动录入 Tab
+        form.manager = row.name;
+        form.manager_id = row.id;
     } else {
-        // 复用列表中的情况
-        importList.value[currentManagerEditIndex.value].manager = row.name;
-        importList.value[currentManagerEditIndex.value].manager_id = row.id;
+        // 往年复用 Tab (旧逻辑)
+        if (importList.value[currentManagerEditIndex.value]) {
+            importList.value[currentManagerEditIndex.value].manager = row.name;
+            importList.value[currentManagerEditIndex.value].manager_id = row.id;
+        }
     }
-    managerDialogVisible.value = false; // 关闭弹窗
+    managerDialogVisible.value = false;
     ElMessage.success(`已选择负责人：${row.name}`);
 };
+
+
+// Tab 3 从Excel导入赛事
+const excelList = ref([]); // 存放解析后的 Excel 数据
+const excelLoading = ref(false); // 解析 loading 状态
+
+// 模板下载
+const downloadTemplate = () => {
+    // 这里可以使用 xlsx 生成一个空模板，或者请求后端静态资源
+    const header = ['赛事名称', '赛事级别', '赛事类型', '主办单位', '承办单位', '赛事负责人工号', '赛事负责人姓名', '所属学院', '年份', '备注'];
+    const data = [
+        ['示例：xx大赛', '校级', '学科竞赛', 'xx大学', 'xx学院', '2026001', '张三', 'xx学院', '2026', '无']
+    ];
+    const ws = XLSX.utils.aoa_to_sheet([header, ...data]);
+    // 设置列宽
+    ws['!cols'] = [
+        { wch: 25 }, { wch: 10 }, { wch: 15 }, { wch: 20 }, { wch: 20 },
+        { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 10 }, { wch: 20 }
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "导入模板");
+    XLSX.writeFile(wb, "赛事导入模板.xlsx");
+};
+
+// 自动批量查询工号对应的负责人信息
+const autoMatchManagersByWorkIds = async (items) => {
+    const itemsWithWorkId = items.filter(item => item.work_id);
+    if (itemsWithWorkId.length === 0) return;
+
+    try {
+        for (const item of itemsWithWorkId) {
+            if (!item.work_id || item.manager_id) continue; // 跳过没有工号或已有manager_id的项
+            
+            const res = await api.getManagerList({
+                page: 1,
+                page_size: 10,
+                work_id: item.work_id
+            });
+
+            if (res.code === 200 && res.data.list && res.data.list.length > 0) {
+                const teacher = res.data.list[0];
+                item.manager = teacher.name;
+                item.manager_id = teacher.id;
+            }
+        }
+        // 计算匹配成功的数量
+        const successCount = items.filter(item => item.manager_id).length;
+    } catch (error) {
+        console.error('自动匹配负责人失败', error);
+    }
+};
+
+// 处理文件上传与解析
+const handleUploadChange = (uploadFile) => {
+    // 简单的格式校验
+    const isExcel = uploadFile.raw.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || uploadFile.raw.type === 'application/vnd.ms-excel';
+    if (!isExcel) {
+        ElMessage.error('只能上传 xlsx / xls 文件');
+        return;
+    }
+
+    excelLoading.value = true;
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            const jsonResults = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+            // 解析逻辑：假设第一行是表头
+            if (jsonResults.length < 2) {
+                ElMessage.warning('表格内容为空');
+                excelLoading.value = false;
+                return;
+            }
+
+            // 映射数据 (从第二行开始)
+            // 注意：这里需要根据你模板的列顺序来取值
+            const list = jsonResults.slice(1).map(row => ({
+                comp_name: row[0] || '',
+                comp_level: row[1] || '',
+                comp_type: row[2] || '',
+                organizer: row[3] || '',
+                undertaker: row[4] || '',
+                work_id: row[5] ? String(row[5]) : '', // 读取工号
+                manager: row[6] || '',                 // 读取姓名
+                manager_id: '',
+                college: row[7] || '',
+                year: row[8] ? String(row[8]) : new Date().getFullYear().toString(),
+                desc: row[9] || ''
+            }));
+
+            // 过滤掉完全空行
+            excelList.value = list.filter(item => item.comp_name);
+            ElMessage.success(`解析成功，共 ${excelList.value.length} 条数据`);
+            
+            // 自动根据工号匹配负责人信息
+            await autoMatchManagersByWorkIds(excelList.value);
+        } catch (error) {
+            console.error(error);
+            ElMessage.error('文件解析失败');
+        } finally {
+            excelLoading.value = false;
+        }
+    };
+    reader.readAsArrayBuffer(uploadFile.raw);
+};
+
+// 移除某一行
+const removeExcelItem = (index) => {
+    excelList.value.splice(index, 1);
+};
+
+// 打开负责人选择 (复用现有的弹窗逻辑)
+// 我们需要修改一下 openManagerSelect 逻辑，让它知道当前是在操作 excelList
+const activeSourceType = ref(''); // 'manual', 'copy', 'excel'
+const openManagerSelectForExcel = (index) => {
+    currentManagerEditIndex.value = index;
+    activeSourceType.value = 'excel'; // 标记来源
+    managerDialogVisible.value = true;
+    getManagerList();
+};
+
+// 提交 Excel 导入
+const handleExcelImportSubmit = () => {
+    if (excelList.value.length === 0) {
+        ElMessage.warning('没有可导入的数据');
+        return;
+    }
+    // 校验：检查是否有必要字段为空
+    const invalidItem = excelList.value.find(item => !item.comp_name || !item.comp_level || !item.manager_id);
+    if (invalidItem) {
+        ElMessage.error('存在赛事名称、级别或负责人为空的数据，请补充完整');
+        return;
+    }
+
+    ElMessageBox.confirm(
+        `确认导入这 ${excelList.value.length} 条赛事数据吗？`,
+        '提示',
+        { confirmButtonText: '确认', cancelButtonText: '取消', type: 'warning' }
+    ).then(async () => {
+        try {
+            await api.batchImportCompetition({ items: excelList.value });
+            ElMessage.success('批量导入成功');
+            router.push({ name: 'CompetitionList' });
+        } catch (error) {
+            ElMessage.error('导入失败，请检查数据是否完整');
+            console.error('Excel导入失败:', error);
+        }
+    }).catch(() => { });
+};
+
+// 根据工号查找负责人
+const queryManagerByWorkId = async (row) => {
+    // 如果没有工号，不做处理
+    if (!row.work_id) return;
+
+    try {
+        // 复用已有的 getManagerList 接口，传入 work_id 进行精确查找
+        // 假设接口支持 work_id 参数
+        const res = await api.getManagerList({
+            page: 1,
+            page_size: 10,
+            work_id: row.work_id
+        });
+
+        if (res.code === 200 && res.data.list && res.data.list.length > 0) {
+            // 找到匹配的人员
+            const teacher = res.data.list[0];
+            row.manager = teacher.name; // 自动回填姓名
+            row.manager_id = teacher.id; // 自动回填ID
+            ElMessage.success(`已匹配负责人：${teacher.name}`);
+        } else {
+            ElMessage.warning(`未找到工号为 ${row.work_id} 的教师`);
+            // 可以选择清空姓名，或者保留Excel里的原值
+            row.manager_id = '';
+        }
+    } catch (error) {
+        console.error('查询负责人失败', error);
+    }
+};
+
+
 
 </script>
 
@@ -348,9 +552,10 @@ const selectTeacher = (row) => {
                                 </el-col>
                                 <el-col :span="12">
                                     <el-form-item label="所属学院" prop="college">
-                                        <el-select v-model="form.college" placeholder="请选择学院" style="width: 100%" clearable>
-                                            <el-option v-for="college in collegeList" :key="college.id" :label="college.name"
-                                                :value="college.name" />
+                                        <el-select v-model="form.college" placeholder="请选择学院" style="width: 100%"
+                                            clearable>
+                                            <el-option v-for="college in collegeList" :key="college.id"
+                                                :label="college.name" :value="college.name" />
                                         </el-select>
                                     </el-form-item>
                                 </el-col>
@@ -405,17 +610,10 @@ const selectTeacher = (row) => {
                         <div v-if="step === 1" class="step-content">
                             <div class="filter-bar">
                                 <el-form-item label="赛事所属年份">
-                                    <el-select 
-                                        v-model="copySourceYear" 
-                                        placeholder="请选择年份" 
-                                        @change="fetchHistoryData"
+                                    <el-select v-model="copySourceYear" placeholder="请选择年份" @change="fetchHistoryData"
                                         :loading="yearsLoading">
-                                        <el-option 
-                                            v-for="year in yearOptions" 
-                                            :key="year.value"
-                                            :label="year.label" 
-                                            :value="year.value" 
-                                        />
+                                        <el-option v-for="year in yearOptions" :key="year.value" :label="year.label"
+                                            :value="year.value" />
                                     </el-select>
                                 </el-form-item>
                             </div>
@@ -446,7 +644,8 @@ const selectTeacher = (row) => {
 
                         <div v-if="step === 2" class="step-content">
                             <div class="preview-tip">
-                                <el-alert :title="`系统已自动替换年份为${targetYear}年，请在下方直接修改赛事变动信息`" type="info" show-icon :closable="false" />
+                                <el-alert :title="`系统已自动替换年份为${targetYear}年，请在下方直接修改赛事变动信息`" type="info" show-icon
+                                    :closable="false" />
                             </div>
                             <el-table :data="importList" border height="400" class="edit-table">
                                 <el-table-column label="序号" type="index" width="55" align="center" />
@@ -457,8 +656,8 @@ const selectTeacher = (row) => {
                                 </el-table-column>
                                 <el-table-column label="负责人" width="140" align="center">
                                     <template #default="{ row, $index }">
-                                        <el-input v-model="row.manager" placeholder="负责人" readonly
-                                            class="manager-input" @click="openManagerSelectForImport($index)" />
+                                        <el-input v-model="row.manager" placeholder="负责人" readonly class="manager-input"
+                                            @click="openManagerSelectForImport($index)" />
                                     </template>
                                 </el-table-column>
 
@@ -498,6 +697,128 @@ const selectTeacher = (row) => {
                         </div>
 
 
+                    </div>
+                </el-tab-pane>
+                <el-tab-pane name="import">
+                    <template #label>
+                        <span class="custom-tabs-label">
+                            <el-icon>
+                                <UploadFilled />
+                            </el-icon> Excel 批量导入
+                        </span>
+                    </template>
+                    <div class="import-container">
+                        <div class="import-header">
+                            <el-alert title="请先下载模板，按格式填入数据后上传。" type="info" show-icon :closable="false"
+                                class="import-title" />
+                            <div class="action-bar">
+                                <el-button type="primary" plain @click="downloadTemplate">
+                                    <el-icon class="el-icon--left">
+                                        <Download />
+                                    </el-icon>下载导入模板
+                                </el-button>
+                                <el-upload class="upload-demo" action="#" :auto-upload="false" :show-file-list="false"
+                                    :on-change="handleUploadChange" accept=".xlsx, .xls">
+                                    <el-button type="primary">
+                                        <el-icon class="el-icon--left">
+                                            <FolderOpened />
+                                        </el-icon>选择文件上传
+                                    </el-button>
+                                </el-upload>
+                                <el-button type="success" @click="handleExcelImportSubmit"
+                                    :disabled="excelList.length === 0">
+                                    <el-icon class="el-icon--left">
+                                        <Check />
+                                    </el-icon>确认导入
+                                </el-button>
+                            </div>
+                        </div>
+                        <el-table v-if="excelList.length > 0" :data="excelList" border stripe height="450"
+                            v-loading="excelLoading" class="edit-table" style="margin-top: 20px;">
+                            <el-table-column label="序号" type="index" width="55" align="center" />
+
+                            <el-table-column label="赛事名称" min-width="200" align="center">
+                                <template #default="{ row }">
+                                    <el-input v-model="row.comp_name" placeholder="请输入赛事名称" />
+                                </template>
+                            </el-table-column>
+
+                            <el-table-column label="级别" width="110" align="center">
+                                <template #default="{ row }">
+                                    <el-select v-model="row.comp_level" placeholder="级别">
+                                        <el-option label="校级" value="校级" />
+                                        <el-option label="省级" value="省级" />
+                                        <el-option label="国家级" value="国家级" />
+                                    </el-select>
+                                </template>
+                            </el-table-column>
+
+                            <el-table-column label="类型" width="130" align="center">
+                                <template #default="{ row }">
+                                    <el-select v-model="row.comp_type" placeholder="类型">
+                                        <el-option label="学科竞赛" value="学科竞赛" />
+                                        <el-option label="创新创业竞赛" value="创新创业竞赛" />
+                                    </el-select>
+                                </template>
+                            </el-table-column>
+
+                            <el-table-column label="主办单位" width="150" align="center">
+                                <template #default="{ row }">
+                                    <el-input v-model="row.organizer" />
+                                </template>
+                            </el-table-column>
+
+                            <el-table-column label="负责人工号" width="140" align="center">
+                                <template #default="{ row }">
+                                    <el-input v-model="row.work_id" placeholder="输入工号回车"
+                                        @change="queryManagerByWorkId(row)">
+                                        <template #suffix>
+                                            <el-icon>
+                                                <Search />
+                                            </el-icon>
+                                        </template>
+                                    </el-input>
+                                </template>
+                            </el-table-column>
+
+                            <el-table-column label="负责人姓名" width="120" align="center">
+                                <template #default="{ row, $index }">
+                                    <el-input v-model="row.manager" placeholder="自动匹配或点击选择" readonly
+                                        @click="openManagerSelectForExcel($index)">
+                                        <template #prefix>
+                                            <el-icon v-if="row.manager_id" color="#67C23A">
+                                                <CircleCheck />
+                                            </el-icon>
+                                            <el-icon v-else color="#F56C6C">
+                                                <Warning />
+                                            </el-icon>
+                                        </template>
+                                    </el-input>
+                                </template>
+                            </el-table-column>
+
+                            <el-table-column label="所属学院" width="160" align="center">
+                                <template #default="{ row }">
+                                    <el-select v-model="row.college" placeholder="选择学院" clearable>
+                                        <el-option v-for="c in collegeList" :key="c.id" :label="c.name"
+                                            :value="c.name" />
+                                    </el-select>
+                                </template>
+                            </el-table-column>
+
+                            <el-table-column label="年份" width="100" align="center">
+                                <template #default="{ row }">
+                                    <el-input v-model="row.year" placeholder="年份" />
+                                </template>
+                            </el-table-column>
+
+                            <el-table-column label="操作" width="60" align="center" fixed="right">
+                                <template #default="{ $index }">
+                                    <el-button type="danger" link :icon="Delete" @click="removeExcelItem($index)" />
+                                </template>
+                            </el-table-column>
+                        </el-table>
+                        <el-empty v-else description="请上传 Excel 文件进行预览" />
                     </div>
                 </el-tab-pane>
             </el-tabs>
@@ -664,6 +985,24 @@ const selectTeacher = (row) => {
     to {
         opacity: 1;
         transform: translateY(0);
+    }
+}
+
+
+
+.import-title {
+    margin-bottom: 10px;
+}
+
+.import-header {
+    .action-bar {
+        display: flex;
+        gap: 15px;
+        align-items: center;
+    }
+
+    .upload-demo {
+        display: inline-block;
     }
 }
 </style>
