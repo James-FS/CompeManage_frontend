@@ -18,7 +18,8 @@ const compList = ref([])
 const queryParams = ref({
   page: 1,
   page_size: 10,
-  keyword: '',
+  comp_name: '',
+  comp_level:'',
   category: '全部',
   is_my: false,
   is_reg: true,
@@ -55,6 +56,13 @@ async function fetchCompList() {
   }
 }
 
+function handleFilterChange(key, value) { 
+  if (queryParams.value[key] === value) return
+  queryParams.value[key] = value
+  queryParams.value.page = 1
+  fetchCompList()
+}
+
 onMounted(() => {
   fetchCompList()
 })
@@ -65,18 +73,19 @@ onMounted(() => {
     <div class="filter-panel">
       <div class="search-row">
         <el-input
-          v-model="queryParams.keyword"
+          v-model="queryParams.comp_name"
           placeholder="搜索赛事名称"
           prefix-icon="Search"
           clearable
+          @keyup.enter="fetchCompList"
         >
-          <template #append><el-button type="primary">搜索</el-button></template>
+          <template #append><el-button @click="fetchCompList"  type="primary">搜索</el-button></template>
         </el-input>
       </div>
 
       <el-divider class="filter-divider" />
 
-      <div class="discipline-row">
+      <!-- <div class="discipline-row">
         <span class="filter-label">学科分类：</span>
         <div class="options-area">
           <span
@@ -89,7 +98,7 @@ onMounted(() => {
             {{ cat }}
           </span>
         </div>
-      </div>
+      </div> -->
 
       <div class="level-row">
         <span class="filter-label">赛事级别：</span>
@@ -98,8 +107,8 @@ onMounted(() => {
             v-for="lvl in ['全部', '国家级', '省级', '校级']"
             :key="lvl"
             class="filter-tag"
-            :class="{ active: queryParams.CompLevel === lvl }"
-            @click="queryParams.CompLevel = lvl"
+            :class="{ active: queryParams.comp_level === lvl }"
+            @click="handleFilterChange('comp_level', lvl)"
           >
             {{ lvl }}
           </span>
@@ -113,13 +122,13 @@ onMounted(() => {
             v-for="(label, value) in {
               all: '全部',
               upcoming: '未开始',
-              ongoing: '进行中',
+              ongoing: '报名中',
               ended: '已结束',
             }"
             :key="value"
             class="filter-tag"
             :class="{ active: queryParams.status === value }"
-            @click="queryParams.status = value"
+           @click="handleFilterChange('status', value)"
           >
             {{ label }}
           </span>

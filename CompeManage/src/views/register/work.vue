@@ -94,7 +94,7 @@ async function fetchMyList() {
   try {
     const response = await api.getMyReg()
     if (response.code == 200) {
-      myList.value = response.data.list
+      myList.value = response.data.list||[]
       total.value = response.data.total
       console.log('我的参赛列表:', myList.value)
     }
