@@ -20,14 +20,14 @@ const statusMap = {
 
 // 获奖等级字典
 const levelMap = {
-  '国家级一等奖': { label: '国家级一等奖', color: '#f56c6c' },
-  '国家级二等奖': { label: '国家级二等奖', color: '#f56c6c' },
-  '国家级三等奖': { label: '国家级三等奖', color: '#f56c6c' },
-  '省级一等奖': { label: '省级一等奖', color: '#e6a23c' },
-  '省级二等奖': { label: '省级二等奖', color: '#e6a23c' },
-  '省级三等奖': { label: '省级三等奖', color: '#e6a23c' },
-  '校级一等奖': { label: '校级一等奖', color: '#409eff' },
-  '校级二等奖': { label: '校级二等奖', color: '#409eff' },
+  国家级一等奖: { label: '国家级一等奖', color: '#f56c6c' },
+  国家级二等奖: { label: '国家级二等奖', color: '#f56c6c' },
+  国家级三等奖: { label: '国家级三等奖', color: '#f56c6c' },
+  省级一等奖: { label: '省级一等奖', color: '#e6a23c' },
+  省级二等奖: { label: '省级二等奖', color: '#e6a23c' },
+  省级三等奖: { label: '省级三等奖', color: '#e6a23c' },
+  校级一等奖: { label: '校级一等奖', color: '#409eff' },
+  校级二等奖: { label: '校级二等奖', color: '#409eff' },
 }
 
 // --- 模拟数据 ---
@@ -53,7 +53,8 @@ const mockAwardData = [
     phone: '13800138000',
     submit_time: '2026-02-02 10:30',
     status: 0,
-  },{
+  },
+  {
     id: 1,
     student_name: '张三',
     student_id: '20220001',
@@ -63,7 +64,8 @@ const mockAwardData = [
     phone: '13800138000',
     submit_time: '2026-02-02 10:30',
     status: 0,
-  },{
+  },
+  {
     id: 1,
     student_name: '张三',
     student_id: '20220001',
@@ -73,7 +75,8 @@ const mockAwardData = [
     phone: '13800138000',
     submit_time: '2026-02-02 10:30',
     status: 0,
-  },{
+  },
+  {
     id: 1,
     student_name: '张三',
     student_id: '20220001',
@@ -167,10 +170,10 @@ const mockAwardData = [
 const queryForm = reactive({
   page: 1,
   pageSize: 10,
-  keyword: '',        // 学生姓名/学号
-  status: '',         // 审核状态
-  award_level: '',    // 获奖等级
-  comp_name: '',      // 赛事名称
+  keyword: '', // 学生姓名/学号
+  status: '', // 审核状态
+  award_level: '', // 获奖等级
+  comp_name: '', // 赛事名称
 })
 
 function handleReset() {
@@ -192,25 +195,21 @@ const batchRejectReason = ref('')
 
 const handleBatchPass = async () => {
   if (selectedRows.value.length === 0) return ElMessage.info('请先勾选记录')
-  
+
   const pendingItems = selectedRows.value.filter((item) => item.status === 0)
   if (pendingItems.length === 0) return ElMessage.warning('选中的记录中没有"待审核"项')
 
-  ElMessageBox.confirm(
-    `确定要批量通过选中的 ${pendingItems.length} 条待审核记录吗？`,
-    '批量通过',
-    {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'success',
-    }
-  ).then(async () => {
+  ElMessageBox.confirm(`确定要批量通过选中的 ${pendingItems.length} 条待审核记录吗？`, '批量通过', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'success',
+  }).then(async () => {
     loading.value = true
     try {
       // 模拟 API 调用
-      await new Promise(resolve => setTimeout(resolve, 500))
-      
-      pendingItems.forEach(item => {
+      await new Promise((resolve) => setTimeout(resolve, 500))
+
+      pendingItems.forEach((item) => {
         item.status = 1
       })
 
@@ -247,9 +246,9 @@ const handleBatchReject = async () => {
 
   try {
     // 模拟 API 调用
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
-    pendingItems.forEach(item => {
+    await new Promise((resolve) => setTimeout(resolve, 500))
+
+    pendingItems.forEach((item) => {
       item.status = 2
     })
 
@@ -268,18 +267,14 @@ const handleBatchReject = async () => {
 
 // --- 快速操作 ---
 const handleQuickPass = (row) => {
-  ElMessageBox.confirm(
-    `确认直接通过 [${row.student_name}] 的获奖申报吗？`,
-    '快捷审核',
-    {
-      confirmButtonText: '确定通过',
-      cancelButtonText: '取消',
-      type: 'success',
-    }
-  ).then(async () => {
+  ElMessageBox.confirm(`确认直接通过 [${row.student_name}] 的获奖申报吗？`, '快捷审核', {
+    confirmButtonText: '确定通过',
+    cancelButtonText: '取消',
+    type: 'success',
+  }).then(async () => {
     try {
       // 模拟 API 调用
-      await new Promise(resolve => setTimeout(resolve, 300))
+      await new Promise((resolve) => setTimeout(resolve, 300))
       row.status = 1
       ElMessage.success('审核已通过')
     } catch (e) {
@@ -298,34 +293,29 @@ async function fetchAwardList() {
   loading.value = true
   try {
     // 模拟 API 调用
-    await new Promise(resolve => setTimeout(resolve, 300))
-    
+    await new Promise((resolve) => setTimeout(resolve, 300))
+
     // 过滤数据
     let filtered = mockAwardData
 
     if (queryForm.comp_name) {
-      filtered = filtered.filter(item =>
-        item.comp_name.includes(queryForm.comp_name)
-      )
+      filtered = filtered.filter((item) => item.comp_name.includes(queryForm.comp_name))
     }
 
     if (queryForm.keyword) {
-      filtered = filtered.filter(item =>
-        item.student_name.includes(queryForm.keyword) ||
-        item.student_id.includes(queryForm.keyword)
+      filtered = filtered.filter(
+        (item) =>
+          item.student_name.includes(queryForm.keyword) ||
+          item.student_id.includes(queryForm.keyword),
       )
     }
 
     if (queryForm.award_level) {
-      filtered = filtered.filter(item =>
-        item.award_level === queryForm.award_level
-      )
+      filtered = filtered.filter((item) => item.award_level === queryForm.award_level)
     }
 
     if (queryForm.status !== '') {
-      filtered = filtered.filter(item =>
-        item.status === Number(queryForm.status)
-      )
+      filtered = filtered.filter((item) => item.status === Number(queryForm.status))
     }
 
     total.value = filtered.length
@@ -334,7 +324,6 @@ async function fetchAwardList() {
     const start = (queryForm.page - 1) * queryForm.pageSize
     const end = start + queryForm.pageSize
     awardList.value = filtered.slice(start, end)
-
   } catch (err) {
     ElMessage.info('无相关数据')
   } finally {
@@ -391,12 +380,7 @@ onMounted(() => {
         </el-form-item>
 
         <el-form-item label="审核状态">
-          <el-select
-            v-model="queryForm.status"
-            placeholder="全部"
-            style="width: 120px"
-            clearable
-          >
+          <el-select v-model="queryForm.status" placeholder="全部" style="width: 120px" clearable>
             <el-option label="待审核" :value="0" />
             <el-option label="已通过" :value="1" />
             <el-option label="已驳回" :value="2" />
@@ -412,23 +396,22 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- 操作栏 -->
-    <div class="action-bar">
-      <div class="left-actions">
-        <el-button type="success" plain :icon="CircleCheck" @click="handleBatchPass">
-          批量通过
-        </el-button>
-        <el-button type="danger" plain :icon="CircleClose" @click="openBatchRejectDialog">
-          批量驳回
-        </el-button>
-      </div>
-      <div class="right-info">
-        已选 <span class="num">{{ selectedRows.length }}</span> 项
-      </div>
-    </div>
-
     <!-- 表格容器 -->
     <div class="table-container">
+      <!-- 操作栏 -->
+      <div class="action-bar">
+        <div class="left-actions">
+          <el-button type="success" plain :icon="CircleCheck" @click="handleBatchPass">
+            批量通过
+          </el-button>
+          <el-button type="danger" plain :icon="CircleClose" @click="openBatchRejectDialog">
+            批量驳回
+          </el-button>
+        </div>
+        <div class="right-info">
+          已选 <span class="num">{{ selectedRows.length }}</span> 项
+        </div>
+      </div>
       <el-table
         :data="awardList"
         v-loading="loading"
@@ -456,7 +439,10 @@ onMounted(() => {
         <el-table-column label="获奖等级" width="130" align="center">
           <template #default="{ row }">
             <el-tag
-              :style="{ borderColor: levelMap[row.award_level]?.color, color: levelMap[row.award_level]?.color }"
+              :style="{
+                borderColor: levelMap[row.award_level]?.color,
+                color: levelMap[row.award_level]?.color,
+              }"
               effect="plain"
               size="small"
             >
@@ -484,9 +470,7 @@ onMounted(() => {
 
         <el-table-column label="操作" width="150" align="center" fixed="right">
           <template #default="{ row }">
-            <el-button link class="btn-detail" @click="navigateToDetail(row)">
-              详情
-            </el-button>
+            <el-button link class="btn-detail" @click="navigateToDetail(row)"> 详情 </el-button>
             <el-button v-if="row.status === 0" link class="btn-pass" @click="handleQuickPass(row)">
               通过
             </el-button>
@@ -597,7 +581,7 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 4px;
-  padding: 0 4px;
+  padding: 0;
 
   .right-info {
     color: #909399;

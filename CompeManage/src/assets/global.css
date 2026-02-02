@@ -10,4 +10,16 @@
     --table-title:15px;
     --card-weight:600;
     --primary-font:14px;
+    --bg-warning: #e6a23c;
+    --bg-info: #f4f4f5;
+    /* ====== 间距 ====== */
+    --container-padding:20px;
+    --tag-padding:4px 8px;
+    --item-padding:24px;
+     /* ====== 阴影和圆角 ====== */
+     --card-shadow:0 1px 5px rgba(0, 0, 0, 0.1);
+     --card-radius:4px;
+     --card-border:1px solid #eaeff5;
+     --primary-btn-shadow: 0 4px 12px rgba(19, 194, 194, 0.3);
+     --primary-btn-hover-shadow: 0 6px 16px rgba(19, 194, 194, 0.4);
 }

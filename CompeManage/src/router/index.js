@@ -228,7 +228,7 @@ const routes = [
         },
       },
       {
-        path: 'notice',
+        path: 'notice/:id',
         name: 'Notice',
         component: () => import('@/views/notice/notice.vue'),
         meta: {

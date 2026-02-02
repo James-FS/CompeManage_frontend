@@ -171,57 +171,62 @@ function ResetFilter(){
   min-height: 100%;
   box-sizing: border-box;
   padding: 20px 40px;
-  background-color: #f0fdfa; /* 基础底色 */
-  /* 两个巨大的径向渐变光晕 */
+  background-color: #fafbfc;
   background-image:
-    radial-gradient(at 0% 0%, rgba(19, 194, 194, 0.15) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(59, 130, 246, 0.1) 0px, transparent 50%);
-
-  /* 这种背景通常不需要 repeat，覆盖全屏即可 */
+    radial-gradient(at 0% 0%, rgba(19, 194, 194, 0.06) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(59, 130, 246, 0.04) 0px, transparent 50%);
   background-repeat: no-repeat;
-  background-attachment: fixed; /* 滚动时背景不动，很高级 */
+  background-attachment: fixed;
+
   .list-container {
     display: flex;
     flex-direction: column;
     height: 85vh;
     align-items: stretch;
-    background-color: #fff;
+    background-color: rgba(255, 255, 255, 0.9); /* 90% 不透明度 */
     border-radius: 16px;
     padding: 30px;
-    // min-height: 900px;
     max-width: 1440px;
-    margin:0 auto;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
-    border-bottom: 1px solid #f0f0f0;
+    margin: 0 auto;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+    backdrop-filter: blur(8px); /* 毛玻璃效果 */
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    
     .list-header {
       display: flex;
       flex-direction: row;
       justify-content: space-between;
       align-items: center;
-      border-left: 4px solid #13c2c2;
+      border-left: 4px solid var(--primary-color);
       padding-left: 12px;
       margin-bottom: 40px;
+      
       .header-title {
         font-size: 20px;
         font-weight: 600;
-        color: #333;
+        color: var(--text-primary);
       }
-      .header-filter{
+      
+      .header-filter {
         display: flex;
-        gap:12px;
-        .date-input{
-            width:280px;
+        gap: 12px;
+        
+        .date-input {
+          width: 280px;
         }
-        .search-input{
-            width:280px;
+        
+        .search-input {
+          width: 280px;
         }
       }
     }
+    
     .list-body {
       display: flex;
       flex-direction: column;
       flex: 1;
       overflow: hidden;
+      
       .pagination-container {
         margin-top: auto;
         display: flex;
@@ -234,36 +239,37 @@ function ResetFilter(){
 .list-table {
   width: 100%;
   max-height: 600px;
-  margin-bottom:15px;
+  margin-bottom: 15px;
+  
   :deep(.el-table__row) {
     height: 60px; 
-    font-size: 14px; /* 默认字号 */
-    color: #606266;  /* 默认文字颜色 */
+    font-size: 14px;
+    color: #606266;
   }
 
   :deep(.el-table__body tr:hover > td) {
-    background-color: #f0fdfa !important; 
+    background-color: #f5fffe !important; /* 改为更浅的冷色调 */
   }
+  
   .table-title {
-    color: #303133;     
+    color: var(--text-primary);     
     font-size: 15px;     
     font-weight: 500;    
     cursor: pointer;
     transition: color 0.2s;
 
     &:hover {
-        color: #13c2c2;  /* 鼠标放上去变品牌色 */
+      color: var(--primary-color);
     }
   }
 
   .table-dept {
-    color: #606266;
-
+    color: var(--table-text);
   }
 
   .table-date {
-    color: #909399;         
-    font-family: Menlo, Monaco, Consolas, monospace; /* 稍微带点代码感/数字感的字体 */
+    color: var(--text-secondary);         
+    font-family: Menlo, Monaco, Consolas, monospace;
   }
 }
 </style>

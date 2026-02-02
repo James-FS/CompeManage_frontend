@@ -51,7 +51,7 @@ const myStatusList = [
   },
 ]
 function NavigateToNotice() {
-  router.push('/notice')
+  router.push('/notice/0')
 }
 
 function NavigateToMoreNotice() {
