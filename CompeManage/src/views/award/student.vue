@@ -118,9 +118,9 @@ onMounted(() => {
 
     <el-tabs v-model="activeTab" class="custom-tabs">
       
-      <el-tab-pane label="校内参赛报名" name="registration">
+      <el-tab-pane label="我的报名" name="registration">
         <div v-loading="loading" class="list-wrapper">
-          <el-empty v-if="myList.length === 0" description="暂无校内参赛记录" />
+          <el-empty v-if="myList.length === 0" description="暂无参赛记录" />
           
           <div class="comp-list">
             <div v-for="item in myList" :key="item.id" class="comp-card">
@@ -187,7 +187,7 @@ onMounted(() => {
         </div>
       </el-tab-pane>
 
-      <el-tab-pane label="校外获奖申报" name="award">
+      <el-tab-pane label="我的获奖" name="award">
         <div class="list-wrapper">
            <el-empty description="此模块功能待接入" />
         </div>
