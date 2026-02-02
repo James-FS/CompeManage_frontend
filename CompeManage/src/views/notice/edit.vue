@@ -10,7 +10,7 @@ const router = useRouter()
 const formRef = ref(null)
 const isSubmitting = ref(false)
 const uploadRef = ref(null) // 上传组件引用
-
+const noticeID = ref(null)
 const token = localStorage.getItem('token')
 const uploadHeaders = { Authorization: `Bearer ${token}` }
 
@@ -26,7 +26,7 @@ const form = reactive({
   content: '',
   fileList: [],
   publish_time: '',
-  compID: null,
+  compID: route.query.compID || '',
 })
 
 // 3. 校验规则
@@ -117,7 +117,7 @@ const finalSubmit = async () => {
     // 根据模式调用不同接口
     let res
     if (isEditMode.value) {
-      params.append('id', noticeID) // 编辑模式通常需要传 ID
+      params.append('id', noticeID.value) // 编辑模式通常需要传 ID
       // res = await api.updateNotice(params) // 等你有 update 接口后再开
       ElMessage.warning('暂无编辑接口，仅演示前端逻辑')
       res = { code: 200 } 
@@ -139,7 +139,7 @@ const finalSubmit = async () => {
 
 
 onMounted(() => {
-  const noticeID = route.params.id
+   noticeID.value = route.params.id
   // if (isEditMode.value) {
   //   // === 编辑模式模拟回显 ===
   //   setTimeout(() => {

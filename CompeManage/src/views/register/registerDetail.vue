@@ -173,6 +173,9 @@ async function fetchRegSettings() {
       compInfo.value.limitText = '个人赛'
     }
   }
+  else{
+    ElMessage.error(response.msg || '获取报名配置失败')
+  }
 }
 
 async function submitVerify() {
@@ -204,7 +207,7 @@ async function submitForm(attachmentURL) {
   try {
     let response
     if (pageStatus.value === 2) {
-      // 驳回状态 -> 调用重新提交接口 (PUT)
+      // 驳回状态 -> 调用重新提交接口
       response = await api.resubmitReg(submitData)
     } else {
       response = await api.submitReg(submitData)
@@ -213,8 +216,11 @@ async function submitForm(attachmentURL) {
       ElMessage.success(pageStatus.value === 2 ? '重新提交成功！' : '报名成功！')
       router.back()
     }
+    else{
+      ElMessage.error(response.msg || '报名失败')
+    }
   } catch (error) {
-    ElMessage.error(error.message || '报名失败')
+    ElMessage.error(error.response.data.msg || '报名失败')
   }
 }
 

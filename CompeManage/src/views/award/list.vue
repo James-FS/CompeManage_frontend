@@ -8,7 +8,11 @@ import api from '@/api' // 引入 API
 const router = useRouter()
 const compList = ref([])
 const loading = ref(false)
-
+const queryParams = ref({
+  page: 1,
+  page_size: 10,
+})
+const total = ref(0)
 // 获取 Token 用于上传鉴权
 const token = localStorage.getItem('token')
 const uploadHeaders = { Authorization: `Bearer ${token}` }
@@ -20,6 +24,7 @@ const fetchList = async () => {
     const res = await api.getAwardCompList()
     if (res.code === 200) {
       compList.value = res.data.list || []
+      total.value=res.data.total || 0
     }
   } catch (error) {
     ElMessage.error('加载列表失败: ' + error.message)
@@ -90,7 +95,7 @@ const handleUploadError = (error) => {
 
 // 4. 跳转详情
 const goDetail = (id) => {
-  router.push({ name: 'award-detail', params: { id } })
+  router.push({ name: 'AwardDetail', params: { id } })
 }
 
 onMounted(fetchList)
@@ -170,6 +175,17 @@ onMounted(fetchList)
         </div>
       </div>
     </div>
+    <div class="pagination-container">
+      <el-pagination
+        v-model:current-page="queryParams.page"
+        v-model:page-size="queryParams.page_size"
+        :total="total"
+        layout="total, sizes, prev, pager, next, jumper"
+        :page-sizes="[10, 20, 50]"
+        @current-change="fetchCompList"
+        @size-change="fetchCompList"
+      />
+    </div>
   </div>
 </template>
 
@@ -181,13 +197,14 @@ onMounted(fetchList)
   flex-direction: column;
   background-color: var(--background-color);
   padding: 20px;
-  min-height: 100%;
+  
 }
 
 .comp-list {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  margin-bottom:20px;
 }
 
 .comp-card {
@@ -314,5 +331,9 @@ onMounted(fetchList)
       }
     }
   }
+}
+.pagination-container {
+  display: flex;
+  justify-content: center;
 }
 </style>
