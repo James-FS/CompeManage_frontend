@@ -1,9 +1,10 @@
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Search, Refresh, Check, Close, Edit, Delete, View, Promotion } from '@element-plus/icons-vue';
 import { useUserStore } from '@/stores/user';
+import api from '@/api';
 
 const router = useRouter();
 const userStore = useUserStore();
@@ -25,6 +26,13 @@ const handleReset = () => {
     searchForm.comp_name = '';
     searchForm.college = '';
     searchForm.status = '';
+    
+    // 重置分页
+    current_page.value = 1;
+    page_size.value = 10;
+    
+    // 重新搜索
+    handleSearch();
 };
 
 // 加载状态
@@ -37,77 +45,100 @@ const handleSelectionChange = (val) => {
     multipleSelection.value = val;
 };
 
+// 分页数据
+const current_page = ref(1);
+const page_size = ref(10);
+const total = ref(0);
+
+// 分页处理
+const handleSizeChange = (val) => {
+    page_size.value = val;
+    handleSearch();
+};
+const handleCurrentChange = (val) => {
+    current_page.value = val;
+    handleSearch();
+};
+
 // 表格数据
 // 审核状态字典：0-草稿(未提交), 1-待审核, 2-已通过(入库), 3-已驳回
-// 模拟数据
-const tableData = ref([
-    {
-        id: 1,
-        comp_name: '2026年大学生结构设计竞赛校内选拔赛',
-        comp_level: '校级',
-        college: '土木工程学院',
-        applicant: '张老师', // 申报人
-        apply_time: '2025-01-20',
-        audit_status: 1, // 待审核
-        audit_comment: '',
-        comp_type: '学科竞赛'
-    },
-    {
-        id: 2,
-        comp_name: '第十五届全国大学生电子商务“创新、创意及创业”挑战赛',
-        comp_level: '国家级',
-        college: '经济管理学院',
-        applicant: '王主任',
-        apply_time: '2025-01-21',
-        audit_status: 1, // 待审核
-        audit_comment: '',
-        comp_type: '创新创业竞赛'
-    },
-    {
-        id: 3,
-        comp_name: '2026年ACM程序设计竞赛校队招新赛',
-        comp_level: '校级',
-        college: '计算机学院',
-        applicant: '李教授',
-        apply_time: '2025-01-18',
-        audit_status: 0, // 草稿 (院管理员可见)
-        audit_comment: '',
-        comp_type: '学科竞赛'
-    },
-    {
-        id: 4,
-        comp_name: '已驳回的测试赛事申请',
-        comp_level: '省级',
-        college: '机械学院',
-        applicant: '赵老师',
-        apply_time: '2025-01-10',
-        audit_status: 3, // 已驳回
-        audit_comment: '附件缺失，请补充实施方案',
-        comp_type: '学科竞赛'
-    }
-]);
+const tableData = ref([]);
 
-// 根据角色和 Tab 过滤数据
-const filteredTableData = computed(() => {
-    return tableData.value.filter(item => {
-        // Tab 过滤
-        let tabMatch = false;
+// 搜索和获取列表
+const handleSearch = async () => {
+    loading.value = true;
+    try {
+        let res;
+        
         if (currentRole.value === 'school_admin') {
-            // 校管理员：Pending 看状态 1，History 看状态 2,3
-            if (activeTab.value === 'pending') tabMatch = item.audit_status === 1;
-            else tabMatch = [2, 3].includes(item.audit_status);
+            // 校级管理员：根据 Tab 调用不同接口
+            if (activeTab.value === 'pending') {
+                // 待审核申报
+                res = await api.getPendingDeclares({
+                    page: current_page.value,
+                    page_size: page_size.value,
+                    comp_name: searchForm.comp_name,
+                    comp_level: searchForm.comp_level,
+                    college_id: searchForm.college
+                });
+            } else {
+                // 审核记录（已审核）
+                res = await api.getAuditedDeclares({
+                    page: current_page.value,
+                    page_size: page_size.value,
+                    comp_name: searchForm.comp_name,
+                    comp_level: searchForm.comp_level,
+                    college_id: searchForm.college
+                });
+            }
         } else {
-            // 院管理员：Pending 看状态 0,1,3 (未完成流程的)，History 看状态 2 (已归档)
-            if (activeTab.value === 'pending') tabMatch = [0, 1, 3].includes(item.audit_status);
-            else tabMatch = item.audit_status === 2;
+            // 院级管理员：根据 Tab 调用不同接口
+            if (activeTab.value === 'pending') {
+                // 我的待审核申报
+                res = await api.getMyPendingDeclares({
+                    page: current_page.value,
+                    page_size: page_size.value,
+                    comp_name: searchForm.comp_name,
+                    comp_level: searchForm.comp_level
+                });
+            } else {
+                // 我的已发布申报
+                res = await api.getMyPublishedDeclares({
+                    page: current_page.value,
+                    page_size: page_size.value,
+                    comp_name: searchForm.comp_name,
+                    comp_level: searchForm.comp_level
+                });
+            }
         }
         
-        // 搜索条件过滤 (简单的模糊匹配)
-        const nameMatch = !searchForm.comp_name || item.comp_name.includes(searchForm.comp_name);
-        const collegeMatch = !searchForm.college || item.college === searchForm.college;
+        if (res.code === 200 && res.data) {
+            // 转换 API 数据格式
+            tableData.value = res.data.items.map(item => ({
+                id: item.id,
+                comp_name: item.comp_name,
+                comp_level: item.comp_level,
+                college: item.college_info?.name || '',
+                applicant: item.declarer?.realname || '',
+                apply_time: new Date(item.create_time).toLocaleDateString('zh-CN'),
+                audit_status: item.declare_status,
+                audit_comment: item.audit_remark || '',
+                comp_type: item.comp_type,
+                manager: item.manager?.realname || ''
+            }));
+            total.value = res.data.total || 0;
+        }
+    } catch (error) {
+        ElMessage.error('获取申报列表失败');
+        console.error(error);
+    } finally {
+        loading.value = false;
+    }
+};
 
-        return tabMatch && nameMatch && collegeMatch;
-    });
+// 直接使用后端返回的数据（两种角色都已按 Tab 返回对应数据）
+const filteredTableData = computed(() => {
+    return tableData.value;
 });
 
 
@@ -117,9 +148,22 @@ const handleApprove = (row) => {
         `确定通过 "${row.comp_name}" 吗？通过后将自动加入本年年度赛事目录。`,
         '通过审核',
         { confirmButtonText: '通过并发布', cancelButtonText: '取消', type: 'success' }
-    ).then(() => {
-        row.audit_status = 2; // 已通过
-        ElMessage.success('审核通过，已合并至本年年度赛事目录');
+    ).then(async () => {
+        try {
+            const res = await api.auditDeclare({
+                declare_id: row.id,
+                audit_status: 2,
+                audit_remark: ''
+            });
+            if (res.code === 200) {
+                ElMessage.success('审核通过，已合并至本年年度赛事目录');
+                // 刷新列表
+                await handleSearch();
+            }
+        } catch (error) {
+            ElMessage.error('审核失败');
+            console.error(error);
+        }
     }).catch(() => {});
 };
 
@@ -133,11 +177,25 @@ const handleBatchApprove = () => {
         `确定批量通过这 ${multipleSelection.value.length} 项赛事吗？`,
         '批量审核',
         { confirmButtonText: '确定', cancelButtonText: '取消', type: 'success' }
-    ).then(() => {
-        multipleSelection.value.forEach(row => {
-            row.audit_status = 2;
-        });
-        ElMessage.success('批量操作成功');
+    ).then(async () => {
+        try {
+            // 逐个调用审核接口
+            const promises = multipleSelection.value.map(row =>
+                api.auditDeclare({
+                    declare_id: row.id,
+                    audit_status: 2,
+                    audit_remark: ''
+                })
+            );
+            await Promise.all(promises);
+            ElMessage.success('批量操作成功');
+            // 清空选中并刷新列表
+            multipleSelection.value = [];
+            await handleSearch();
+        } catch (error) {
+            ElMessage.error('批量审核失败');
+            console.error(error);
+        }
     }).catch(() => { });
 };
 
@@ -155,21 +213,35 @@ const openRejectDialog = (row) => {
 };
 
 // 确认驳回
-const confirmReject = () => {
+const confirmReject = async () => {
     if (!rejectReason.value.trim()) {
         ElMessage.warning('请输入驳回原因');
         return;
     }
-    // API调用模拟
-    currentAuditRow.value.audit_status = 3;
-    currentAuditRow.value.audit_comment = rejectReason.value;
-    rejectDialogVisible.value = false;
-    ElMessage.warning('已驳回该申请');
+    try {
+        const res = await api.auditDeclare({
+            declare_id: currentAuditRow.value.id,
+            audit_status: 3,
+            audit_remark: rejectReason.value
+        });
+        if (res.code === 200) {
+            rejectDialogVisible.value = false;
+            ElMessage.warning('已驳回该申请');
+            // 刷新列表
+            await handleSearch();
+        }
+    } catch (error) {
+        ElMessage.error('驳回失败');
+        console.error(error);
+    }
 };
 
 // [院管理员] 编辑
 const handleEdit = (row) => {
-    // TODO: 路由跳转，复用新增/编辑页面，带上 ID
+    router.push({
+        name: 'CompetitionDeclare',
+        query: { id: row.id }
+    });
 };
 
 // [院管理员] 提交审核
@@ -178,26 +250,70 @@ const handleSubmitAudit = (row) => {
         `确定将 "${row.comp_name}" 提交至校级审核吗？提交后不可修改。`,
         '提交确认',
         { confirmButtonText: '确定', cancelButtonText: '取消', type: 'info' }
-    ).then(() => {
-        row.audit_status = 1; // 变更为待审核
-        ElMessage.success('提交成功，请等待校级审核');
+    ).then(async () => {
+        try {
+            const res = await api.submitDeclare(row.id);
+            if (res.code === 200) {
+                ElMessage.success('提交成功，请等待校级审核');
+                // 刷新列表
+                await handleSearch();
+            }
+        } catch (error) {
+            ElMessage.error('提交失败');
+            console.error(error);
+        }
     }).catch(() => {});
 };
 
 // [院管理员] 删除草稿
 const handleDeleteDraft = (row) => {
-    ElMessageBox.confirm('确定删除该条申报记录吗？', '警告', { type: 'warning' })
-        .then(() => {
-            const index = tableData.value.findIndex(d => d.id === row.id);
-            if(index > -1) tableData.value.splice(index, 1);
-            ElMessage.success('删除成功');
-        });
+    ElMessageBox.confirm(
+        `确定删除 "${row.comp_name}" 的申报吗？删除后将无法恢复。`,
+        '删除确认',
+        { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
+    )
+        .then(async () => {
+            try {
+                const res = await api.deleteDeclare(row.id);
+                if (res.code === 200) {
+                    ElMessage.success('申报已删除');
+                    // 刷新列表
+                    await handleSearch();
+                }
+            } catch (error) {
+                ElMessage.error('删除失败');
+                console.error(error);
+            }
+        }).catch(() => {});
 };
 
 // [院管理员] 撤回审核
 const handleRevoke = (row) => {
-    row.audit_status = 0; // 变回草稿
-    ElMessage.success('已撤回，可重新编辑');
+    ElMessageBox.confirm(
+        `确定撤回 "${row.comp_name}" 的申报吗？撤回后可重新编辑。`,
+        '撤回确认',
+        { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
+    ).then(async () => {
+        try {
+            const res = await api.revokeDeclare(row.id);
+            if (res.code === 200) {
+                ElMessage.success('申报已撤回，可重新编辑');
+                // 刷新列表
+                await handleSearch();
+            }
+        } catch (error) {
+            ElMessage.error('撤回失败');
+            console.error(error);
+        }
+    }).catch(() => {});
+};
+
+// 查看申报详情
+const handleViewDetail = (row) => {
+    router.push({
+        name: 'CompetitionDeclare',
+        query: { id: row.id }
+    });
 };
 
 
@@ -221,6 +337,17 @@ const getStatusText = (status) => {
     };
     return map[status] || '未知';
 };
+
+// 生命周期
+onMounted(() => {
+    handleSearch();
+});
+
+// 监听 Tab 切换，重新加载数据
+watch(() => activeTab.value, () => {
+    current_page.value = 1; // 重置分页
+    handleSearch();
+});
 </script>
 
 <template>
@@ -238,7 +365,7 @@ const getStatusText = (status) => {
                     </el-select>
                 </el-form-item>
                 <el-form-item>
-                    <el-button type="primary" :icon="Search">搜索</el-button>
+                    <el-button type="primary" :icon="Search" @click="handleSearch">搜索</el-button>
                     <el-button :icon="Refresh" @click="handleReset">重置</el-button>
                 </el-form-item>
             </el-form>
@@ -267,7 +394,7 @@ const getStatusText = (status) => {
                 </div>
             </div>
 
-            <el-table v-loading="loading" :data="filteredTableData" stripe max-height="400" style="width: 100%"
+            <el-table v-loading="loading" :data="filteredTableData" stripe height="400"  style="width: 100%"
                 @selection-change="handleSelectionChange">
                 <el-table-column type="selection" width="50" align="center" />
                 <el-table-column label="状态" width="80" align="center">
@@ -280,7 +407,8 @@ const getStatusText = (status) => {
                 <el-table-column prop="comp_name" label="赛事名称" min-width="220" show-overflow-tooltip align="center"/>
                 <el-table-column prop="comp_level" label="级别" width="100" align="center" />
                 <el-table-column prop="college" label="申报学院" width="160" align="center" />
-                <el-table-column prop="applicant" label="申报人" width="100" align="center" />
+                <el-table-column v-if="currentRole === 'school_admin'" prop="applicant" label="申报人" width="100" align="center" />
+                <el-table-column prop="manager" label="赛事负责人" width="100" align="center" />
                 <el-table-column prop="apply_time" label="申报时间" width="120" align="center" />
                 <el-table-column label="备注/原因" min-width="150" show-overflow-tooltip align="center">
                     <template #default="{ row }">
@@ -292,7 +420,7 @@ const getStatusText = (status) => {
                 <el-table-column label="操作" width="220" align="center" fixed="right">
                     <template #default="{ row }">
                         <div v-if="currentRole === 'school_admin' && row.audit_status === 1">
-                            <el-button link type="info" :icon="View" >详情</el-button>
+                            <el-button link type="info" :icon="View" @click="handleViewDetail(row)">详情</el-button>
                             <el-button link type="success" :icon="Check" @click="handleApprove(row)">通过</el-button>
                             <el-button link type="danger" :icon="Close" @click="openRejectDialog(row)">驳回</el-button>
                         </div>
@@ -305,15 +433,23 @@ const getStatusText = (status) => {
 
                         <div v-else-if="currentRole === 'college_admin' && row.audit_status === 1">
                             <el-button link type="warning" :icon="Refresh" @click="handleRevoke(row)">撤回</el-button>
-                            <el-button link type="info" :icon="View" >详情</el-button>
+                            <el-button link type="info" :icon="View" @click="handleViewDetail(row)">详情</el-button>
                         </div>
 
                          <div v-else>
-                            <el-button link type="primary" :icon="View">查看详情</el-button>
+                            <el-button link type="primary" :icon="View" @click="handleViewDetail(row)">查看详情</el-button>
                         </div>
                     </template>
                 </el-table-column>
+                <template #empty>
+                    <el-empty description="暂无数据" />
+                </template>
             </el-table>
+            <div class="pagination-wrapper">
+                <el-pagination v-model:current-page="current_page" v-model:page-size="page_size"
+                    :page-sizes="[10, 20, 30, 50]" layout="total, sizes, prev, pager, next, jumper" :total="total"
+                    @size-change="handleSizeChange" @current-change="handleCurrentChange" />
+            </div>
         </div>
 
         <el-dialog v-model="rejectDialogVisible" title="驳回申请" width="400px">
@@ -337,14 +473,21 @@ const getStatusText = (status) => {
 .audit-container {
     padding: 20px;
     min-height: 100%;
+    box-sizing: border-box;
 }
 
-.filter-card,
-.content-card {
+.filter-card{
     background-color: #fff;
     padding: 20px;
     border-radius: 4px;
     box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
+}
+.content-card {
+    background-color: #fff;
+    padding: 20px 20px 10px 20px;
+    border-radius: 4px;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
+    
 }
 
 .filter-card {
@@ -356,7 +499,6 @@ const getStatusText = (status) => {
 }
 
 .toolbar {
-    margin: 10px 0;
     display: flex;
     justify-content: space-between;
 }
@@ -366,6 +508,11 @@ const getStatusText = (status) => {
 }
 .text-gray {
     color: var(--el-text-color-secondary);
+}
+
+.pagination-wrapper {
+    margin-top: 10px;
+    margin-left: 20px;
 }
 
 

@@ -1,9 +1,9 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import {
-    Check, ArrowLeft,
+    Check, ArrowLeft, Close,
     UploadFilled
 } from '@element-plus/icons-vue';
 import { debounce } from '@/utils/debounce';
@@ -14,6 +14,7 @@ const route = useRoute();
 const loading = ref(false);
 const formRef = ref(null);
 const isEditMode = ref(false); // 是否为编辑模式
+const isReadOnly = ref(false); // 是否为只读模式（已通过的申报）
 
 // 表单数据
 const form = reactive({
@@ -44,17 +45,17 @@ const rules = {
 
 // 选项数据
 const levelOptions = [
-    { label: '校级', value: 'school' },
-    { label: '省级', value: 'province' },
-    { label: '国家级', value: 'national' },
-    { label: '国际级', value: 'international' }
+    { label: '校级', value: '校级' },
+    { label: '省级', value: '省级' },
+    { label: '国家级', value: '国家级' },
+    { label: '国际级', value: '国际级' }
 ];
 
 const typeOptions = [
-    { label: '学科竞赛', value: 'discipline' },
-    { label: '创新创业竞赛', value: 'innovation' },
-    { label: '体育竞赛', value: 'sports' },
-    { label: '其他', value: 'other' }
+    { label: '学科竞赛', value: '学科竞赛' },
+    { label: '创新创业竞赛', value: '创新创业竞赛' },
+    { label: '体育竞赛', value: '体育竞赛' },
+    { label: '其他', value: '其他' }
 ];
 
 const collegeList = ref([]);
@@ -110,16 +111,25 @@ const loadDeclareDetail = async (id) => {
             form.comp_type = data.comp_type;
             form.organizer = data.organizer;
             form.undertaker = data.undertaker;
-            form.college = data.college_info?.name || '';
-            form.manager = data.manager?.name || '';
-            form.manager_id = data.manager_id;
-            form.comp_date = data.year;
+            form.college = data.college_id; // 存储学院 ID
+            form.manager = data.manager?.realname || ''; // 显示负责人名称
+            form.manager_id = data.manager_id; // 存储负责人 ID
+            // 将年份转换为 Date 对象给日期选择器使用
+            form.comp_date = new Date(data.year, 0, 1);
             form.description = data.desc;
             form.attachment = data.attachment_path || '';
             
-            // 如果申报已提交或已审核，禁用表单编辑
-            if (data.declare_status !== 0) {
-                formRef.value?.disable?.();
+            // 只有草稿(0)和被驳回(3)的申报才允许编辑，其他状态禁用
+            // 状态：0-草稿, 1-已提交, 2-已通过, 3-已驳回
+            if (data.declare_status !== 0 && data.declare_status !== 3) {
+                isReadOnly.value = true; // 设置为只读模式
+                // 禁用表单的所有字段
+                const inputs = formRef.value?.$el?.querySelectorAll('input, select, textarea');
+                inputs?.forEach(el => {
+                    el.disabled = true;
+                });
+            } else {
+                isReadOnly.value = false; // 允许编辑模式
             }
         }
     } catch (error) {
@@ -129,6 +139,23 @@ const loadDeclareDetail = async (id) => {
 
 const goBack = () => router.back();
 
+// 取消操作（带确认框）
+const handleCancel = () => {
+    ElMessageBox.confirm(
+        '确定要取消吗？未保存的内容将丢失',
+        '取消确认',
+        {
+            confirmButtonText: '确认取消',
+            cancelButtonText: '继续编辑',
+            type: 'warning',
+        }
+    ).then(() => {
+        router.back();
+    }).catch(() => {
+        // 用户点击了"继续编辑"，不做任何操作
+    });
+};
+
 // 保存申报
 const handleSave = async (formEl) => {
     if (!formEl) return;
@@ -137,6 +164,14 @@ const handleSave = async (formEl) => {
         if (valid) {
             loading.value = true;
             try {
+                // 从 Date 对象中提取年份
+                let year = new Date().getFullYear();
+                if (form.comp_date instanceof Date) {
+                    year = form.comp_date.getFullYear();
+                } else if (typeof form.comp_date === 'number') {
+                    year = form.comp_date;
+                }
+
                 const payload = {
                     comp_name: form.comp_name,
                     comp_level: form.comp_level,
@@ -145,7 +180,7 @@ const handleSave = async (formEl) => {
                     undertaker: form.undertaker,
                     college_id: form.college,
                     manager_id: form.manager_id,
-                    year: form.comp_date,
+                    year: year,
                     desc: form.description
                 };
 
@@ -163,6 +198,8 @@ const handleSave = async (formEl) => {
                         message: '保存成功',
                         plain: true,
                     });
+                    // 保存成功后跳转到审核页面
+                    router.push('/competition/audit');
                 }
                 loading.value = false;
             } catch (error) {
@@ -258,12 +295,12 @@ const selectTeacher = (row) => {
                     <el-row :gutter="20">
                         <el-col :span="10">
                             <el-form-item label="赛事名称" prop="comp_name">
-                                <el-input v-model="form.comp_name" placeholder="请输入赛事名称" />
+                                <el-input v-model="form.comp_name" placeholder="请输入赛事名称" :disabled="isReadOnly" />
                             </el-form-item>
                         </el-col>
                         <el-col :span="10">
                             <el-form-item label="赛事等级" prop="comp_level">
-                                <el-select v-model="form.comp_level" placeholder="请选择级别">
+                                <el-select v-model="form.comp_level" placeholder="请选择级别" :disabled="isReadOnly">
                                     <el-option v-for="item in levelOptions" :key="item.value" :label="item.label"
                                         :value="item.value" />
                                 </el-select>
@@ -273,7 +310,7 @@ const selectTeacher = (row) => {
                     <el-row :gutter="20">
                         <el-col :span="10">
                             <el-form-item label="赛事类型" prop="comp_type">
-                                <el-select v-model="form.comp_type" placeholder="请选择类型">
+                                <el-select v-model="form.comp_type" placeholder="请选择类型" :disabled="isReadOnly">
                                     <el-option v-for="item in typeOptions" :key="item.value" :label="item.label"
                                         :value="item.value" />
                                 </el-select>
@@ -281,9 +318,9 @@ const selectTeacher = (row) => {
                         </el-col>
                         <el-col :span="10">
                             <el-form-item label="所属学院" prop="college">
-                                <el-select v-model="form.college" placeholder="请选择所属学院" clearable style="width: 100%">
+                                <el-select v-model="form.college" placeholder="请选择所属学院" clearable style="width: 100%" :disabled="isReadOnly">
                                     <el-option v-for="college in collegeList" :key="college.id" :label="college.name"
-                                        :value="college.name" />
+                                        :value="college.id" />
                                 </el-select>
                             </el-form-item>
                         </el-col>
@@ -291,12 +328,12 @@ const selectTeacher = (row) => {
                     <el-row :gutter="20">
                         <el-col :span="10">
                             <el-form-item label="主办单位" prop="organizer">
-                                <el-input v-model="form.organizer" placeholder="请填写主办单位" />
+                                <el-input v-model="form.organizer" placeholder="请填写主办单位" :disabled="isReadOnly" />
                             </el-form-item>
                         </el-col>
                         <el-col :span="10">
                             <el-form-item label="承办单位" prop="undertaker">
-                                <el-input v-model="form.undertaker" placeholder="请填写承办单位" />
+                                <el-input v-model="form.undertaker" placeholder="请填写承办单位" :disabled="isReadOnly" />
                             </el-form-item>
                         </el-col>
                     </el-row>
@@ -304,20 +341,20 @@ const selectTeacher = (row) => {
                         <el-col :span="10">
                             <el-form-item label="赛事负责人" prop="manager">
                                 <el-input v-model="form.manager" placeholder="请选择赛事负责人" readonly
-                                    class="manager-input" @click="openManagerSelect" />
+                                    class="manager-input" :disabled="isReadOnly" @click="!isReadOnly && openManagerSelect()" />
                             </el-form-item>
                         </el-col>
                         <el-col :span="10">
                             <el-form-item label="所属年份" prop="comp_date">
                                 <el-date-picker v-model="form.comp_date" type="year" placeholder="选择年份"
-                                    style="width: 100%;" />
+                                    style="width: 100%;" :disabled="isReadOnly" />
                             </el-form-item>
                         </el-col>
                     </el-row>
                     <el-row :gutter="20">
                         <el-col :span="20">
                             <el-form-item label="赛事简介" prop="description">
-                                <el-input v-model="form.description" type="textarea" :rows="3"
+                                <el-input v-model="form.description" type="textarea" :rows="3" :disabled="isReadOnly"
                                     placeholder="请简要描述赛事背景、参赛对象及主要内容..." />
                             </el-form-item>
                         </el-col>
@@ -346,13 +383,13 @@ const selectTeacher = (row) => {
                             </el-form-item>
                         </el-col>
                     </el-row>
-                    <el-row :gutter="20">
+                    <el-row :gutter="20" v-if="!isReadOnly">
                         <el-col :span="24">
                             <div class="button-container">
                                 <el-button type="primary" @click="handleSave(formRef)" :loading="loading" :icon="Check">
                                     保存
                                 </el-button>
-                                <el-button @click="goBack" :icon="ArrowLeft">返回</el-button>
+                                <el-button @click="handleCancel" :icon="Close">取消</el-button>
                             </div>
                         </el-col>
                     </el-row>
