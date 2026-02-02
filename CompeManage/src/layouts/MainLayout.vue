@@ -1,14 +1,14 @@
 <script setup>
-import Sidebar from '@/components/Sidebar.vue';
-import Header from '@/components/Header.vue';
-import { computed } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { useUserStore } from '@/stores/user';
-import { House, Trophy, ArrowRight,EditPen, Key } from '@element-plus/icons-vue';
+import Sidebar from '@/components/Sidebar.vue'
+import Header from '@/components/Header.vue'
+import { computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useUserStore } from '@/stores/user'
+import { House, Trophy, ArrowRight, EditPen, Key } from '@element-plus/icons-vue'
 
-const userStore = useUserStore();
-const route = useRoute();
-const router = useRouter();
+const userStore = useUserStore()
+const route = useRoute()
+const router = useRouter()
 
 //定义完整的菜单结构(包含权限)
 const allMenus = [
@@ -25,15 +25,20 @@ const allMenus = [
     // 只要有任意子菜单权限，就显示父菜单
     roles: ['school_admin', 'college_admin', 'competition_manager', 'student'],
     children: [
-      { 
-        path: '/competition/list', 
-        title: '赛事目录', 
-        roles: ['school_admin', 'college_admin', 'competition_manager', 'student'] 
+      {
+        path: '/competition/list',
+        title: '赛事目录',
+        roles: ['school_admin', 'college_admin', 'competition_manager', 'student'],
       },
       {
         path: '/competition/audit',
         title: userStore.role === 'school_admin' ? '赛事审核' : '赛事申报',
-        roles: ['school_admin', 'college_admin']
+        roles: ['school_admin', 'college_admin'],
+      },
+      {
+        path: '/competition/declare',
+        title: '新增申报',
+        roles: ['college_admin'],
       },
     ],
   },
@@ -59,10 +64,10 @@ const allMenus = [
         roles: ['school_admin', 'college_admin', 'competition_manager'],
       },
       {
-        path:'/register/work',
-        title:'作品提交',
+        path: '/register/work',
+        title: '作品提交',
         roles: ['school_admin', 'college_admin', 'competition_manager', 'student'],
-      }
+      },
     ],
   },
   {
@@ -73,15 +78,15 @@ const allMenus = [
     children: [
       {
         path: '/award/list',
-        title:'校赛填报',
+        title: '校赛填报',
         roles: ['school_admin', 'college_admin', 'competition_manager', 'student'],
       },
-      {
-        path:'/award/student',
-        title:'学生申报',
-        roles: ['school_admin', 'college_admin', 'competition_manager','student'],
-      }
-    ]
+    ],
+  },
+  {
+    path: '/award/student',
+    title: '我的竞赛',
+    roles: ['school_admin', 'college_admin', 'competition_manager', 'student'],
   },
   {
     path: '/summary',
@@ -145,46 +150,46 @@ const filterMenus = (menus, userRoles) => {
 // 根据用户角色计算可见菜单
 const dynamicMenuItems = computed(() => {
   // 深拷贝菜单数据（保留icon组件引用），避免直接修改原数组
-  const menusCopy = deepCloneMenus(allMenus);
-  return filterMenus(menusCopy, userStore.role);
-});
+  const menusCopy = deepCloneMenus(allMenus)
+  return filterMenus(menusCopy, userStore.role)
+})
 
 // 面包屑计算
 const breadcrumbs = computed(() => {
   // 1. 获取当前路由匹配到的所有嵌套路径（过滤掉没有 title 的）
-  let matched = route.matched.filter(item => item.meta && item.meta.title);
-  
+  let matched = route.matched.filter((item) => item.meta && item.meta.title)
+
   // 2. 处理父级插入逻辑
-  const currentRouteMeta = route.meta;
+  const currentRouteMeta = route.meta
   if (currentRouteMeta && currentRouteMeta.parent) {
-    const parentRoute = router.getRoutes().find(r => r.name === currentRouteMeta.parent);
+    const parentRoute = router.getRoutes().find((r) => r.name === currentRouteMeta.parent)
     if (parentRoute) {
-      const last = matched.pop();
-      matched.push(parentRoute); // 插入父级路由
-      matched.push(last);        // 放回当前路由
+      const last = matched.pop()
+      matched.push(parentRoute) // 插入父级路由
+      matched.push(last) // 放回当前路由
     }
   }
-  return matched;
-});
+  return matched
+})
 
 // 处理点击跳转
 const handleLink = (item) => {
-  const { redirect, path } = item;
+  const { redirect, path } = item
   // 如果配置了 noRedirect，则不跳转
   if (redirect === 'noRedirect' || item.meta?.redirect === 'noRedirect') {
-    return;
+    return
   }
-  router.push(path);
+  router.push(path)
 }
 
 // 获取面包屑项的显示标题
 const getBreadcrumbTitle = (item) => {
   // 如果是 CompetitionAudit 路由，根据角色显示不同的标题
   if (item.name === 'CompetitionAudit') {
-    return userStore.role === 'school_admin' ? '赛事审核' : '赛事申报';
+    return userStore.role === 'school_admin' ? '赛事审核' : '赛事申报'
   }
   // 默认显示 meta.title
-  return item.meta.title;
+  return item.meta.title
 }
 </script>
 
@@ -201,9 +206,10 @@ const getBreadcrumbTitle = (item) => {
       <div class="breadcrumb-container">
         <el-breadcrumb :separator-icon="ArrowRight">
           <el-breadcrumb-item v-for="(item, index) in breadcrumbs" :key="item.path">
-            <span 
-              v-if="index === breadcrumbs.length - 1 || item.meta.redirect === 'noRedirect'" 
-              class="no-redirect">
+            <span
+              v-if="index === breadcrumbs.length - 1 || item.meta.redirect === 'noRedirect'"
+              class="no-redirect"
+            >
               {{ getBreadcrumbTitle(item) }}
             </span>
             <a v-else @click.prevent="handleLink(item)" class="redirect">
@@ -240,7 +246,6 @@ const getBreadcrumbTitle = (item) => {
     overflow: hidden;
     background-color: var(--background-color);
 
-
     .breadcrumb-container {
       padding: 15px 20px;
       background: #fff;
@@ -257,7 +262,7 @@ const getBreadcrumbTitle = (item) => {
         color: #4f5660;
         cursor: text;
       }
-      
+
       /* 链接样式 */
       .redirect {
         font-weight: 600;
@@ -268,7 +273,6 @@ const getBreadcrumbTitle = (item) => {
         }
       }
     }
-
 
     .content {
       flex: 1;

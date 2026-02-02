@@ -4,7 +4,6 @@ import EmptyLayout from '@/layouts/EmptyLayout.vue'
 import { useUserStore } from '@/stores/user'
 
 const routes = [
-
   {
     path: '/',
     redirect: '/login',
@@ -93,27 +92,50 @@ const routes = [
         path: '/register/detail/:id',
         name: 'detail',
         component: () => import('@/views/register/registerDetail.vue'),
+        meta: {
+          title: '报名详情',
+          roles: ['school_admin', 'college_admin', 'competition_manager', 'student'],
+          parent: 'CompetitionRegister',
+        },
         props: true,
       },
       {
         path: '/register/edit',
         name: 'register-edit',
         component: () => import('@/views/register/edit.vue'),
+        meta: {
+          title: '报名设置',
+          roles: ['school_admin', 'college_admin', 'competition_manager', 'student'],
+        },
       },
       {
         path: '/register/edit/:id',
         name: 'edit-detail',
         component: () => import('@/views/register/editDetail.vue'),
+        meta: {
+          title: '设置详情',
+          roles: ['school_admin', 'college_admin', 'competition_manager', 'student'],
+          parent: 'register-edit',
+        },
         props: true,
       },
       {
         path: '/register/audit',
         name: 'register-audit',
+        meta: {
+          title: '报名审核',
+          roles: ['school_admin', 'college_admin', 'competition_manager'],
+        },
         component: () => import('@/views/register/audit.vue'),
       },
       {
         path: '/register/audit/detail/:id',
         name: 'audit-detail',
+        meta:{
+          title: '审核详情',
+          roles: ['school_admin', 'college_admin', 'competition_manager'],
+          parent: 'register-audit',
+        },
         component: () => import('@/views/register/auditDetail.vue'),
         props: true,
       },
@@ -127,7 +149,7 @@ const routes = [
         name: 'work-detail',
         component: () => import('@/views/register/workDetail.vue'),
         props: true,
-      }
+      },
     ],
   },
   {
@@ -138,15 +160,35 @@ const routes = [
         path: 'list',
         name: 'AwardList',
         component: () => import('@/views/award/list.vue'),
-        meta: { title: '获奖填报', roles: ['school_admin', 'college_admin', 'competition_manager', 'student'] },
+        meta: {
+          title: '获奖填报',
+          roles: ['school_admin', 'college_admin', 'competition_manager', 'student'],
+        },
+      },
+      {
+        path:'detail/:id',
+        name:'AwardDetail',
+        component: () => import('@/views/award/detail.vue'),
       },
       {
         path: 'student',
         name: 'AwardStudent',
-        component: () => import('@/views/award/studentDeclare.vue'),
-        meta: { title: '学生申报', roles: ['school_admin', 'college_admin', 'competition_manager', 'student'] },
+        component: () => import('@/views/award/student.vue'),
+        meta: {
+          title: '我的竞赛', // 侧边栏显示的文字
+          roles: ['school_admin', 'college_admin', 'competition_manager', 'student'], // 通常只有学生看自己的档案，老师有专门的管理页
+        },
       },
-    ]
+      {
+        path: 'student/declare',
+        name: 'AwardStudentDeclare',
+        component: () => import('@/views/award/studentDeclare.vue'),
+        meta: {
+          title: '学生申报',
+          roles: ['school_admin', 'college_admin', 'competition_manager', 'student'],
+        },
+      },
+    ],
   },
   {
     path: '/summary',
@@ -257,7 +299,6 @@ const routes = [
       },
     ],
   },
-
 ]
 
 const router = createRouter({
@@ -319,6 +360,5 @@ router.beforeEach((to, from, next) => {
     // 没有设置roles，默认允许访问
     next()
   }
-}
-)
+})
 export default router

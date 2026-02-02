@@ -66,7 +66,6 @@ const fetchData = () => {
 
 async function fetchNoticeList(){
   try{
-    console.log('compID',route.params.id)
     const res = await api.getNoticeList({compID: route.params.id})
     tableData.value = res.data.list
   }
@@ -76,15 +75,15 @@ async function fetchNoticeList(){
 }
 
 onMounted(() => {
-  // fetchNoticeList()
-  fetchData()
+  fetchNoticeList()
+  // fetchData()
 })
 
 // 4. 操作逻辑
 function handleCreate() {
  router.push({ 
     name: 'NoticeEdit', 
-    params: { id: 0 },
+    params: { id: 0},
     query: { compID: compID } 
   })
 }
@@ -94,7 +93,7 @@ function handleEdit(row) {
   // 路由建议配置为：/competition/notice/edit/:noticeID
   router.push({ 
     name: 'NoticeEdit', 
-    params: { id: row.ID } 
+    params: { id: row.ID }  
   })
 }
 

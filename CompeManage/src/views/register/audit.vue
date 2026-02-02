@@ -2,7 +2,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Search, Refresh, CircleCheck, CircleClose, Message, Iphone } from '@element-plus/icons-vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox,ElPagination } from 'element-plus'
 import api from '@/api/index.js'
 
 let total = ref(100)
@@ -18,8 +18,8 @@ const statusMap = {
 
 // ---  筛选与重置 ---
 const queryForm = reactive({
-  page: '1',
-  pageSize: '10',
+  page: 1,
+  pageSize: 10,
   keyword: '',
   status: '',
   comp_name: '',
@@ -149,7 +149,8 @@ async function fetchRegList() {
     const response = await api.getRegList(queryForm)
     if (response.code === 200) {
       regList.value = response.data
-      total.value = response.data.total
+      total.value = response.total
+      console.log('API Response:', response.data) // 看看控制台里它到底是不是包含 total
     } else {
       ElMessage.error('获取报名列表失败: ' + response.message)
     }
@@ -248,8 +249,7 @@ onMounted(() => {
         :data="regList"
         v-loading="loading"
         stripe
-        style="width: 100%"
-        height="100%"
+        style="width: 100%; flex: 1; overflow: hidden;"
         @selection-change="handleSelectionChange"
       >
         <el-table-column type="selection" width="50" align="center" />
@@ -307,6 +307,7 @@ onMounted(() => {
         />
       </div>
     </div>
+
     <el-dialog 
       v-model="batchRejectDialogVisible" 
       title="批量驳回" 
@@ -336,13 +337,12 @@ onMounted(() => {
 
 <style scoped lang="scss">
 :root {
-  --primary-color: var(--primary-color);
   --primary-dark: #08979c;
 }
 
 .list-container {
+  min-height:calc(100vh - 110px);
   box-sizing: border-box;
-  height: 100%;
   display: flex;
   flex-direction: column;
   background-color: #f0f2f5;
@@ -351,6 +351,7 @@ onMounted(() => {
 }
 
 .filter-card {
+  box-sizing: border-box;
   background: #fff;
   padding: 24px 24px 20px; /* 调整内边距 */
   border-radius: 4px;
@@ -413,6 +414,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  // overflow: hidden;
 }
 
 .comp-text {
@@ -471,6 +473,7 @@ onMounted(() => {
 }
 
 .pagination-bar {
+  flex-shrink: 0;
   margin-top: 16px;
   display: flex;
   justify-content: center;
