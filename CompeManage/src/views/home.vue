@@ -113,8 +113,8 @@ onMounted(() => {
                 <el-icon :size="32"><Trophy /></el-icon>
               </div>
               <div class="text-box">
-                <span class="card-title">国家级竞赛</span>
-                <span class="card-desc">查看教育部白名单赛事</span>
+                <span class="card-title">竞赛目录</span>
+                <span class="card-desc">查看白名单赛事</span>
               </div>
             </div>
             <div class="index-card">

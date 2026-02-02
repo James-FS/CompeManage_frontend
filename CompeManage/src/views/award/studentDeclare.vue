@@ -49,7 +49,7 @@ const onSearchComp = async (query) => {
         compOptions.value = res.data.list.map(item => ({
           value: item.id,
           label: item.comp_name,
-          year: item.year,         // ✨ 关键：获取年份
+          year: item.year,         
           level: item.comp_level,
           organizer: item.organizer
         }))
@@ -149,8 +149,7 @@ const goBack = () => router.back()
           <div class="alert-content">
             <div class="alert-title">申报须知</div>
             <div class="alert-desc">
-              1. 团队获奖请<strong>每位成员单独申报</strong>，请勿仅由队长一人填报。<br>
-              2. 请务必确认赛事年份，避免选错届次（如选成去年的比赛）。
+             请务必确认赛事年份，避免选错届次（如选成去年的比赛）。
             </div>
           </div>
         </div>
@@ -233,7 +232,7 @@ const goBack = () => router.back()
                     style="width: 100%"
                  />
               </el-form-item>
-               <el-form-item label="团队/项目名称 (选填)" prop="teamName">
+               <el-form-item label="团队/项目名称" prop="teamName">
                   <el-input v-model="form.teamName" placeholder="个人参赛可不填" />
                </el-form-item>
             </div>
@@ -249,7 +248,7 @@ const goBack = () => router.back()
           </div>
 
           <div class="form-section">
-            <div class="section-title">03 电子证书存档</div>
+            <div class="section-title">03 证明件上传</div>
             
             <el-form-item prop="certImage">
               <el-upload
@@ -264,8 +263,8 @@ const goBack = () => router.back()
                 <img v-if="form.certImage" :src="form.certImage" class="cert-img" />
                 <div v-else class="upload-area">
                   <el-icon class="upload-icon"><UploadFilled /></el-icon>
-                  <div class="upload-text">点击上传证书扫描件/照片</div>
-                  <div class="upload-tip">支持 JPG/PNG 格式，确保文字清晰可见</div>
+                  <div class="upload-text">点击上传证明材料</div>
+                  <!-- <div class="upload-tip">支持 JPG/PNG 格式，确保文字清晰可见</div> -->
                 </div>
               </el-upload>
             </el-form-item>
