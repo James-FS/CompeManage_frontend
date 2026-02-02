@@ -175,8 +175,8 @@ const routes = [
         name: 'AwardStudent',
         component: () => import('@/views/award/student.vue'),
         meta: {
-          title: '我的竞赛', // 侧边栏显示的文字
-          roles: ['school_admin', 'college_admin', 'competition_manager', 'student'], // 通常只有学生看自己的档案，老师有专门的管理页
+          title: '我的竞赛', 
+          roles: ['school_admin', 'college_admin', 'competition_manager', 'student'], 
         },
       },
       {
@@ -188,6 +188,17 @@ const routes = [
           roles: ['school_admin', 'college_admin', 'competition_manager', 'student'],
         },
       },
+      {
+        path:'audit',
+        name:'AwardAudit',
+        component: () => import('@/views/award/audit.vue'),
+      },
+      {
+        path:'audit/detail/:id',
+        name:'AwardAuditDetail',
+        component: () => import('@/views/award/auditDetail.vue'),
+        props: true,
+      }
     ],
   },
   {

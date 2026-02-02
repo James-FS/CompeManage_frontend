@@ -4,7 +4,7 @@ import Header from '@/components/Header.vue'
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-import { House, Trophy, ArrowRight, EditPen, Key } from '@element-plus/icons-vue'
+import { House, Trophy, ArrowRight, EditPen, Key,Document } from '@element-plus/icons-vue'
 
 const userStore = useUserStore()
 const route = useRoute()
@@ -66,7 +66,7 @@ const allMenus = [
       {
         path: '/register/work',
         title: '作品提交',
-        roles: ['school_admin', 'college_admin', 'competition_manager', 'student'],
+        roles: ['student'],
       },
     ],
   },
@@ -79,14 +79,20 @@ const allMenus = [
       {
         path: '/award/list',
         title: '校赛填报',
-        roles: ['school_admin', 'college_admin', 'competition_manager', 'student'],
+        roles: ['school_admin', 'college_admin', 'competition_manager',],
       },
+      {
+        path: '/award/audit',
+        title: '填报审核',
+        roles: ['school_admin', 'college_admin', 'competition_manager'],
+      }
     ],
   },
   {
     path: '/award/student',
     title: '我的竞赛',
-    roles: ['school_admin', 'college_admin', 'competition_manager', 'student'],
+    roles: ['student'],
+    icon: Document,
   },
   {
     path: '/summary',
