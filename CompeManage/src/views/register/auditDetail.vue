@@ -298,7 +298,7 @@ onMounted(() => {
 .detail-page {
   min-height: 100%;
   background-color: var(--background-color);
-  padding: 16px;
+  padding: var(--container-padding);
   box-sizing: border-box;
 }
 
@@ -306,10 +306,10 @@ onMounted(() => {
   background: #fff;
   padding: 16px 24px;
   border-radius: 8px 8px 0 0;
-  border-bottom: 1px solid #ebeef5;
+  border-bottom: var(--card-border);
 
   .back-btn {
-    font-size: 14px;
+    font-size: var(--primary-font);
     color: #606266;
     margin-bottom: 10px;
     padding-left: 0;
@@ -322,11 +322,11 @@ onMounted(() => {
   .header-main {
     display: flex;
     align-items: center;
-    flex-wrap: wrap; /* 防止屏幕过窄时挤压 */
+    flex-wrap: wrap;
     gap: 12px;
 
     .page-title {
-      font-size: 20px;
+      font-size: var(--primary-title);
       font-weight: 600;
       color: var(--text-primary);
       margin: 0;
@@ -339,18 +339,18 @@ onMounted(() => {
       height: 32px;
       :deep(.el-tag__content) {
         display: flex;
-        align-items: center; /* 垂直绝对居中 */
-        height: 100%; /* 撑满高度 */
+        align-items: center;
+        height: 100%;
       }
 
       .tag-content {
         display: flex;
-        align-items: center; /* 图标和文字对齐 */
-        gap: 6px; /* 图标文字间距 */
+        align-items: center;
+        gap: 6px;
         font-size: 14px;
 
         .el-icon {
-          font-size: 30px; /* 图标稍微大一点点 */
+          font-size: 30px;
         }
       }
     }
@@ -359,7 +359,7 @@ onMounted(() => {
 
 .content-wrapper {
   background: #fff;
-  padding: 24px 30px 40px;
+  padding: var(--item-padding) 30px 40px;
   border-radius: 0 0 8px 8px;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
 
@@ -382,15 +382,14 @@ onMounted(() => {
       color: var(--text-primary);
     }
 
-    /* 负责人信息网格 */
     .leader-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 20px;
       background: #fcfcfc;
       padding: 20px;
-      border: 1px solid #ebeef5;
-      border-radius: 4px;
+      border: var(--card-border);
+      border-radius: var(--card-radius);
 
       .grid-item {
         display: flex;
@@ -418,11 +417,10 @@ onMounted(() => {
       }
     }
 
-    /* 附件盒子 */
     .attachment-box {
       display: flex;
       align-items: center;
-      border: 1px solid #ebeef5;
+      border: var(--card-border);
       border-radius: 6px;
       padding: 16px 20px;
       cursor: pointer;
@@ -431,7 +429,7 @@ onMounted(() => {
 
       &:hover {
         border-color: var(--primary-color);
-        background-color: #f0fdfa; /* 浅色背景保持硬编码或定义透明度变量 */
+        background-color: #f0fdfa;
 
         .file-icon-area {
           color: var(--primary-color);
@@ -473,12 +471,11 @@ onMounted(() => {
       padding: 30px;
       background: #fafafa;
       color: var(--text-secondary);
-      border-radius: 4px;
+      border-radius: var(--card-radius);
       font-style: italic;
     }
   }
 
-  /* 底部操作区 */
   .action-footer {
     margin-top: 40px;
 
@@ -499,45 +496,24 @@ onMounted(() => {
 .attachment-list {
   display: flex;
   flex-direction: column;
-  gap: 12px; /* 多个附件之间的间距 */
-}
-
-.attachment-box {
-  /* ... 保持你原有的 .attachment-box 样式不变 ... */
-  display: flex;
-  align-items: center;
-  border: 1px solid #ebeef5;
-  border-radius: 6px;
-  padding: 16px 20px;
-  cursor: pointer;
-  transition: all 0.3s;
-  max-width: 600px;
-}
-/* 驳回原因样式 - 平和版 */
-.reject-box {
-  /* 复用附件盒子的边框和圆角 */
-  border: 1px solid #ebeef5;
-  border-radius: 6px;
-  background-color: #fff; /* 纯白背景，或者用 #fcfcfc 微灰 */
-  padding: 16px 20px;
-  
-  /* 布局 */
-  display: flex;
-  align-items: flex-start; /* 文字多的时候图标置顶 */
   gap: 12px;
 }
 
-.reject-icon {
-  font-size: 18px;
-  color: var(--text-secondary); 
-  margin-top: 3px; 
+.reject-box {
+  border: var(--card-border);
+  border-radius: 6px;
+  background-color: #fff;
+  padding: 16px 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
 }
 
 .reject-content {
   font-size: 14px;
-  color: #606266; 
+  color: #606266;
   line-height: 1.6;
-  white-space: pre-wrap; /* 保留换行符 */
-  word-break: break-all; /* 防止长英文不换行 */
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 </style>

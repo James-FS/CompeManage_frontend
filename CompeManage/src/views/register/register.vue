@@ -212,14 +212,14 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   background-color: var(--background-color);
-  padding: 20px;
+  padding: var(--container-padding);
 }
 .filter-panel {
   box-sizing: border-box;
   background-color: #fff;
-  padding: 24px;
-  border-radius: 4px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  padding: var(--item-padding);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
   .filter-divider {
     margin: 16px 0;
   }
@@ -257,12 +257,12 @@ onMounted(() => {
         white-space: nowrap;
 
         &:hover {
-          color: #13c2c2;
+          color: var(--primary-color);
           background-color: #f0fdfa;
         }
 
         &.active {
-          background-color: #13c2c2;
+          background-color: var(--primary-color);
           color: #fff;
           font-weight: 500;
         }
@@ -281,7 +281,7 @@ onMounted(() => {
 
   .comp-item {
     background-color: #fff;
-    padding: 24px;
+    padding: var(--item-padding);
     border-radius: 8px;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05); /* 默认微弱阴影 */
     border: 1px solid transparent;
@@ -294,7 +294,7 @@ onMounted(() => {
       transform: translateY(-2px);
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
       .comp-name {
-        color: #13c2c2;
+        color: var(--primary-color);
       }
     }
     .comp-info {
@@ -367,7 +367,7 @@ onMounted(() => {
           color: #909399;
           font-weight: normal;
           &:hover {
-            color: #13c2c2;
+            color: var(--primary-color);
           }
           .el-icon {
             margin-right: 4px;
@@ -383,12 +383,12 @@ onMounted(() => {
           font-weight: 600;
           border: none;
           &.el-button--primary {
-            background: linear-gradient(135deg, #13c2c2 0%, #36cfc9 100%);
-            box-shadow: 0 4px 12px rgba(19, 194, 194, 0.3);
+            background: linear-gradient(135deg, var(--primary-color) 0%, #36cfc9 100%);
+            box-shadow: var(--primary-btn-shadow);
             transition: all 0.3s;
             &:hover {
               transform: translateY(-1px);
-              box-shadow: 0 6px 16px rgba(19, 194, 194, 0.4);
+              box-shadow: var(--primary-btn-hover-shadow);
             }
           }
         }

@@ -200,12 +200,12 @@ onMounted(() => {
 </template>
 
 <style lang="scss" scoped>
-/* 样式保持不变 */
 .rbac-container {
   display: flex;
   gap: 16px;
-  height: calc(100vh - 60px);
+  height: calc(100vh - 110px);
 }
+
 .role-panel {
   width: 300px;
   height: 100%; 
@@ -213,6 +213,7 @@ onMounted(() => {
   flex-direction: column;
   border: none;
 }
+
 :deep(.el-card__body) {
   flex: 1; 
   overflow: hidden; 
@@ -220,10 +221,12 @@ onMounted(() => {
   display: flex; 
   flex-direction: column;
 }
+
 .panel-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+
   .title-group {
     display: flex;
     align-items: center;
@@ -232,11 +235,17 @@ onMounted(() => {
     color: var(--text-primary);
   }
 }
+
 .scroll-content {
   flex: 1; 
   overflow-y: auto; 
+  padding: var(--container-padding);
+}
+
+.role-list {
   padding: 15px;
 }
+
 .role-item {
   display: flex;
   justify-content: space-between;
@@ -248,49 +257,59 @@ onMounted(() => {
   transition: all 0.2s;
   border: 1px solid transparent; 
 }
+
 .role-item:hover {
-  background-color: #f5f7fa;
+  background-color: var(--background-color);
 }
+
 .role-item.is-active {
   background-color: #ecf5ff; 
   border-color: #d9ecff;
 }
+
 .role-item.is-active .role-name {
   color: #409eff; 
   font-weight: bold;
 }
+
 .role-info {
   display: flex;
   align-items: center;
   gap: 10px;
 }
+
 .permission-panel {
   flex: 1; 
   height: 100%; 
   display: flex;
   flex-direction: column;
   border: none;
+
   .scroll-content {
     flex: 1;
     overflow-y: auto; 
     padding: 20px;
   }
 }
+
 .custom-tree-node {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: var(--primary-font);
+
   .node-icon {
-    color: #909399; 
+    color: var(--text-secondary); 
   }
 }
+
 .current-role-tip {
   font-size: 13px;
-  color: #909399;
+  color: var(--text-secondary);
   font-weight: normal;
   margin-left: 10px;
 }
+
 .highlight {
   color: #409eff;
   font-weight: bold;

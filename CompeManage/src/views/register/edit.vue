@@ -141,15 +141,15 @@ onMounted(() => {
 </template>
 
 <style lang="scss" scoped>
-/* 样式保持不变 */
 .page-container {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   background-color: var(--background-color);
-  padding: 20px;
+  padding: var(--container-padding);
   min-height: 100vh;
 }
+
 .page-header {
   display: flex;
   justify-content: space-between;
@@ -162,6 +162,7 @@ onMounted(() => {
     font-weight: 600;
   }
 }
+
 .comp-list {
   display: flex;
   flex-direction: column;
@@ -170,7 +171,7 @@ onMounted(() => {
   
   .comp-item {
     background-color: #fff;
-    padding: 24px;
+    padding: var(--item-padding);
     border-radius: 8px;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
     border: 1px solid transparent;
@@ -184,7 +185,7 @@ onMounted(() => {
       transform: translateY(-2px);
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
       .comp-name {
-        color: #13c2c2;
+        color: var(--primary-color);
       }
     }
 
@@ -258,7 +259,7 @@ onMounted(() => {
           color: #909399;
           font-weight: normal;
           &:hover {
-            color: #13c2c2;
+            color: var(--primary-color);
           }
           .el-icon {
             margin-right: 4px;
@@ -272,12 +273,12 @@ onMounted(() => {
           height: 38px;
           font-weight: 600;
           border: none;
-          background: linear-gradient(135deg, #13c2c2 0%, #36cfc9 100%);
-          box-shadow: 0 4px 12px rgba(19, 194, 194, 0.3);
+          background: linear-gradient(135deg, var(--primary-color) 0%, #36cfc9 100%);
+          box-shadow: var(--primary-btn-shadow);
           transition: all 0.3s;
           &:hover {
                transform: translateY(-1px);
-               box-shadow: 0 6px 16px rgba(19, 194, 194, 0.4);
+               box-shadow: var(--primary-btn-hover-shadow);
                opacity: 0.9;
           }
         }
@@ -285,7 +286,8 @@ onMounted(() => {
     }
   }
 }
-.pagination-container{
+
+.pagination-container {
     display: flex;
     justify-content: center;
 }
