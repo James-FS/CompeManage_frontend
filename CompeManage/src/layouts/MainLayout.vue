@@ -84,6 +84,32 @@ const allMenus = [
     ]
   },
   {
+    path: '/summary',
+    title: '赛事总结',
+    roles: ['school_admin', 'college_admin', 'competition_manager'],
+    icon: Trophy,
+    children: [
+      {
+        path: '/summary/summary-list',
+        title:'赛事总结',
+        roles: ['school_admin', 'college_admin', 'competition_manager'],
+      }
+    ]
+  },
+  {
+    path: '/statistics',
+    title: '数据统计',
+    icon: Trophy,
+    roles: ['school_admin', 'college_admin', 'competition_manager'],
+    children: [
+      {
+        path: '/statistics/dashboard',
+        title: '数据看板',
+        roles: ['school_admin', 'college_admin', 'competition_manager'],
+      }
+    ]
+  },
+  {
     path: '/permission',
     title: '权限管理',
     icon: Key,

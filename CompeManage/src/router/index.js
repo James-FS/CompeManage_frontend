@@ -40,46 +40,47 @@ const routes = [
       },
       {
         path: 'add',
-                name: 'CompetitionAdd',
-                component: () => import('@/views/competition/add.vue'),
+        name: 'CompetitionAdd',
+        component: () => import('@/views/competition/add.vue'),
 
-                meta: { 
-                    title: '新增赛事',
-                    roles: ['school_admin'], 
-                    parent: 'CompetitionList',
-                    activeMenu: '/competition/list' 
-                }
-            },
-            {
-                path: 'audit',
-                name: 'CompetitionAudit',
-                component: () => import('@/views/competition/audit.vue'),
-                meta: {
-                    title: '赛事审核', roles: ['school_admin', 'college_admin'], isDynamic: true,
-                    // 分别定义校级和院级的标题
-                    schoolTitle: '赛事审核',
-                    collegeTitle: '赛事申报'
-                }
-            },
-            {
-                path: 'declare',
-                name: 'CompetitionDeclare',
-                component: () => import('@/views/competition/declare.vue'),
-                meta: { 
-                    title: '新增申报',
-                    roles: ['college_admin','school_admin'],
-                    parent: 'CompetitionAudit',
-                    activeMenu: '/competition/audit'
-                }
-            },
-      
+        meta: {
+          title: '新增赛事',
+          roles: ['school_admin'],
+          parent: 'CompetitionList',
+          activeMenu: '/competition/list'
+        }
+      },
+      {
+        path: 'audit',
+        name: 'CompetitionAudit',
+        component: () => import('@/views/competition/audit.vue'),
+        meta: {
+          title: '赛事审核', roles: ['school_admin', 'college_admin'], isDynamic: true,
+          // 分别定义校级和院级的标题
+          schoolTitle: '赛事审核',
+          collegeTitle: '赛事申报'
+        }
+      },
+      {
+        path: 'declare',
+        name: 'CompetitionDeclare',
+        component: () => import('@/views/competition/declare.vue'),
+        meta: {
+          title: '新增申报',
+          roles: ['college_admin', 'school_admin'],
+          parent: 'CompetitionAudit',
+          activeMenu: '/competition/audit'
+        }
+      },
+
+
     ],
   },
   {
     path: '/register',
     component: MainLayout,
     children: [
-        {
+      {
         path: '/register',
         name: 'CompetitionRegister',
         component: () => import('@/views/register/register.vue'),
@@ -111,19 +112,19 @@ const routes = [
         component: () => import('@/views/register/audit.vue'),
       },
       {
-        path:'/register/audit/detail/:id',
-        name:'audit-detail',
+        path: '/register/audit/detail/:id',
+        name: 'audit-detail',
         component: () => import('@/views/register/auditDetail.vue'),
         props: true,
       },
       {
-        path:'/register/work',
-        name:'register-work',
+        path: '/register/work',
+        name: 'register-work',
         component: () => import('@/views/register/work.vue'),
       },
       {
-        path:'/register/work/detail/:id',
-        name:'work-detail',
+        path: '/register/work/detail/:id',
+        name: 'work-detail',
         component: () => import('@/views/register/workDetail.vue'),
         props: true,
       }
@@ -131,21 +132,64 @@ const routes = [
   },
   {
     path: '/award',
-    component:MainLayout,
-    children:[
+    component: MainLayout,
+    children: [
       {
-        path:'list',
-        name:'AwardList',
+        path: 'list',
+        name: 'AwardList',
         component: () => import('@/views/award/list.vue'),
-        meta:{ title:'获奖填报', roles:['school_admin','college_admin','competition_manager','student']},
+        meta: { title: '获奖填报', roles: ['school_admin', 'college_admin', 'competition_manager', 'student'] },
       },
       {
-        path:'student',
-        name:'AwardStudent',
+        path: 'student',
+        name: 'AwardStudent',
         component: () => import('@/views/award/studentDeclare.vue'),
-        meta:{ title:'学生申报', roles:['school_admin','college_admin','competition_manager','student']},
+        meta: { title: '学生申报', roles: ['school_admin', 'college_admin', 'competition_manager', 'student'] },
       },
     ]
+  },
+  {
+    path: '/summary',
+    component: MainLayout,
+    children: [
+      {
+        path: 'summary-list',
+        name: 'SummaryList',
+        component: () => import('@/views/summary/summaryList.vue'),
+        meta: {
+          title: '赛事总结', // 这会在侧边栏显示
+          roles: ['school_admin', 'college_admin', 'competition_manager']
+        }
+      },
+      {
+        path: 'summary/edit/:id',
+        name: 'SummaryEdit',
+        component: () => import('@/views/summary/summaryAdd.vue'), // 复用之前的填报组件
+        props: true,
+        meta: {
+          title: '填写总结',
+          roles: ['school_admin', 'college_admin', 'competition_manager'],
+          parent: 'SummaryList', // 面包屑导航用
+          activeMenu: '/summary', // 保持侧边栏高亮
+          hidden: true // 不在侧边栏显示，只作为详情页
+        }
+      }
+    ]
+  },
+  {
+    path: '/statistics',
+    component: MainLayout,
+    children: [
+      {
+        path: 'dashboard',
+        name: 'StatisticsDashboard',
+        component: () => import('@/views/statistics/dashboard.vue'),
+        meta: {
+          title: '数据汇总',
+          roles: ['school_admin', 'college_admin'], // 仅限管理员查看
+        },
+      },
+    ],
   },
   {
     path: '/permission',
@@ -225,56 +269,56 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   const userStore = useUserStore()
 
-    // 首先恢复store状态(页面刷新时从localStorage恢复)
-    if (!userStore.token) {
-        userStore.restoreState()
-    }
+  // 首先恢复store状态(页面刷新时从localStorage恢复)
+  if (!userStore.token) {
+    userStore.restoreState()
+  }
 
-    // 设置页面标题
-    let pageTitle = '学科竞赛管理系统'
-    if (to.meta.isDynamic && userStore.role === 'school_admin') {
-        pageTitle = to.meta.schoolTitle || to.meta.title || pageTitle
-    } else if (userStore.role === 'college_admin') {
-        pageTitle = to.meta.collegeTitle || to.meta.title || pageTitle
+  // 设置页面标题
+  let pageTitle = '学科竞赛管理系统'
+  if (to.meta.isDynamic && userStore.role === 'school_admin') {
+    pageTitle = to.meta.schoolTitle || to.meta.title || pageTitle
+  } else if (userStore.role === 'college_admin') {
+    pageTitle = to.meta.collegeTitle || to.meta.title || pageTitle
+  } else {
+    pageTitle = to.meta.title || pageTitle
+  }
+  document.title = pageTitle
+
+  // 白名单页面放行
+  if (to.path === '/login') {
+    next()
+    return
+  }
+
+  // 检查是否登录
+  const token = localStorage.getItem('token')
+  if (!token) {
+    next('/login')
+    return
+  }
+
+  // 确保角色已经被设置
+  if (!userStore.role) {
+    console.warn('请重新登录')
+    next('/login')
+    return
+  }
+
+  // 检查角色权限
+  const allowedRoles = to.meta.roles
+  if (allowedRoles) {
+    if (allowedRoles.includes(userStore.role)) {
+      next()
     } else {
-        pageTitle = to.meta.title || pageTitle
+      // 无权限，跳转首页或显示错误页面
+      alert('您无权访问该页面')
+      next(from.path)
     }
-    document.title = pageTitle
-
-    // 白名单页面放行
-    if (to.path === '/login') {
-        next()
-        return
-    }
-
-    // 检查是否登录
-    const token = localStorage.getItem('token')
-    if (!token) {
-        next('/login')
-        return
-    }
-
-    // 确保角色已经被设置
-    if (!userStore.role) {
-        console.warn('请重新登录')
-        next('/login')
-        return
-    }
-
-    // 检查角色权限
-    const allowedRoles = to.meta.roles
-    if (allowedRoles) {
-        if (allowedRoles.includes(userStore.role)) {
-            next()
-        } else {
-            // 无权限，跳转首页或显示错误页面
-            alert('您无权访问该页面')
-            next(from.path)
-        }
-    } else {
-        // 没有设置roles，默认允许访问
-        next()
-    }
-  } 
+  } else {
+    // 没有设置roles，默认允许访问
+    next()
+  }
+}
 )
 export default router
