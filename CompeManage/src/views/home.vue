@@ -1,10 +1,13 @@
 <script setup>
-import { ElCard, ElTag, ElIcon } from 'element-plus'
+import { ref,onMounted } from 'vue'
+import api from '@/api'
+import { ElCard, ElTag, ElIcon, ElMessage } from 'element-plus'
 import { Trophy, DataAnalysis, ArrowRight, CircleCheck, Clock, Edit } from '@element-plus/icons-vue'
 import 'element-plus/dist/index.css'
 import { useRouter } from 'vue-router'
 const router = useRouter()
-let noticeList = [
+const loading=ref(false)
+const noticeList = ref([
   {
     date: '2026.1.16',
     title: '关于开展2026年大学生创新创业大赛的通知',
@@ -14,7 +17,7 @@ let noticeList = [
     date: '2026.2.10',
     title: '关于举办2026年全国大学生数学竞赛的通知',
   },
-]
+])
 const myStatusList = [
   {
     id: 1,
@@ -48,12 +51,30 @@ const myStatusList = [
   },
 ]
 function NavigateToNotice() {
-  router.push('/notice')
+  router.push('/notice/0')
 }
 
 function NavigateToMoreNotice() {
   router.push('/notice/list')
 }
+
+async function fetchNotices() {
+  loading.value = true
+  try {
+    const response = await api.getNoticeList({ page: 1, pageSize: 5 })
+    if (response && response.data) {
+      noticeList.value = response.data.notices
+    }
+  } catch (error) {
+   ElMessage.error('Failed to fetch notices:', error)
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  fetchNotices()
+})
 </script>
 
 <template>
@@ -92,8 +113,8 @@ function NavigateToMoreNotice() {
                 <el-icon :size="32"><Trophy /></el-icon>
               </div>
               <div class="text-box">
-                <span class="card-title">国家级竞赛</span>
-                <span class="card-desc">查看教育部白名单赛事</span>
+                <span class="card-title">竞赛目录</span>
+                <span class="card-desc">查看白名单赛事</span>
               </div>
             </div>
             <div class="index-card">

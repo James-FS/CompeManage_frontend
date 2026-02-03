@@ -10,10 +10,10 @@ export const useUserStore = defineStore('user', () => {
 
     // 模拟后端数据库中的用户表（用于开发测试）
     const mockUsers = [
-        { username: 'admin', password: '123', role: 'school_admin', name: '校级管理员' },
-        { username: 'yuan', password: '123', role: 'college_admin', name: '计算机学院管理员' },
-        { username: 'teacher', password: '123', role: 'competition_manager', name: '张老师(赛事负责人)' },
-        { username: 'student', password: '123', role: 'student', name: '李同学' },
+        { username: 'T2023001', password: '123', role: 'school_admin', name: '校级管理员' },
+        { username: 'T2023002', password: '123', role: 'college_admin', name: '计算机学院管理员' },
+        { username: 'T2023003', password: '123', role: 'competition_manager', name: '张老师(赛事负责人)' },
+        { username: 'S2024001', password: '123', role: 'student', name: '李同学' },
         { username: 'expert', password: '123', role: 'expert', name: '王专家' }
     ]
 
