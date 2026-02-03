@@ -416,7 +416,7 @@ onMounted(() => {
         :data="awardList"
         v-loading="loading"
         stripe
-        style="width: 100%; flex: 1; overflow: hidden"
+        style="width: 100%; flex: 1; overflow: auto"
         @selection-change="handleSelectionChange"
       >
         <el-table-column type="selection" width="50" align="center" />
@@ -603,6 +603,8 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  max-height: calc(55vh - 10px);
+  margin-top:10px;
 }
 
 .student-cell {
