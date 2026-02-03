@@ -1,7 +1,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { Edit, View, Search, Refresh, Download } from '@element-plus/icons-vue';
+import { Edit, View, Search, Refresh, Download, ArrowDown } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 // import api from '@/api';
 
@@ -15,13 +15,28 @@ const searchForm = reactive({
     organizer: '',
     manager: '',
     summary_status: '', // '' 全部, 0 未总结, 1 已归档
-    end_time: ''
+    end_time: '',
+    year: '' // 年份字段
 });
 
 // 分页数据
 const current_page = ref(1);
 const page_size = ref(10);
 const total = ref(100);
+
+// 年份相关
+const currentYear = ref(new Date().getFullYear().toString()); // 当前选中的年份
+const yearList = ref(['2026', '2025', '2024', '2023']); // 可选年份列表
+
+// 年份切换
+const handleYearSwitch = (year) => {
+    currentYear.value = year;
+    searchForm.year = year;
+    // 重置分页到第一页
+    current_page.value = 1;
+    // 重新加载数据
+    handleSearch();
+};
 
 // 重置搜索表单
 const handleReset = () => {
@@ -47,9 +62,9 @@ const loadData = async () => {
     // 模拟数据演示
     setTimeout(() => {
         const allData = [
-            { id: 101, comp_name: '2025年大学生程序设计竞赛', end_time: '2025-06-20', organizer: '计算机学院', manager: '张三', summary_status: 0 },
-            { id: 102, comp_name: '2024年英语演讲比赛', end_time: '2024-12-10', organizer: '外国语学院', manager: '李四', summary_status: 1 },
-            { id: 103, comp_name: '2024年大学生挑战杯', end_time: '2024-11-30', organizer: '学生处', manager: '王五', summary_status: 0 }
+            { id: 101, comp_name: '2025年大学生程序设计竞赛', end_time: '2025-06-20', organizer: '计算机学院', undertaker: '计算机学院团委', college_info: { name: '计算机学院' }, manager: '张三', summary_status: 0 },
+            { id: 102, comp_name: '2024年英语演讲比赛', end_time: '2024-12-10', organizer: '外国语学院', undertaker: '外国语学院学生会', college_info: { name: '外国语学院' }, manager: '李四', summary_status: 1 },
+            { id: 103, comp_name: '2024年大学生挑战杯', end_time: '2024-11-30', organizer: '学生处', undertaker: '学生处竞赛部', college_info: { name: '学生处' }, manager: '王五', summary_status: 0 }
         ];
 
         // 根据筛选条件过滤数据
@@ -98,7 +113,21 @@ const handleEdit = (row) => {
     router.push({
         name: 'SummaryEdit',
         params: { id: row.id },
-        query: { name: row.comp_name }
+        query: { 
+            name: row.comp_name,
+            status: row.summary_status // 传递状态: 0未总结, 1已归档
+        }
+    });
+};
+
+const handleView = (row) => {
+    router.push({
+        name: 'SummaryView',
+        params: { id: row.id },
+        query: { 
+            name: row.comp_name,
+            status: row.summary_status // 传递状态: 0未总结, 1已归档
+        }
     });
 };
 
@@ -152,11 +181,36 @@ onMounted(() => {
                 <div class="left-actions">
                     <el-button type="info" plain :icon="Download" @click="handleExport">导出数据</el-button>
                 </div>
+                <div class="right-info">
+                    <el-dropdown trigger="click" @command="handleYearSwitch">
+                        <div class="year-switch-tag">
+                            <span class="tag-text">当前：{{ currentYear }}年度赛事</span>
+                            <el-icon class="tag-icon">
+                                <ArrowDown />
+                            </el-icon>
+                        </div>
+
+                        <template #dropdown>
+                            <el-dropdown-menu>
+                                <el-dropdown-item v-for="year in yearList" :key="year" :command="year"
+                                    :class="{ 'is-active': currentYear === year }">
+                                    {{ year }}年度
+                                </el-dropdown-item>
+                            </el-dropdown-menu>
+                        </template>
+                    </el-dropdown>
+                </div>
             </div>
 
-            <el-table v-loading="loading" :data="tableData" stripe style="width: 100%">
+            <el-table v-loading="loading" :data="tableData" stripe style="width: 100%" height="400">
                 <el-table-column prop="comp_name" label="赛事名称" min-width="200" show-overflow-tooltip align="center" />
-                <el-table-column prop="organizer" label="主办单位" width="180" show-overflow-tooltip align="center" />
+                <el-table-column prop="organizer" label="主办单位" min-width="150" show-overflow-tooltip align="center" />
+                <el-table-column prop="undertaker" label="承办单位" min-width="150" show-overflow-tooltip align="center" />
+                <el-table-column label="所属学院" min-width="150" align="center" show-overflow-tooltip>
+                    <template #default="scope">
+                        {{ scope.row.college_info?.name || '-' }}
+                    </template>
+                </el-table-column>
                 <el-table-column prop="manager" label="赛事负责人" width="150" align="center" />
                 <el-table-column prop="end_time" label="结束时间" width="150" sortable align="center" />
 
@@ -173,7 +227,7 @@ onMounted(() => {
                             @click="handleEdit(scope.row)">
                             去总结
                         </el-button>
-                        <el-button v-else type="primary" link :icon="View" @click="handleEdit(scope.row)">
+                        <el-button v-else type="primary" link :icon="View" @click="handleView(scope.row)">
                             查看详情
                         </el-button>
                     </template>
@@ -247,6 +301,37 @@ onMounted(() => {
         .right-info {
             display: flex;
             align-items: center;
+
+            .year-switch-tag {
+                cursor: pointer;
+                font-size: 13px;
+                display: inline-flex;
+                align-items: center;
+                gap: 5px;
+                height: 32px;
+                padding: 0 10px;
+                border: 1px solid var(--el-border-color-light);
+                border-radius: 4px;
+                white-space: nowrap;
+                transition: all 0.3s;
+
+                .tag-text {
+                    flex: 0 0 auto;
+                    white-space: nowrap;
+                }
+
+                .tag-icon {
+                    flex: 0 0 auto;
+                    font-size: 14px;
+                    margin: 0;
+                }
+
+                &:hover {
+                    color: var(--el-color-primary);
+                    border-color: var(--el-color-primary-light-5);
+                    background-color: var(--el-color-primary-light-9);
+                }
+            }
         }
     }
 }
