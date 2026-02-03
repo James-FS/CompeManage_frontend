@@ -397,8 +397,13 @@ onMounted(() => {
           已选 <span class="num">{{ selectedRows.length }}</span> 项
         </div>
       </div>
-      <el-table :data="awardList" v-loading="loading" stripe style="width: 100%; flex: 1; overflow: hidden"
-        @selection-change="handleSelectionChange">
+      <el-table
+        :data="awardList"
+        v-loading="loading"
+        stripe
+        style="width: 100%; flex: 1; overflow: auto"
+        @selection-change="handleSelectionChange"
+      >
         <el-table-column type="selection" width="50" align="center" />
 
         <el-table-column label="学生信息" min-width="180" show-overflow-tooltip>
@@ -502,7 +507,7 @@ onMounted(() => {
 .filter-card {
   box-sizing: border-box;
   background: #fff;
-  padding: 20px 20px 10px 20px; 
+  padding: 20px 20px 10px 20px;
   border-radius: 4px;
   box-shadow: var(--card-shadow);
 
@@ -543,6 +548,8 @@ onMounted(() => {
   flex-direction: column;
   overflow: hidden;
   box-shadow: var(--card-shadow);
+  max-height: calc(60vh - 5px);
+  margin-top:10px;
 }
 
 .student-cell {

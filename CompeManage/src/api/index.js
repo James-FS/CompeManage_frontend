@@ -10,13 +10,13 @@ export const api = {
 
   // ==================== 权限相关 ====================
   // 获取所有权限列表
-  getPermissionList: () => get('/api/permission/list'),
+  getPermissionList: () => get('/api/perm/permission/list'),
 
   // ==================== 角色相关 ====================
   // 获取所有角色列表
-  getRoleList: () => get('/api/role/list'),
+  getRoleList: () => get('/api/perm/role/list'),
   // 分配权限给角色
-  assignPermissions: (data) => post('/api/role/assign_perm', data),
+  assignPermissions: (data) => post('/api/perm/role/assign_perm', data),
 
   // ==================== 学院相关 ====================
   getCollegeList: () => get('/api/college/list'),
@@ -40,6 +40,7 @@ export const api = {
   getRegList:(params) => get('/api/reg/list', params),
   getRegDetail:(id) => get(`/api/reg/detail?id=${id}`),
   auditReg:(data) => put('/api/reg/audit', data),
+  getStudentList:(params) => get('/api/reg/user/list', params),
 
   // ==================== 赛事申报相关 ====================
   // 院级申报
