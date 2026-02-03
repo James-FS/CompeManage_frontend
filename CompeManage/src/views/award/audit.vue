@@ -340,34 +340,19 @@ onMounted(() => {
   <div class="list-container">
     <!-- 筛选卡片 -->
     <div class="filter-card">
-      <el-form :inline="true" :model="queryForm" class="filter-form">
+      <el-form :inline="true" :model="queryForm" class="filter-form" label-width="70px" label-position="right">
         <el-form-item label="赛事名称">
-          <el-input
-            v-model="queryForm.comp_name"
-            placeholder="输入赛事名称"
-            style="width: 220px"
-            clearable
-            @keyup.enter="fetchAwardList"
-          />
+          <el-input v-model="queryForm.comp_name" placeholder="请输入赛事名称" style="width: 200px" clearable
+            @keyup.enter="fetchAwardList" />
         </el-form-item>
 
         <el-form-item label="学生姓名">
-          <el-input
-            v-model="queryForm.keyword"
-            placeholder="输入姓名或学号"
-            style="width: 180px"
-            :prefix-icon="Search"
-            @keyup.enter="fetchAwardList"
-          />
+          <el-input v-model="queryForm.keyword" placeholder="请输入姓名或学号" style="width: 180px"
+            @keyup.enter="fetchAwardList" />
         </el-form-item>
 
         <el-form-item label="获奖等级">
-          <el-select
-            v-model="queryForm.award_level"
-            placeholder="全部"
-            style="width: 160px"
-            clearable
-          >
+          <el-select v-model="queryForm.award_level" placeholder="全部" style="width: 140px" clearable>
             <el-option label="国家级一等奖" value="国家级一等奖" />
             <el-option label="国家级二等奖" value="国家级二等奖" />
             <el-option label="国家级三等奖" value="国家级三等奖" />
@@ -386,14 +371,14 @@ onMounted(() => {
             <el-option label="已驳回" :value="2" />
           </el-select>
         </el-form-item>
-      </el-form>
 
-      <div class="filter-actions">
-        <el-button type="primary" class="search-btn" :icon="Search" @click="fetchAwardList">
-          查询
-        </el-button>
-        <el-button :icon="Refresh" @click="handleReset">重置</el-button>
-      </div>
+        <el-form-item class="filter-actions">
+          <el-button type="primary" class="search-btn" :icon="Search" @click="fetchAwardList">
+            查询
+          </el-button>
+          <el-button :icon="Refresh" @click="handleReset">重置</el-button>
+        </el-form-item>
+      </el-form>
     </div>
 
     <!-- 表格容器 -->
@@ -412,13 +397,8 @@ onMounted(() => {
           已选 <span class="num">{{ selectedRows.length }}</span> 项
         </div>
       </div>
-      <el-table
-        :data="awardList"
-        v-loading="loading"
-        stripe
-        style="width: 100%; flex: 1; overflow: hidden"
-        @selection-change="handleSelectionChange"
-      >
+      <el-table :data="awardList" v-loading="loading" stripe style="width: 100%; flex: 1; overflow: hidden"
+        @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="50" align="center" />
 
         <el-table-column label="学生信息" min-width="180" show-overflow-tooltip>
@@ -438,14 +418,10 @@ onMounted(() => {
 
         <el-table-column label="获奖等级" width="130" align="center">
           <template #default="{ row }">
-            <el-tag
-              :style="{
-                borderColor: levelMap[row.award_level]?.color,
-                color: levelMap[row.award_level]?.color,
-              }"
-              effect="plain"
-              size="small"
-            >
+            <el-tag :style="{
+              borderColor: levelMap[row.award_level]?.color,
+              color: levelMap[row.award_level]?.color,
+            }" effect="plain" size="small">
               {{ row.award_level }}
             </el-tag>
           </template>
@@ -480,39 +456,23 @@ onMounted(() => {
 
       <!-- 分页 -->
       <div class="pagination-bar">
-        <el-pagination
-          background
-          layout="total, sizes, prev, pager, next, jumper"
-          :total="total"
-          v-model:current-page="queryForm.page"
-          v-model:page-size="queryForm.pageSize"
-          @current-change="fetchAwardList"
-          @size-change="fetchAwardList"
-        />
+        <el-pagination background layout="total, sizes, prev, pager, next, jumper" :total="total"
+          v-model:current-page="queryForm.page" v-model:page-size="queryForm.pageSize" @current-change="fetchAwardList"
+          @size-change="fetchAwardList" />
       </div>
     </div>
 
     <!-- 批量驳回弹窗 -->
-    <el-dialog
-      v-model="batchRejectDialogVisible"
-      title="批量驳回获奖申报"
-      width="400px"
-      align-center
-    >
+    <el-dialog v-model="batchRejectDialogVisible" title="批量驳回获奖申报" width="400px" align-center>
       <div style="margin-bottom: 12px; color: #606266; font-size: 14px">
         即将驳回
         <span style="color: #f56c6c; font-weight: bold">
-          {{ selectedRows.filter((i) => i.status === 0).length }}
+          {{selectedRows.filter((i) => i.status === 0).length}}
         </span>
         条待审核记录
       </div>
 
-      <el-input
-        v-model="batchRejectReason"
-        type="textarea"
-        :rows="4"
-        placeholder="请输入驳回原因（必填）"
-      />
+      <el-input v-model="batchRejectReason" type="textarea" :rows="4" placeholder="请输入驳回原因（必填）" />
 
       <template #footer>
         <el-button @click="batchRejectDialogVisible = false">取消</el-button>
@@ -542,37 +502,16 @@ onMounted(() => {
 .filter-card {
   box-sizing: border-box;
   background: #fff;
-  padding: 24px 24px 20px;
+  padding: 20px 20px 10px 20px; 
   border-radius: 4px;
+  box-shadow: var(--card-shadow);
 
   .filter-form {
     :deep(.el-form-item) {
       margin-bottom: 12px;
       margin-right: 24px;
     }
-  }
 
-  .filter-actions {
-    display: flex;
-    justify-content: center;
-    gap: 20px;
-    margin-top: 10px;
-    padding-top: 20px;
-    border-top: 1px dashed #eee;
-
-    .el-button {
-      width: 100px;
-    }
-
-    .search-btn {
-      background-color: var(--primary-color);
-      border-color: var(--primary-color);
-
-      &:hover {
-        background-color: #36cfc9;
-        border-color: #36cfc9;
-      }
-    }
   }
 }
 
@@ -603,6 +542,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  box-shadow: var(--card-shadow);
 }
 
 .student-cell {

@@ -24,44 +24,6 @@ const notices = ref([
   { id: 4, title: '教务处关于规范学科竞赛学分认定的补充规定', date: '01-20', tag: '通知', type: 'info' },
   { id: 5, title: '计算机设计大赛校内选拔赛路演安排', date: '01-15', tag: '赛事', type: 'success' },
 ])
-<<<<<<< HEAD
-=======
-const myStatusList = [
-  {
-    id: 1,
-    title: '第十五届蓝桥杯软件赛',
-    deadline: '报名截止: 2026-11-20',
-    month: '10月',
-    day: '15',
-    status: '已通过',
-    type: 'success', // 对应 el-tag 的 type
-    bgClass: '', // 日期背景色类名（默认绿）
-  },
-  {
-    id: 2,
-    title: '2026互联网+创新创业大赛',
-    deadline: '校赛初审中',
-    month: '11月',
-    day: '02',
-    status: '审核中',
-    type: 'warning',
-    bgClass: 'warning-bg',
-  },
-  {
-    id: 3,
-    title: '大学生广告艺术大赛',
-    deadline: '未提交报名表',
-    month: '12月',
-    day: '10',
-    status: '草稿',
-    type: 'info',
-    bgClass: 'info-bg',
-  },
-]
-function NavigateToNotice() {
-  router.push('/notice/0')
-}
->>>>>>> develop
 
 const upcomingEvents = ref([
   { id: 1, title: '蓝桥杯软件赛 - 报名截止', date: '2026-02-15', daysLeft: 3, color: '#F56C6C' },
