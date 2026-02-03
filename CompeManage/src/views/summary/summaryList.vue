@@ -1,39 +1,96 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { Edit, View, DocumentChecked, List } from '@element-plus/icons-vue';
+import { Edit, View, Search, Refresh, Download } from '@element-plus/icons-vue';
+import { ElMessage } from 'element-plus';
 // import api from '@/api';
 
 const router = useRouter();
-const activeTab = ref('todo'); // 默认显示待办
 const loading = ref(false);
 const tableData = ref([]);
+
+// 搜索表单数据
+const searchForm = reactive({
+    comp_name: '',
+    organizer: '',
+    manager: '',
+    summary_status: '', // '' 全部, 0 未总结, 1 已归档
+    end_time: ''
+});
+
+// 分页数据
+const current_page = ref(1);
+const page_size = ref(10);
+const total = ref(100);
+
+// 重置搜索表单
+const handleReset = () => {
+    searchForm.comp_name = '';
+    searchForm.organizer = '';
+    searchForm.manager = '';
+    searchForm.summary_status = '';
+    searchForm.end_time = '';
+    current_page.value = 1;
+    page_size.value = 10;
+    handleSearch();
+};
 
 // 模拟数据：待总结只显示已结束且未填报的
 const loadData = async () => {
     loading.value = true;
     // const params = { 
     //   status: 2, // 只查已结束的
-    //   summary_status: activeTab.value === 'todo' ? 0 : 1 // 0未填 1已填
+    //   summary_status: searchForm.summary_status ? searchForm.summary_status : undefined
     // };
     // const res = await api.getCompetitionList(params);
-    
+
     // 模拟数据演示
     setTimeout(() => {
-        if (activeTab.value === 'todo') {
-            tableData.value = [
-                { id: 101, comp_name: '2025年大学生程序设计竞赛', end_time: '2025-06-20', organizer: '计算机学院', summary_status: 0 }
-            ];
-        } else {
-            tableData.value = [
-                { id: 102, comp_name: '2024年英语演讲比赛', end_time: '2024-12-10', organizer: '外国语学院', summary_status: 1 }
-            ];
+        const allData = [
+            { id: 101, comp_name: '2025年大学生程序设计竞赛', end_time: '2025-06-20', organizer: '计算机学院', manager: '张三', summary_status: 0 },
+            { id: 102, comp_name: '2024年英语演讲比赛', end_time: '2024-12-10', organizer: '外国语学院', manager: '李四', summary_status: 1 },
+            { id: 103, comp_name: '2024年大学生挑战杯', end_time: '2024-11-30', organizer: '学生处', manager: '王五', summary_status: 0 }
+        ];
+
+        // 根据筛选条件过滤数据
+        let filtered = allData;
+        if (searchForm.comp_name) {
+            filtered = filtered.filter(item => item.comp_name.includes(searchForm.comp_name));
         }
+        if (searchForm.organizer) {
+            filtered = filtered.filter(item => item.organizer.includes(searchForm.organizer));
+        }
+        if (searchForm.manager) {
+            filtered = filtered.filter(item => item.manager.includes(searchForm.manager));
+        }
+        if (searchForm.summary_status !== '') {
+            filtered = filtered.filter(item => item.summary_status === parseInt(searchForm.summary_status));
+        }
+
+        total.value = filtered.length;
+        // 分页处理
+        const start = (current_page.value - 1) * page_size.value;
+        const end = start + page_size.value;
+        tableData.value = filtered.slice(start, end);
+
         loading.value = false;
     }, 500);
 };
 
-const handleTabChange = () => {
+// 搜索功能
+const handleSearch = async () => {
+    current_page.value = 1;
+    loadData();
+};
+
+// 分页处理
+const handleSizeChange = (val) => {
+    page_size.value = val;
+    loadData();
+};
+
+const handleCurrentChange = (val) => {
+    current_page.value = val;
     loadData();
 };
 
@@ -44,82 +101,159 @@ const handleEdit = (row) => {
         query: { name: row.comp_name }
     });
 };
+
+const handleExport = () => {
+    ElMessage.success('导出成功');
+};
+
+// 页面加载时初始化数据
+onMounted(() => {
+    loadData();
+});
 </script>
 
 <template>
     <div class="summary-list-container">
-        <el-card shadow="never">
-            <template #header>
-                <div class="card-header">
-                    <span>赛事总结管理</span>
-                    <el-button type="primary" plain size="small">导出年度汇编</el-button>
+        <!-- 赛事总结搜索栏 -->
+        <div class="search-container">
+            <el-form :inline="true" :model="searchForm" class="search-form" label-width="100px" label-position="right">
+                <el-form-item label="赛事名称">
+                    <el-input v-model="searchForm.comp_name" placeholder="请输入赛事名称" clearable="true" style="width: 200px"
+                        maxlength="50">
+                    </el-input>
+                </el-form-item>
+                <el-form-item label="主办单位">
+                    <el-input v-model="searchForm.organizer" placeholder="请输入主办单位" clearable="true" style="width: 200px"
+                        maxlength="50">
+                    </el-input>
+                </el-form-item>
+                <el-form-item label="赛事负责人">
+                    <el-input v-model="searchForm.manager" placeholder="请输入赛事负责人" clearable="true" style="width: 200px"
+                        maxlength="50">
+                    </el-input>
+                </el-form-item>
+                <el-form-item label="总结状态">
+                    <el-select v-model="searchForm.summary_status" placeholder="请选择总结状态" clearable="true"
+                        style="width: 200px">
+                        <el-option label="未总结" value="0"></el-option>
+                        <el-option label="已归档" value="1"></el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item class="search-actions">
+                    <el-button type="primary" :icon="Search" @click="handleSearch">搜索</el-button>
+                    <el-button type="default" :icon="Refresh" plain @click="handleReset">重置</el-button>
+                </el-form-item>
+            </el-form>
+        </div>
+
+        <!-- 赛事总结列表表格 -->
+        <div class="summary-table-container">
+            <div class="table-toolbar">
+                <div class="left-actions">
+                    <el-button type="info" plain :icon="Download" @click="handleExport">导出数据</el-button>
                 </div>
-            </template>
+            </div>
 
-            <el-tabs v-model="activeTab" @tab-click="handleTabChange">
-                <el-tab-pane name="todo">
-                    <template #label>
-                        <span class="custom-tabs-label">
-                            <el-icon><List /></el-icon>
-                            <span>待总结 ({{ tableData.length }})</span>
-                        </span>
-                    </template>
-                </el-tab-pane>
+            <el-table v-loading="loading" :data="tableData" stripe style="width: 100%">
+                <el-table-column prop="comp_name" label="赛事名称" min-width="200" show-overflow-tooltip align="center" />
+                <el-table-column prop="organizer" label="主办单位" width="180" show-overflow-tooltip align="center" />
+                <el-table-column prop="manager" label="赛事负责人" width="150" align="center" />
+                <el-table-column prop="end_time" label="结束时间" width="150" sortable align="center" />
 
-                <el-tab-pane name="done">
-                    <template #label>
-                        <span class="custom-tabs-label">
-                            <el-icon><DocumentChecked /></el-icon>
-                            <span>已归档</span>
-                        </span>
-                    </template>
-                </el-tab-pane>
-            </el-tabs>
-
-            <el-table :data="tableData" v-loading="loading" stripe style="width: 100%">
-                <el-table-column prop="comp_name" label="赛事名称" min-width="200" />
-                <el-table-column prop="organizer" label="主办单位" width="180" />
-                <el-table-column prop="end_time" label="结束时间" width="150" sortable />
-                
-                <el-table-column label="状态" width="120" align="center">
+                <el-table-column label="总结状态" width="120" align="center">
                     <template #default="scope">
                         <el-tag v-if="scope.row.summary_status === 1" type="success">已归档</el-tag>
                         <el-tag v-else type="warning">未总结</el-tag>
                     </template>
                 </el-table-column>
 
-                <el-table-column label="操作" width="150" align="center">
+                <el-table-column label="操作" width="150" align="center" fixed="right">
                     <template #default="scope">
-                        <el-button 
-                            v-if="activeTab === 'todo'"
-                            type="primary" link :icon="Edit" 
+                        <el-button v-if="scope.row.summary_status === 0" type="primary" link :icon="Edit"
                             @click="handleEdit(scope.row)">
                             去总结
                         </el-button>
-                        <el-button 
-                            v-else
-                            type="primary" link :icon="View" 
-                            @click="handleEdit(scope.row)">
+                        <el-button v-else type="primary" link :icon="View" @click="handleEdit(scope.row)">
                             查看详情
                         </el-button>
                     </template>
                 </el-table-column>
+
+                <template #empty>
+                    <el-empty description="暂无数据" />
+                </template>
             </el-table>
-        </el-card>
+
+            <div class="pagination-wrapper">
+                <el-pagination v-model:current-page="current_page" v-model:page-size="page_size"
+                    :page-sizes="[10, 20, 30, 50]" layout="total, sizes, prev, pager, next, jumper" :total="total"
+                    @size-change="handleSizeChange" @current-change="handleCurrentChange" />
+            </div>
+        </div>
     </div>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .summary-list-container {
+    width: 100%;
+    height: 100%;
+    background-color: var(--background-color);
     padding: 20px;
+    box-sizing: border-box;
 }
-.card-header {
+
+.search-container {
+    box-sizing: border-box;
+    margin-bottom: 15px;
+    padding: 20px 20px 10px 20px;
+    background-color: #ffffff;
+    box-shadow: var(--card-shadow);
+    border-radius: 4px;
+
+    .search-form {
+        .el-form-item {
+            margin-bottom: 15px;
+            margin-left: 15px;
+        }
+
+        .search-actions {
+            margin-left: 45px;
+
+            .el-button {
+                margin-right: 10px;
+            }
+        }
+    }
+}
+
+.summary-table-container {
+    box-sizing: border-box;
+    padding: 20px 20px 10px 20px;
+    background-color: #ffffff;
+    box-shadow: var(--card-shadow);
+    border-radius: 4px;
+
+    .table-toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+
+        .left-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .right-info {
+            display: flex;
+            align-items: center;
+        }
+    }
+}
+
+.pagination-wrapper {
+    margin-top: 10px;
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-.custom-tabs-label .el-icon {
-    vertical-align: middle;
-    margin-right: 5px;
+    justify-content: center;
 }
 </style>
