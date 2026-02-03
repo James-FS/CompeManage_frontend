@@ -548,7 +548,7 @@ onMounted(() => {
   flex-direction: column;
   overflow: hidden;
   box-shadow: var(--card-shadow);
-  max-height: calc(60vh - 5px);
+  max-height: calc(67vh - 10px);
   margin-top:10px;
 }
 

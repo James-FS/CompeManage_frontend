@@ -192,6 +192,10 @@ const routes = [
         path:'audit',
         name:'AwardAudit',
         component: () => import('@/views/award/audit.vue'),
+        meta: {
+          title: '填报审核',
+          roles: ['school_admin', 'college_admin', 'competition_manager'],
+        },
       },
       {
         path:'audit/detail/:id',
