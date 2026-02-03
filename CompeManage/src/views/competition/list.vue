@@ -676,7 +676,7 @@ onMounted(() => {
     box-sizing: border-box;
     padding: 20px 20px 10px 20px;
     background-color: #ffffff;
-   box-shadow: var(--card-shadow);
+    box-shadow: var(--card-shadow);
     border-radius: 4px;
 
     .table-toolbar {

@@ -881,7 +881,7 @@ const queryManagerByWorkId = async (row) => {
 }
 
 .content-box {
-    overflow: hidden;
+    overflow: auto;
 }
 
 .form-wrapper {
@@ -896,7 +896,7 @@ const queryManagerByWorkId = async (row) => {
 }
 
 .custom-steps {
-    margin-bottom: 10px;
+    margin-bottom: 8px;
 }
 
 .step-content {

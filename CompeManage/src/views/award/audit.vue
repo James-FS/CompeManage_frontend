@@ -401,12 +401,13 @@ onMounted(() => {
         :data="awardList"
         v-loading="loading"
         stripe
-        style="width: 100%; flex: 1; overflow: auto"
+        max-height="450"
+        style="width: 100%"
         @selection-change="handleSelectionChange"
       >
-        <el-table-column type="selection" width="50" align="center" />
+        <el-table-column type="selection" width="40" />
 
-        <el-table-column label="学生信息" min-width="180" show-overflow-tooltip>
+        <el-table-column label="学生信息" min-width="100" align="center" show-overflow-tooltip>
           <template #default="{ row }">
             <div class="student-cell">
               <span class="name">{{ row.student_name }}</span>
@@ -415,13 +416,13 @@ onMounted(() => {
           </template>
         </el-table-column>
 
-        <el-table-column label="赛事名称" min-width="220" show-overflow-tooltip>
+        <el-table-column label="赛事名称" min-width="240" align="center" show-overflow-tooltip>
           <template #default="{ row }">
             <span class="comp-text">{{ row.comp_name }}</span>
           </template>
         </el-table-column>
 
-        <el-table-column label="获奖等级" width="130" align="center">
+        <el-table-column label="获奖等级" width="140" align="center">
           <template #default="{ row }">
             <el-tag :style="{
               borderColor: levelMap[row.award_level]?.color,
@@ -432,13 +433,13 @@ onMounted(() => {
           </template>
         </el-table-column>
 
-        <el-table-column label="获奖日期" width="130" align="center">
+        <el-table-column label="获奖日期" width="140" align="center">
           <template #default="{ row }">
             {{ row.award_date }}
           </template>
         </el-table-column>
 
-        <el-table-column prop="submit_time" label="申报时间" width="150" sortable />
+        <el-table-column prop="submit_time" label="申报时间" width="150" sortable align="center" />
 
         <el-table-column label="状态" width="100" align="center">
           <template #default="{ row }">
@@ -546,10 +547,7 @@ onMounted(() => {
   border-radius: 4px;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
   box-shadow: var(--card-shadow);
-  max-height: calc(67vh - 10px);
-  margin-top:10px;
 }
 
 .student-cell {
