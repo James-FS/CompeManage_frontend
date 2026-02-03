@@ -512,7 +512,8 @@ watch(() => activeTab.value, () => {
 
 .pagination-wrapper {
     margin-top: 10px;
-    margin-left: 20px;
+    display: flex;
+    justify-content: center;
 }
 
 
