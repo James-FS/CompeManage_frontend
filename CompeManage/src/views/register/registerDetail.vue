@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, onMounted,computed } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { api } from '@/api'
 import {
@@ -57,7 +57,7 @@ const rules = {
   'leader.stuID': [{ required: true, message: '请输入学号', trigger: 'blur' }],
   'leader.phone': [{ required: true, message: '请输入手机号', trigger: 'blur' }],
   'leader.email': [{ required: true, message: '请输入邮箱', trigger: 'blur' }],
-  'leader.college': [{ required: true, message: '请输入所属学院', trigger: 'blur' }],
+  'leader.college': [{ required: true, message: '请��入所属学院', trigger: 'blur' }],
 }
 
 const handleUploadSuccess = (response, uploadFile, uploadFiles) => {
@@ -107,13 +107,13 @@ async function checkRegStatus() {
       const data = response.data
       if (!data) {
         pageStatus.value = 0
-        return 
+        return
       }
-     if (data.status == 2) {
+      if (data.status == 2) {
         pageStatus.value = 2 // 被驳回 (编辑模式)
         rejectReason.value = data.reject_reason || ''
       } else {
-        pageStatus.value = 1 
+        pageStatus.value = 1
       }
       formData.teamName = data.team_name
       if (data.attachment_url) {
@@ -172,8 +172,7 @@ async function fetchRegSettings() {
       compInfo.value.compType = 1
       compInfo.value.limitText = '个人赛'
     }
-  }
-  else{
+  } else {
     ElMessage.error(response.msg || '获取报名配置失败')
   }
 }
@@ -215,8 +214,7 @@ async function submitForm(attachmentURL) {
     if (response.code == 200) {
       ElMessage.success(pageStatus.value === 2 ? '重新提交成功！' : '报名成功！')
       router.back()
-    }
-    else{
+    } else {
       ElMessage.error(response.msg || '报名失败')
     }
   } catch (error) {
@@ -252,31 +250,26 @@ onMounted(() => {
     </div>
 
     <div class="content-area">
-    <div v-if="pageStatus === 2" class="status-alert" style="margin-bottom: 20px;">
-    <el-alert
-      title="报名被驳回"
-      type="error"
-      show-icon
-      :closable="false"
-    >
-      <template #default>
-        <div>
-          驳回原因：<strong>{{ rejectReason || '无' }}</strong>
-          <div style="margin-top: 4px; font-size: 12px">请修改下方信息后重新提交</div>
-        </div>
-      </template>
-    </el-alert>
-  </div>
+      <div v-if="pageStatus === 2" class="status-alert" style="margin-bottom: 20px">
+        <el-alert title="报名被驳回" type="error" show-icon :closable="false">
+          <template #default>
+            <div>
+              驳回原因：<strong>{{ rejectReason || '无' }}</strong>
+              <div style="margin-top: 4px; font-size: 12px">请修改下方信息后重新提交</div>
+            </div>
+          </template>
+        </el-alert>
+      </div>
 
-  <div v-if="pageStatus === 1" class="status-alert" style="margin-bottom: 20px;">
-    <el-alert
-      title="您已报名该赛事"
-      type="success"
-      description="如需修改请联系管理员。"
-      show-icon
-      :closable="false"
-    />
-  </div>
+      <div v-if="pageStatus === 1" class="status-alert" style="margin-bottom: 20px">
+        <el-alert
+          title="您已报名该赛事"
+          type="success"
+          description="如需修改请联系管理员。"
+          show-icon
+          :closable="false"
+        />
+      </div>
 
       <div class="form-card">
         <el-form
@@ -306,27 +299,47 @@ onMounted(() => {
               <el-row :gutter="20">
                 <el-col :span="8" :xs="24">
                   <el-form-item label="姓名">
-                    <el-input v-model="formData.leader.name" prefix-icon="User" :disabled="isReadOnly" />
+                    <el-input
+                      v-model="formData.leader.name"
+                      prefix-icon="User"
+                      :disabled="isReadOnly"
+                    />
                   </el-form-item>
                 </el-col>
                 <el-col :span="8" :xs="24">
                   <el-form-item label="学号">
-                    <el-input v-model="formData.leader.stuID" prefix-icon="Postcard" :disabled="isReadOnly" />
+                    <el-input
+                      v-model="formData.leader.stuID"
+                      prefix-icon="Postcard"
+                      :disabled="isReadOnly"
+                    />
                   </el-form-item>
                 </el-col>
                 <el-col :span="8" :xs="24">
                   <el-form-item label="联系电话" prop="leader.phone">
-                    <el-input v-model="formData.leader.phone" placeholder="请输入手机号" :disabled="isReadOnly" />
+                    <el-input
+                      v-model="formData.leader.phone"
+                      placeholder="请输入手机号"
+                      :disabled="isReadOnly"
+                    />
                   </el-form-item>
                 </el-col>
                 <el-col :span="8" :xs="24">
                   <el-form-item label="联系邮箱" prop="leader.email">
-                    <el-input v-model="formData.leader.email" placeholder="请输入邮箱" :disabled="isReadOnly" />
+                    <el-input
+                      v-model="formData.leader.email"
+                      placeholder="请输入邮箱"
+                      :disabled="isReadOnly"
+                    />
                   </el-form-item>
                 </el-col>
                 <el-col :span="8" :xs="24">
                   <el-form-item label="所属学院" prop="leader.college">
-                    <el-input v-model="formData.leader.college" placeholder="请输入所属学院" :disabled="isReadOnly" />
+                    <el-input
+                      v-model="formData.leader.college"
+                      placeholder="请输入所属学院"
+                      :disabled="isReadOnly"
+                    />
                   </el-form-item>
                 </el-col>
               </el-row>
@@ -366,7 +379,12 @@ onMounted(() => {
                         :prop="'members.' + i + '.name'"
                         :rules="{ required: true, message: '请输入姓名', trigger: 'blur' }"
                       >
-                        <el-input v-model="m.name" placeholder="填写真实姓名" prefix-icon="User" :disabled="isReadOnly" />
+                        <el-input
+                          v-model="m.name"
+                          placeholder="填写真实姓名"
+                          prefix-icon="User"
+                          :disabled="isReadOnly"
+                        />
                       </el-form-item>
                     </el-col>
 
@@ -376,7 +394,12 @@ onMounted(() => {
                         :prop="'members.' + i + '.stuID'"
                         :rules="{ required: true, message: '请输入学号', trigger: 'blur' }"
                       >
-                        <el-input v-model="m.stuID" placeholder="填写学号" prefix-icon="Postcard" :disabled="isReadOnly" />
+                        <el-input
+                          v-model="m.stuID"
+                          placeholder="填写学号"
+                          prefix-icon="Postcard"
+                          :disabled="isReadOnly"
+                        />
                       </el-form-item>
                     </el-col>
 
@@ -386,7 +409,12 @@ onMounted(() => {
                         :prop="'members.' + i + '.phone'"
                         :rules="{ required: true, message: '请输入手机号', trigger: 'blur' }"
                       >
-                        <el-input v-model="m.phone" placeholder="填写手机号" prefix-icon="Iphone" :disabled="isReadOnly" />
+                        <el-input
+                          v-model="m.phone"
+                          placeholder="填写手机号"
+                          prefix-icon="Iphone"
+                          :disabled="isReadOnly"
+                        />
                       </el-form-item>
                     </el-col>
 
@@ -455,9 +483,9 @@ onMounted(() => {
             </el-upload>
           </div>
 
-          <div  v-if="!isReadOnly" class="form-actions">
+          <div v-if="!isReadOnly" class="form-actions">
             <el-button size="large" @click="router.back()">取消</el-button>
-            <el-button  type="primary" size="large" style="width: 120px" @click="submitVerify">
+            <el-button type="primary" size="large" style="width: 120px" @click="submitVerify">
               确认报名
             </el-button>
           </div>
@@ -470,58 +498,52 @@ onMounted(() => {
 <style scoped lang="scss">
 .page-wrapper {
   min-height: 100vh;
-  background-color: var(--background-color); /* 浅灰底色 */
+  background-color: var(--background-color);
 }
 
 .theme-header {
-  /* 1. 渐变背景：从左上(#13c2c2) 到 右下(#08979c) */
   background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark-color) 100%);
   color: #fff;
-  /* 3. 相对定位：为了让里面的“绝对定位水印”以我为基准 */
   position: relative;
   overflow: hidden;
-
-  /* 
-     顶部 20px：给导航栏留空
-     底部 100px：这一大片空白，是留给下一个步骤的“白色卡片”上浮用的！
-  */
   padding: 20px 30px 100px;
+
   .header-nav {
-    margin-bottom: 20px; /* 和标题拉开距离 */
+    margin-bottom: 20px;
+
     .back-link {
       font-size: var(--primary-font);
-      color: rgba(255, 255, 255, 0.8); /* 80%透明度的白色，看起来更高级 */
+      color: rgba(255, 255, 255, 0.8);
       padding-left: 0;
 
       &:hover {
-        color: #fff; /* 鼠标放上去变全白 */
+        color: #fff;
       }
-      /* 修正图标间距 */
+
       :deep(.el-icon) {
         margin-right: 4px;
       }
     }
   }
+
   .header-content {
     position: relative;
-    z-index: 2; /* 确保文字在水印上面 */
+    z-index: 2;
     max-width: 900px;
-    margin: 0 auto; /* 居中 */
+    margin: 0 auto;
 
     .comp-title {
       font-size: 28px;
       font-weight: 600;
       margin: 0 0 16px 0;
-      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* 微微的文字阴影，增加立体感 */
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
 
-    /* 那个精致的胶囊 */
     .limit-badge {
       display: inline-flex;
       align-items: center;
       gap: 6px;
       padding: 6px 16px;
-      /* 磨砂玻璃效果核心代码 👇 */
       background: rgba(255, 255, 255, 0.2);
       border: 1px solid rgba(255, 255, 255, 0.3);
       backdrop-filter: blur(4px);
@@ -534,16 +556,15 @@ onMounted(() => {
     }
   }
 
-  /* C. 大水印 (装饰) */
   .bg-watermark {
-    position: absolute; /* 绝对定位，脱离文档流 */
-    right: 5%; /* 靠右 */
-    top: 50%; /* 垂直居中 */
-    font-size: 220px; /* 超级大 */
-    color: #fff; /* 白色 */
-    opacity: 0.1; /* 只有 10% 的不透明度，若隐若现 */
-    transform: translateY(-50%) rotate(-15deg); /* 居中修正 + 倾斜15度 */
-    pointer-events: none; /* 让鼠标能穿透它，不会挡住点击 */
+    position: absolute;
+    right: 5%;
+    top: 50%;
+    font-size: 220px;
+    color: #fff;
+    opacity: 0.1;
+    transform: translateY(-50%) rotate(-15deg);
+    pointer-events: none;
   }
 }
 
@@ -554,13 +575,15 @@ onMounted(() => {
   padding: 0 20px 40px;
   position: relative;
   z-index: 5;
+
   .form-card {
     background: #fff;
     border-radius: 8px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
     padding: 40px;
-    margin-top: -60px; /* 上浮，覆盖在渐变背景上 */
+    margin-top: -60px;
     border: 1px solid #ebeef5;
+
     .form-section {
       margin-bottom: 40px;
 
@@ -570,7 +593,7 @@ onMounted(() => {
         color: #303133;
         margin-bottom: 20px;
         padding-left: 12px;
-        border-left: 4px solid #13c2c2; /* 青色指引条 */
+        border-left: 4px solid var(--primary-color);
       }
 
       .section-header {
@@ -580,17 +603,18 @@ onMounted(() => {
         margin-bottom: 20px;
       }
     }
+
     .info-grid {
       background: #fcfcfc;
       border: 1px solid #ebeef5;
       padding: 24px;
       border-radius: 6px;
     }
-    /* 成员列表容器 */
+
     .member-grid-container {
       display: flex;
       flex-direction: column;
-      gap: 20px; /* 卡片之间的间距 */
+      gap: 20px;
 
       .empty-tip {
         border: 1px dashed #dcdfe6;
@@ -598,20 +622,18 @@ onMounted(() => {
         padding: 20px 0;
       }
 
-      /* 单个成员卡片 */
       .member-card {
-        background-color: #fcfcfc; /* 卡片背景微灰，区分于白底 */
+        background-color: #fcfcfc;
         border: 1px solid #ebeef5;
         border-radius: 8px;
         transition: all 0.3s;
 
         &:hover {
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* 悬浮时浮起 */
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
           border-color: #dcdfe6;
           background-color: #fff;
         }
 
-        /* 卡片标题栏 */
         .card-header {
           display: flex;
           justify-content: space-between;
@@ -626,25 +648,22 @@ onMounted(() => {
             font-size: 14px;
             color: #606266;
 
-            /* 左侧的小蓝条装饰 */
             &::before {
               content: '';
               display: inline-block;
               width: 3px;
               height: 12px;
-              background-color: #13c2c2;
+              background-color: var(--primary-color);
               margin-right: 8px;
               border-radius: 2px;
             }
           }
         }
 
-        /* 卡片内容区 */
         .card-body {
           padding: 20px;
-          padding-bottom: 0; /* 抵消最后一行的 margin-bottom */
+          padding-bottom: 0;
 
-          /* 让表单项的 Label 稍微小一点，不喧宾夺主 */
           :deep(.el-form-item__label) {
             font-size: 13px;
             padding-bottom: 4px;
@@ -656,7 +675,7 @@ onMounted(() => {
 
   .simple-upload {
     :deep(.el-upload-dragger:hover) {
-      border-color: #13c2c2;
+      border-color: var(--primary-color);
     }
   }
 
@@ -667,8 +686,9 @@ onMounted(() => {
     border-top: 1px dashed #e4e7ed;
 
     .submit-btn {
-      background-color: #13c2c2;
-      border-color: #13c2c2;
+      background-color: var(--primary-color);
+      border-color: var(--primary-color);
+
       &:hover {
         background-color: #36cfc9;
         border-color: #36cfc9;

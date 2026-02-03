@@ -372,7 +372,7 @@ onMounted(() => {
 <style scoped lang="scss">
 .config-container {
   box-sizing: border-box;
-  padding: 20px;
+  padding: var(--container-padding);
   background-color: var(--background-color);
   min-height: calc(100vh - 110px);
   display: flex;
@@ -484,7 +484,7 @@ onMounted(() => {
   .btn-box {
     display: flex;
     gap: 2px;
-    /* 让图标稍微大一点点好点 */
+    /* 让图标稍微大一点 */
     :deep(.el-button) {
       padding: 6px;
       font-size: 16px;

@@ -2,7 +2,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Search, Refresh, CircleCheck, CircleClose, Message, Iphone } from '@element-plus/icons-vue'
-import { ElMessage, ElMessageBox,ElPagination } from 'element-plus'
+import { ElMessage, ElMessageBox, ElPagination } from 'element-plus'
 import api from '@/api/index.js'
 
 let total = ref(100)
@@ -229,27 +229,26 @@ onMounted(() => {
       </div>
     </div>
 
-    <div class="action-bar">
-      <div class="left-actions">
-        <el-button type="success" plain :icon="CircleCheck" @click="handleBatchPass">
-          批量通过
-        </el-button>
-
-        <el-button type="danger" plain :icon="CircleClose" @click="openBatchRejectDialog">
-          批量驳回
-        </el-button>
-      </div>
-      <div class="right-info">
-        已选 <span class="num">{{ selectedRows.length }}</span> 项
-      </div>
-    </div>
-
     <div class="table-container">
+      <div class="action-bar">
+        <div class="left-actions">
+          <el-button type="success" plain :icon="CircleCheck" @click="handleBatchPass">
+            批量通过
+          </el-button>
+
+          <el-button type="danger" plain :icon="CircleClose" @click="openBatchRejectDialog">
+            批量驳回
+          </el-button>
+        </div>
+        <div class="right-info">
+          已选 <span class="num">{{ selectedRows.length }}</span> 项
+        </div>
+      </div>
       <el-table
         :data="regList"
         v-loading="loading"
         stripe
-        style="width: 100%; flex: 1; overflow: hidden;"
+        style="width: 100%; flex: 1; overflow: hidden"
         @selection-change="handleSelectionChange"
       >
         <el-table-column type="selection" width="50" align="center" />
@@ -308,23 +307,22 @@ onMounted(() => {
       </div>
     </div>
 
-    <el-dialog 
-      v-model="batchRejectDialogVisible" 
-      title="批量驳回" 
-      width="400px" 
-      align-center
-    >
-      <div style="margin-bottom: 12px; color: #606266; font-size: 14px;">
-        即将驳回 <span style="color: #f56c6c; font-weight: bold;">{{ selectedRows.filter(i=>i.status===0).length }}</span> 条待审核记录
+    <el-dialog v-model="batchRejectDialogVisible" title="批量驳回" width="400px" align-center>
+      <div style="margin-bottom: 12px; color: #606266; font-size: 14px">
+        即将驳回
+        <span style="color: #f56c6c; font-weight: bold">{{
+          selectedRows.filter((i) => i.status === 0).length
+        }}</span>
+        条待审核记录
       </div>
-      
+
       <el-input
         v-model="batchRejectReason"
         type="textarea"
         :rows="4"
         placeholder="请输入驳回原因（必填）"
       />
-      
+
       <template #footer>
         <el-button @click="batchRejectDialogVisible = false">取消</el-button>
         <el-button type="danger" @click="handleBatchReject" :loading="loading">
@@ -341,7 +339,7 @@ onMounted(() => {
 }
 
 .list-container {
-  min-height:calc(100vh - 110px);
+  min-height: calc(100vh - 110px);
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -392,8 +390,8 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 4px;
-  padding: 0 4px;
+  margin-bottom: 16px;
+  padding: 0;
 
   .right-info {
     color: #909399;
