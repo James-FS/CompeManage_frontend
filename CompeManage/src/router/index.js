@@ -221,17 +221,30 @@ const routes = [
       {
         path: 'summary/edit/:id',
         name: 'SummaryEdit',
-        component: () => import('@/views/summary/summaryAdd.vue'), // 复用之前的填报组件
+        component: () => import('@/views/summary/summaryEdit.vue'),
         props: true,
         meta: {
           title: '填写总结',
           roles: ['school_admin', 'college_admin', 'competition_manager'],
           parent: 'SummaryList', // 面包屑导航用
           activeMenu: '/summary', // 保持侧边栏高亮
-          hidden: true, // 不在侧边栏显示，只作为详情页
-        },
+          hidden: true // 不在侧边栏显示，只作为详情页
+        }
       },
-    ],
+      {
+        path: 'summary/view/:id',
+        name: 'SummaryView',
+        component: () => import('@/views/summary/summaryView.vue'),
+        props: true,
+        meta: {
+          title: '查看总结',
+          roles: ['school_admin', 'college_admin', 'competition_manager'],
+          parent: 'SummaryList', // 面包屑导航用
+          activeMenu: '/summary', // 保持侧边栏高亮
+          hidden: true // 不在侧边栏显示，只作为详情页
+        }
+      }
+    ]
   },
   {
     path: '/statistics',
