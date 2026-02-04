@@ -65,7 +65,9 @@ export const api = {
   // ==================== 通知相关 ====================
   getNoticeList:(params) => get('/api/notice/list', params),
   getNoticeDetail:(id) => get(`/api/notice/detail/${id}`),
-  createNotice:(data) => post('/api/notice/create', data,{headers: { 'Content-Type': 'multipart/form-data' } }),
+  createNotice:(data) => post('/api/notice/comp/create', data,{headers: { 'Content-Type': 'multipart/form-data' } }),
+  publishNotice:(id) => put(`/api/notice/${id}/publish`),
+  deleteNotice:(id) => del(`/api/notice/${id}`),
   // ==================== 获奖相关 ====================
   getAwardCompList:(params) => get('/api/award/list', params),
   getCompAwards:(comp_id) => get(`/api/award/comp-awards?comp_id=${comp_id}`),

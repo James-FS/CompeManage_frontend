@@ -244,7 +244,7 @@ onMounted(() => {
         :data="regList"
         v-loading="loading"
         stripe
-        style="width: 100%; flex: 1; overflow: hidden"
+        style="width: 100%; flex: 1; overflow: auto"
         @selection-change="handleSelectionChange"
       >
         <el-table-column type="selection" width="50" align="center" />
@@ -387,9 +387,9 @@ onMounted(() => {
   border-radius: 4px;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  max-height: calc(55vh - 10px);
   box-shadow: var(--card-shadow);
-  // overflow: hidden;
+  margin-top: 10px;
 }
 
 .comp-text {
