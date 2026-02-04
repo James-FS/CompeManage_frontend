@@ -72,7 +72,7 @@ export const api = {
   getAwardCompList: (params) => get('/api/award/list', params),
   getCompAwards: (comp_id) => get(`/api/award/comp-awards?comp_id=${comp_id}`),
   getAwardTemplate: (comp_id) => get(`/api/award/export-template?comp_id=${comp_id}`, {}, { responseType: 'blob' }),
-   getAwardCompList:(params) => get('/api/award/list', params),
+  getAwardCompList:(params) => get('/api/award/list', params),
   getCompAwards:(comp_id) => get(`/api/award/comp-awards?comp_id=${comp_id}`),
   getAwardTemplate:(comp_id) => get(`/api/award/export-template?comp_id=${comp_id}`, {},{ responseType: 'blob' }),
   getMyAwardList:(params) => get('/api/award/student/my-awards', params),
