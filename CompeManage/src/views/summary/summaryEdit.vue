@@ -16,7 +16,7 @@ const loading = ref(false);
 const formRef = ref(null);
 
 const compId = route.params.id;
-const compName = route.query.name || '2025年大学生程序设计竞赛'; 
+const compName = route.query.name; 
 
 const form = reactive({
   comp_name: compName,
@@ -24,7 +24,6 @@ const form = reactive({
   undertaker: '',
   college_info: { name: '' },
   manager: '',
-  end_time: '',
   time_range: '',
   
   // 核心统计数据 (系统自动同步)
@@ -64,7 +63,6 @@ const loadData = async () => {
       form.undertaker = '计算机学院团委';
       form.college_info.name = '计算机学院';
       form.manager = '张三';
-      form.end_time = '2025-06-20';
       form.time_range = '2025-01-01 至 2025-06-20';
 
       form.participant_count = 156;
@@ -147,13 +145,12 @@ onMounted(() => {
            <template #header>
             <div class="card-header"><span>基础信息</span></div>
            </template>
-           <el-descriptions :column="4" border size="small">
+           <el-descriptions :column="4" border>
             <el-descriptions-item label="赛事名称">{{ form.comp_name }}</el-descriptions-item>
             <el-descriptions-item label="主办单位">{{ form.organizer }}</el-descriptions-item>
             <el-descriptions-item label="承办单位">{{ form.undertaker }}</el-descriptions-item>
             <el-descriptions-item label="所属学院">{{ form.college_info?.name || '-' }}</el-descriptions-item>
             <el-descriptions-item label="赛事负责人">{{ form.manager }}</el-descriptions-item>
-            <el-descriptions-item label="结束时间">{{ form.end_time }}</el-descriptions-item>
             <el-descriptions-item label="举办时间" :span="2">{{ form.time_range }}</el-descriptions-item>
           </el-descriptions>
         </el-card>

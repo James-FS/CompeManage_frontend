@@ -25,7 +25,6 @@ const detailData = reactive({
     undertaker: '',
     college_info: { name: '' },
     manager: '',
-    end_time: '',
     time_range: '',
     summary_content: '', // 总结正文
     award_list: [],      // 获奖详情
@@ -45,7 +44,6 @@ const loadData = async () => {
             detailData.undertaker = '计算机学院团委';
             detailData.college_info.name = '计算机学院';
             detailData.manager = '张三';
-            detailData.end_time = '2025-06-20';
             detailData.time_range = '2025-01-01 至 2025-06-20';
             
             // 2. 统计数据
@@ -112,7 +110,6 @@ onMounted(() => {
                 <el-descriptions-item label="承办单位">{{ detailData.undertaker }}</el-descriptions-item>
                 <el-descriptions-item label="所属学院">{{ detailData.college_info?.name || '-' }}</el-descriptions-item>
                 <el-descriptions-item label="赛事负责人">{{ detailData.manager }}</el-descriptions-item>
-                <el-descriptions-item label="结束时间">{{ detailData.end_time }}</el-descriptions-item>
                 <el-descriptions-item label="举办时间" :span="2">{{ detailData.time_range }}</el-descriptions-item>
             </el-descriptions>
         </el-card>
