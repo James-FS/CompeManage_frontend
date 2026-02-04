@@ -487,7 +487,7 @@ onMounted(() => {
                     </el-select>
                 </el-form-item>
                 <el-form-item class="search-actions">
-                    <el-button type="primary" :icon="Search" plain @click="handleSearch">搜索</el-button>
+                    <el-button type="primary" :icon="Search"  @click="handleSearch">搜索</el-button>
                     <el-button type="default" :icon="Refresh" plain @click="handleReset">重置</el-button>
                 </el-form-item>
             </el-form>
@@ -653,7 +653,7 @@ onMounted(() => {
     margin-bottom: 15px;
     padding: 20px 20px 10px 20px;
     background-color: #ffffff;
-    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--card-shadow);
     border-radius: 4px;
 
     .search-form {
@@ -676,7 +676,7 @@ onMounted(() => {
     box-sizing: border-box;
     padding: 20px 20px 10px 20px;
     background-color: #ffffff;
-    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--card-shadow);
     border-radius: 4px;
 
     .table-toolbar {
@@ -730,8 +730,7 @@ onMounted(() => {
 
 .pagination-wrapper {
     margin-top: 10px;
-    margin-left: 20px;
-
-
+    display: flex;
+    justify-content: center;
 }
 </style>

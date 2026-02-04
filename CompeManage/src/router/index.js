@@ -46,21 +46,19 @@ const routes = [
           title: '新增赛事',
           roles: ['school_admin'],
           parent: 'CompetitionList',
-          activeMenu: '/competition/list',
-        },
+          activeMenu: '/competition/list'
+        }
       },
       {
         path: 'audit',
         name: 'CompetitionAudit',
         component: () => import('@/views/competition/audit.vue'),
         meta: {
-          title: '赛事审核',
-          roles: ['school_admin', 'college_admin'],
-          isDynamic: true,
+          title: '赛事审核', roles: ['school_admin', 'college_admin'], isDynamic: true,
           // 分别定义校级和院级的标题
           schoolTitle: '赛事审核',
-          collegeTitle: '赛事申报',
-        },
+          collegeTitle: '赛事申报'
+        }
       },
       {
         path: 'declare',
@@ -68,11 +66,13 @@ const routes = [
         component: () => import('@/views/competition/declare.vue'),
         meta: {
           title: '新增申报',
-          roles: ['college_admin'],
+          roles: ['college_admin', 'school_admin'],
           parent: 'CompetitionAudit',
-          activeMenu: '/competition/audit',
-        },
+          activeMenu: '/competition/audit'
+        }
       },
+
+
     ],
   },
   {
@@ -192,6 +192,10 @@ const routes = [
         path:'audit',
         name:'AwardAudit',
         component: () => import('@/views/award/audit.vue'),
+        meta: {
+          title: '填报审核',
+          roles: ['school_admin', 'college_admin', 'competition_manager'],
+        },
       },
       {
         path:'audit/detail/:id',
@@ -199,6 +203,49 @@ const routes = [
         component: () => import('@/views/award/auditDetail.vue'),
         props: true,
       }
+    ],
+  },
+  {
+    path: '/summary',
+    component: MainLayout,
+    children: [
+      {
+        path: 'summary-list',
+        name: 'SummaryList',
+        component: () => import('@/views/summary/summaryList.vue'),
+        meta: {
+          title: '赛事总结', // 这会在侧边栏显示
+          roles: ['school_admin', 'college_admin', 'competition_manager']
+        }
+      },
+      {
+        path: 'summary/edit/:id',
+        name: 'SummaryEdit',
+        component: () => import('@/views/summary/summaryAdd.vue'), // 复用之前的填报组件
+        props: true,
+        meta: {
+          title: '填写总结',
+          roles: ['school_admin', 'college_admin', 'competition_manager'],
+          parent: 'SummaryList', // 面包屑导航用
+          activeMenu: '/summary', // 保持侧边栏高亮
+          hidden: true // 不在侧边栏显示，只作为详情页
+        }
+      }
+    ]
+  },
+  {
+    path: '/statistics',
+    component: MainLayout,
+    children: [
+      {
+        path: 'dashboard',
+        name: 'StatisticsDashboard',
+        component: () => import('@/views/statistics/dashboard.vue'),
+        meta: {
+          title: '数据汇总',
+          roles: ['school_admin', 'college_admin'], // 仅限管理员查看
+        },
+      },
     ],
   },
   {

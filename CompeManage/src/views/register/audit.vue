@@ -169,31 +169,30 @@ onMounted(() => {
 <template>
   <div class="list-container">
     <div class="filter-card">
-      <el-form :inline="true" :model="queryForm" class="filter-form">
+      <el-form :inline="true" :model="queryForm" class="filter-form"  label-width="100px" label-position="right">
         <el-form-item label="赛事名称">
           <el-input
             v-model="queryForm.comp_name"
-            placeholder="输入赛事名称"
-            style="width: 260px"
+            placeholder="请输入赛事名称"
+            style="width: 220px"
             clearable
             @keyup.enter="fetchRegList"
           />
         </el-form-item>
 
         <el-form-item label="审核状态">
-          <el-select v-model="queryForm.status" placeholder="全部" style="width: 120px" clearable>
+          <el-select v-model="queryForm.status" placeholder="全部" style="width: 220px" clearable>
             <el-option label="待审核" :value="0" />
             <el-option label="已通过" :value="1" />
             <el-option label="已驳回" :value="2" />
           </el-select>
         </el-form-item>
 
-        <el-form-item label="负责人">
+        <el-form-item label="赛事负责人">
           <el-input
             v-model="queryForm.keyword"
-            placeholder="姓名"
-            style="width: 160px"
-            :prefix-icon="Search"
+            placeholder="请输入赛事负责人"
+            style="width: 220px"
             @keyup.enter="fetchRegList"
           />
         </el-form-item>
@@ -201,9 +200,8 @@ onMounted(() => {
         <el-form-item label="联系电话">
           <el-input
             v-model="queryForm.phone"
-            placeholder="手机号"
-            style="width: 150px"
-            :prefix-icon="Iphone"
+            placeholder="请输入联系电话"
+            style="width: 220px"
             @keyup.enter="fetchRegList"
           />
         </el-form-item>
@@ -217,16 +215,14 @@ onMounted(() => {
             @keyup.enter="fetchRegList"
           />
         </el-form-item> -->
+
+        <el-form-item class="filter-actions">
+          <el-button type="primary" :icon="Search" @click="fetchRegList">
+            搜索
+          </el-button>
+          <el-button :icon="Refresh" @click="handleReset"> 重置 </el-button>
+        </el-form-item>
       </el-form>
-
-      <el-form :inline="true" :model="queryForm" class="filter-form"> </el-form>
-
-      <div class="filter-actions">
-        <el-button type="primary" class="search-btn" :icon="Search" @click="fetchRegList">
-          查询
-        </el-button>
-        <el-button :icon="Refresh" @click="handleReset"> 重置 </el-button>
-      </div>
     </div>
 
     <div class="table-container">
@@ -292,6 +288,9 @@ onMounted(() => {
             </el-button>
           </template>
         </el-table-column>
+        <template #empty>
+          <el-empty description="暂无数据" />
+        </template>
       </el-table>
 
       <div class="pagination-bar">
@@ -344,44 +343,21 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   background-color: #f0f2f5;
-  padding: 16px;
+  padding: 20px;
   gap: 12px;
 }
 
 .filter-card {
   box-sizing: border-box;
   background: #fff;
-  padding: 24px 24px 20px; /* 调整内边距 */
+  padding: 20px 20px 10px 20px; 
   border-radius: 4px;
+  box-shadow: var(--card-shadow);
 
   .filter-form {
-    /* 让表单项稍微整齐一些 */
-    :deep(.el-form-item) {
-      margin-bottom: 12px;
-      margin-right: 24px;
-    }
-  }
 
-  /* 6. 按钮组居中样式 */
-  .filter-actions {
-    display: flex;
-    justify-content: center;
-    gap: 20px;
-    margin-top: 10px;
-    padding-top: 20px;
-    border-top: 1px dashed #eee; /* 可选：加个虚线分割显得更清晰 */
-
-    .el-button {
-      width: 100px; /* 按钮稍微宽一点 */
-    }
-
-    .search-btn {
-      background-color: var(--primary-color);
-      border-color: var(--primary-color);
-      &:hover {
-        background-color: #36cfc9;
-        border-color: #36cfc9;
-      }
+    :deep(.el-form-item.filter-actions) {
+      margin-left: 30px;
     }
   }
 }
@@ -412,6 +388,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   max-height: calc(55vh - 10px);
+  box-shadow: var(--card-shadow);
   margin-top: 10px;
 }
 
@@ -472,7 +449,7 @@ onMounted(() => {
 
 .pagination-bar {
   flex-shrink: 0;
-  margin-top: 16px;
+  margin-top: 15px;
   display: flex;
   justify-content: center;
 }

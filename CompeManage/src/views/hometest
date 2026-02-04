@@ -1,0 +1,361 @@
+<script setup>
+import { ref, computed } from 'vue'
+import { useUserStore } from '@/stores/user'
+import { useRouter } from 'vue-router'
+import {
+  Trophy, Bell, ArrowRight, Promotion,
+  Checked, Management, Histogram, Timer,
+  Document, UserFilled, Calendar as CalendarIcon, 
+  Warning, CircleCheck, DataLine, 
+  CollectionTag, School
+} from '@element-plus/icons-vue'
+
+const userStore = useUserStore()
+const router = useRouter()
+const role = computed(() => userStore.role || 'student')
+const currentDate = new Date().toLocaleDateString('zh-CN', {
+  year: 'numeric', month: 'long', day: 'numeric', weekday: 'long'
+})
+const termInfo = '2025-2026学年 春季学期 第1周'
+
+// --- 1. 通知数据 ---
+const notices = ref([
+  { id: 1, title: '关于启动2026年“挑战杯”大学生创业计划竞赛校赛的通知', date: '02-01', tag: '置顶', type: 'danger' },
+  { id: 2, title: '2026年全国大学生数学建模竞赛报名缴费说明', date: '01-28', tag: '最新', type: 'primary' },
+  { id: 3, title: '关于公布2025年度学科竞赛获奖名单的公示', date: '01-25', tag: '公示', type: 'warning' },
+  { id: 4, title: '教务处关于规范学科竞赛学分认定的补充规定', date: '01-20', tag: '通知', type: 'info' },
+  { id: 5, title: '计算机设计大赛校内选拔赛路演安排', date: '01-15', tag: '赛事', type: 'success' },
+])
+
+// --- 2. 模拟日历日程 (用于左侧填充) ---
+const calendarDate = ref(new Date())
+// 日历上打点的日期
+const calendarHighlights = computed(() => [
+  { date: '2026-02-15', type: 'warning', label: '蓝桥杯截止' },
+  { date: '2026-02-20', type: 'danger', label: '校赛初审' },
+])
+const isHighlighted = (date) => {
+  const dateStr = date.toISOString().split('T')[0] // 简单格式化
+  // 实际项目中请使用 dayjs 等库进行精确比对
+  // 这里仅作演示，假设 currentMonth
+  return calendarHighlights.value.find(h => h.date.endsWith(dateStr.slice(-2))) // 简化匹配逻辑
+}
+
+// --- 3. 底部：我的进度/赛程 (横向时间轴) ---
+const myJourney = computed(() => {
+  if (role.value === 'student') {
+    return [
+      { title: '蓝桥杯报名', status: '已通过', time: '2026-01-10', icon: CircleCheck, color: '#67C23A' },
+      { title: '校赛作品提交', status: '审核中', time: '2026-02-01', icon: Timer, color: '#E6A23C' },
+      { title: '数学建模缴费', status: '未完成', time: '截止 02-28', icon: Warning, color: '#F56C6C' },
+      { title: '挑战杯路演', status: '待开始', time: '预计 03-15', icon: School, color: '#909399' },
+    ]
+  } else {
+    // 管理员视角
+    return [
+      { title: '发布年度目录', status: '已完成', time: '01-05', icon: Checked, color: '#67C23A' },
+      { title: '院级申报审核', status: '进行中', time: '02-01', icon: Management, color: '#409EFF' },
+      { title: '校赛报名开启', status: '进行中', time: '02-10', icon: Promotion, color: '#E6A23C' },
+      { title: '省赛名单上报', status: '待开始', time: '03-20', icon: Document, color: '#909399' },
+    ]
+  }
+})
+
+// --- 4. 右侧功能 (列表模式 - 更充实) ---
+const quickFunctions = computed(() => {
+  const map = {
+    student: [
+      { label: '赛事报名', desc: '浏览白名单赛事', path: '/competition/list', icon: Trophy, color: '#F56C6C', bg: '#fef0f0' },
+      { label: '作品提交', desc: '上传参赛附件', path: '/register/work', icon: Document, color: '#409EFF', bg: '#ecf5ff' },
+      { label: '我的获奖', desc: '查看荣誉证书', path: '/award/student', icon: Checked, color: '#67C23A', bg: '#f0f9eb' },
+      { label: '个人中心', desc: '维护基本信息', path: '/profile', icon: UserFilled, color: '#909399', bg: '#f4f4f5' },
+    ],
+    school_admin: [
+      { label: '赛事目录', desc: '年度赛事管理', path: '/competition/list', icon: Trophy, color: '#F56C6C', bg: '#fef0f0' },
+      { label: '申报审核', desc: '院级申请审批', path: '/competition/audit', icon: Checked, color: '#409EFF', bg: '#ecf5ff' },
+      { label: '数据看板', desc: '全校数据统计', path: '/statistics/dashboard', icon: Histogram, color: '#E6A23C', bg: '#fdf6ec' },
+      { label: '权限管理', desc: '角色与账号', path: '/permission', icon: UserFilled, color: '#909399', bg: '#f4f4f5' },
+    ]
+  }
+  return map[role.value] || map['student']
+})
+
+// --- 5. 右侧统计 (图表化) ---
+const statsData = computed(() => {
+  return [
+    { label: '进行中', value: 5, color: '#409EFF', percentage: 70 },
+    { label: '待处理', value: 12, color: '#F56C6C', percentage: 40 },
+  ]
+})
+</script>
+
+<template>
+  <div class="portal-home">
+    
+    <div class="welcome-banner">
+      <div class="banner-left">
+        <h1 class="greeting">您好，{{ userStore.username || '同学' }}</h1>
+        <p class="sub-greeting">欢迎使用学科竞赛管理系统</p>
+      </div>
+      <div class="banner-right">
+        <div class="info-pill term-pill">
+          <el-icon><School /></el-icon> <span>{{ termInfo }}</span>
+        </div>
+        <div class="info-pill date-pill">
+          <el-icon><CalendarIcon /></el-icon> <span>{{ currentDate }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="main-grid">
+      
+      <div class="grid-left">
+        <el-card class="portal-card notice-card">
+          <template #header>
+            <div class="card-header">
+              <span class="header-title"><span class="deco-line"></span> 通知公告</span>
+              <span class="more-link" @click="router.push('/notice/list')">更多 <el-icon><ArrowRight /></el-icon></span>
+            </div>
+          </template>
+          <ul class="notice-list">
+            <li v-for="item in notices" :key="item.id" class="notice-item" @click="router.push('/notice/detail')">
+              <div class="notice-meta">
+                <el-tag :type="item.type" size="small" effect="dark" class="n-tag">{{ item.tag }}</el-tag>
+                <span class="title">{{ item.title }}</span>
+              </div>
+              <span class="date">{{ item.date }}</span>
+            </li>
+          </ul>
+        </el-card>
+
+        <el-card class="portal-card calendar-card" shadow="hover">
+          <template #header>
+            <div class="card-header">
+              <span class="header-title"><span class="deco-line" style="background:#E6A23C"></span> 竞赛日历</span>
+            </div>
+          </template>
+          <div class="calendar-wrapper">
+            <el-calendar v-model="calendarDate">
+              <template #header="{ date }">
+                <span class="cal-header">{{ date }}</span>
+              </template>
+              <template #date-cell="{ data }">
+                 <div class="cal-cell" :class="{ 'is-today': data.isSelected }">
+                   {{ data.day.split('-').slice(1).join('-') }}
+                   <div v-if="data.day.endsWith('15')" class="cal-dot danger"></div> 
+                   <div v-if="data.day.endsWith('20')" class="cal-dot warning"></div>
+                 </div>
+              </template>
+            </el-calendar>
+          </div>
+        </el-card>
+      </div>
+
+      <div class="grid-right">
+        
+        <el-card class="portal-card quick-card" shadow="hover">
+          <template #header>
+            <div class="card-header"><span class="header-title">常用功能</span></div>
+          </template>
+          <div class="quick-list">
+            <div 
+              v-for="(item, index) in quickFunctions" 
+              :key="index" 
+              class="quick-list-item"
+              @click="router.push(item.path)"
+            >
+              <div class="icon-box" :style="{ background: item.bg, color: item.color }">
+                <el-icon :size="20"><component :is="item.icon" /></el-icon>
+              </div>
+              <div class="text-box">
+                <div class="label">{{ item.label }}</div>
+                <div class="desc">{{ item.desc }}</div>
+              </div>
+              <el-icon class="arrow"><ArrowRight /></el-icon>
+            </div>
+          </div>
+        </el-card>
+
+        <el-card class="portal-card stats-card" shadow="hover">
+          <template #header>
+            <div class="card-header"><span class="header-title">数据概览</span></div>
+          </template>
+          <div class="stats-rows">
+            <div v-for="stat in statsData" :key="stat.label" class="stat-row-item">
+               <div class="stat-top">
+                 <span class="s-label">{{ stat.label }}</span>
+                 <span class="s-val" :style="{ color: stat.color }">{{ stat.value }}</span>
+               </div>
+               <el-progress 
+                 :percentage="stat.percentage" 
+                 :color="stat.color" 
+                 :stroke-width="8" 
+                 :show-text="false" 
+               />
+            </div>
+          </div>
+        </el-card>
+
+      </div>
+    </div>
+    
+    <div class="footer-section">
+      <el-card class="portal-card journey-card" shadow="hover">
+        <template #header>
+          <div class="card-header">
+            <span class="header-title">
+              <el-icon class="icon-mr"><CollectionTag /></el-icon> 
+              {{ role === 'student' ? '我的竞赛里程' : '近期工作流' }}
+            </span>
+          </div>
+        </template>
+        <div class="journey-steps">
+          <div v-for="(step, idx) in myJourney" :key="idx" class="step-item">
+             <div class="step-icon" :style="{ color: step.color, borderColor: step.color }">
+               <el-icon><component :is="step.icon" /></el-icon>
+             </div>
+             <div class="step-line" v-if="idx !== myJourney.length - 1"></div>
+             <div class="step-content">
+               <div class="s-title">{{ step.title }}</div>
+               <div class="s-status" :style="{ color: step.color }">{{ step.status }}</div>
+               <div class="s-time">{{ step.time }}</div>
+             </div>
+          </div>
+        </div>
+      </el-card>
+    </div>
+
+  </div>
+</template>
+
+<style scoped lang="scss">
+.portal-home {
+  background-color: var(--background-color);
+  padding: 20px;
+  min-height: 100%;
+}
+
+/* Banner */
+.welcome-banner {
+  background: #fff; padding: 24px 30px; margin-bottom: 20px;
+  display: flex; justify-content: space-between; align-items: center;
+  border-radius: 8px; border-left: 5px solid #13C2C2;
+  box-shadow: 0 2px 12px 0 rgba(0,0,0,0.05);
+
+  .banner-left {
+    .greeting { margin: 0; font-size: 22px; color: #303133; }
+    .sub-greeting { margin: 6px 0 0; color: #909399; font-size: 14px; }
+  }
+  .banner-right {
+    display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
+    .info-pill {
+      display: flex; align-items: center; gap: 6px; font-size: 13px; padding: 4px 12px; border-radius: 12px;
+      &.term-pill { background: #ecf5ff; color: #409EFF; }
+      &.date-pill { background: #f0fdfa; color: #13C2C2; }
+    }
+  }
+}
+
+/* Main Grid */
+.main-grid {
+  display: flex; gap: 20px; margin-bottom: 20px;
+  .grid-left { flex: 1; display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+  .grid-right { width: 340px; display: flex; flex-direction: column; gap: 20px; flex-shrink: 0; }
+}
+
+/* Common Card */
+.portal-card {
+  border-radius: 8px; border: none; overflow: visible;
+  .card-header {
+    display: flex; justify-content: space-between; align-items: center;
+    .header-title { font-weight: 600; font-size: 16px; color: #303133; display: flex; align-items: center; }
+    .icon-mr { margin-right: 8px; font-size: 18px; color: #409EFF; }
+    .deco-line { width: 4px; height: 16px; background: #13C2C2; margin-right: 10px; border-radius: 2px; }
+    .more-link { font-size: 13px; color: #909399; cursor: pointer; display: flex; align-items: center; &:hover { color: #13C2C2; } }
+  }
+}
+
+/* Notice List */
+.notice-list {
+  padding: 0; margin: 0; list-style: none;
+  .notice-item {
+    display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px dashed #ebeef5; cursor: pointer;
+    &:last-child { border-bottom: none; }
+    &:hover .title { color: #13C2C2; transform: translateX(5px); transition: 0.2s; }
+    .notice-meta { display: flex; align-items: center; gap: 12px; overflow: hidden; }
+    .n-tag { border: none; font-weight: 500; }
+    .title { font-size: 14px; color: #606266; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 400px; }
+    .date { font-size: 13px; color: #999; flex-shrink: 0; }
+  }
+}
+
+/* Calendar (Mini) */
+.calendar-wrapper {
+  :deep(.el-calendar) { --el-calendar-border: none; background: transparent; }
+  :deep(.el-calendar__header) { padding: 0 0 10px; border-bottom: none; }
+  :deep(.el-calendar__body) { padding: 0; }
+  :deep(.el-calendar-table td) { border: none; padding: 2px; }
+  :deep(.el-calendar-table .el-calendar-day) { 
+    height: 36px; padding: 0; display: flex; align-items: center; justify-content: center; position: relative; border-radius: 4px; 
+    &:hover { background: #f0fdfa; color: #13C2C2; }
+  }
+  :deep(.el-calendar-table td.is-selected .el-calendar-day) { background: #13c2c2; color: white; }
+  
+  .cal-cell { position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+  .cal-dot { 
+    position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%); width: 4px; height: 4px; border-radius: 50%; 
+    &.danger { background: #F56C6C; }
+    &.warning { background: #E6A23C; }
+  }
+}
+
+/* Quick List (Right Side) */
+.quick-list {
+  display: flex; flex-direction: column; gap: 12px;
+  .quick-list-item {
+    display: flex; align-items: center; padding: 15px; background: #f9f9fa; border-radius: 8px; cursor: pointer; transition: 0.2s; border: 1px solid transparent;
+    &:hover { background: #fff; border-color: #13c2c2; box-shadow: 0 4px 12px rgba(19,194,194,0.1); .arrow { opacity: 1; transform: translateX(0); } }
+    
+    .icon-box {
+      width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-right: 15px; flex-shrink: 0;
+    }
+    .text-box {
+      flex: 1;
+      .label { font-size: 15px; font-weight: 600; color: #303133; margin-bottom: 2px; }
+      .desc { font-size: 12px; color: #909399; }
+    }
+    .arrow { opacity: 0; transform: translateX(-10px); transition: 0.3s; color: #13c2c2; }
+  }
+}
+
+/* Stats (Right Side) */
+.stats-rows {
+  display: flex; flex-direction: column; gap: 20px; padding: 10px 0;
+  .stat-row-item {
+    .stat-top { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 14px; .s-label { color: #606266; } .s-val { font-weight: bold; } }
+  }
+}
+
+/* Footer: Journey Steps */
+.footer-section { margin-top: 0; }
+.journey-steps {
+  display: flex; justify-content: space-between; align-items: flex-start; padding: 10px 20px;
+  .step-item {
+    display: flex; flex-direction: column; align-items: center; position: relative; flex: 1;
+    .step-icon {
+      width: 40px; height: 40px; border-radius: 50%; border: 2px solid; background: #fff; z-index: 2;
+      display: flex; align-items: center; justify-content: center; font-size: 18px; margin-bottom: 10px;
+    }
+    .step-line {
+      position: absolute; top: 20px; left: 50%; width: 100%; height: 2px; background: #e4e7ed; z-index: 1;
+    }
+    .step-content {
+      text-align: center;
+      .s-title { font-size: 14px; font-weight: 600; color: #303133; margin-bottom: 4px; }
+      .s-status { font-size: 12px; margin-bottom: 2px; }
+      .s-time { font-size: 12px; color: #c0c4cc; }
+    }
+    &:last-child .step-line { display: none; }
+  }
+}
+</style>
