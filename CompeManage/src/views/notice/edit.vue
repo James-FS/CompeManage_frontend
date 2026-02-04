@@ -64,7 +64,7 @@ const handleSubmit = async () => {
     if (valid) {
       isSubmitting.value = true
       // 判断是否有“待上传”的文件 (status === 'ready')
-      const hasNewFile = form.fileList.some(f => f.status === 'ready')
+      const hasNewFile = form.fileList.some((f) => f.status === 'ready')
       if (hasNewFile) {
         // 有新文件：手动触发上传，等待 onSuccess 回调
         uploadRef.value.submit()
@@ -82,12 +82,12 @@ const handleUploadSuccess = (response, uploadFile, uploadFiles) => {
     isSubmitting.value = false
     return
   }
-  
+
   // 必须手动把后端返回的 URL 赋给文件对象
-  uploadFile.url = response.data.url 
+  uploadFile.url = response.data.url
 
   // 检查是否所有文件都处理完毕 (全部变成 success)
-  const isAllSuccess = uploadFiles.every(item => item.status === 'success')
+  const isAllSuccess = uploadFiles.every((item) => item.status === 'success')
   if (isAllSuccess) {
     finalSubmit() // 所有文件上传完毕，执行最终提交
   }
@@ -103,8 +103,8 @@ const finalSubmit = async () => {
   try {
     // 提取所有文件的 URL，拼成字符串
     const attachmentStr = form.fileList
-      .map(f => f.url || (f.response && f.response.data.url))
-      .filter(url => url)
+      .map((f) => f.url || (f.response && f.response.data.url))
+      .filter((url) => url)
       .join(',')
 
     const params = new FormData()
@@ -115,31 +115,41 @@ const finalSubmit = async () => {
     params.append('attachment', attachmentStr)
 
     // 根据模式调用不同接口
-    let res
+    let createRes
     if (isEditMode.value) {
-      params.append('id', noticeID.value) // 编辑模式通常需要传 ID
-      // res = await api.updateNotice(params) // 等你有 update 接口后再开
+      params.append('id', noticeID.value)
       ElMessage.warning('暂无编辑接口，仅演示前端逻辑')
-      res = { code: 200 } 
+      createRes = { code: 200, data: { id: noticeID.value } }
     } else {
-      res = await api.createNotice(params)
+      createRes = await api.createNotice(params)
     }
 
-    if (res.code === 200) {
-      ElMessage.success(isEditMode.value ? '修改成功' : '发布成功')
+    if (createRes.code !== 0) {
+      ElMessage.error(createRes.msg || '创建通知失败')
+      isSubmitting.value = false
+      return
+    }
+    console.log(createRes)
+    const noticeIdToPublish = createRes.data.notice.ID || noticeID.value
+
+    const publishRes = await api.publishNotice(noticeIdToPublish)
+
+    if (publishRes.code === 0) {
+      ElMessage.success('通知发布成功')
       router.back()
+    } else {
+      ElMessage.error(publishRes.msg || '发布失败')
     }
   } catch (error) {
     console.error(error)
-    ElMessage.error('提交失败')
+    ElMessage.error('操作失败')
   } finally {
     isSubmitting.value = false
   }
 }
 
-
 onMounted(() => {
-   noticeID.value = route.params.id
+  noticeID.value = route.params.id
   // if (isEditMode.value) {
   //   // === 编辑模式模拟回显 ===
   //   setTimeout(() => {
@@ -148,7 +158,6 @@ onMounted(() => {
   //     form.compID = 1
   //   }, 500)
   // }
-
 })
 </script>
 
@@ -202,16 +211,16 @@ onMounted(() => {
               <span class="text">附件材料</span>
             </div>
             <el-upload
+              ref="uploadRef"
               v-model:file-list="form.fileList"
               drag
               action="/api/upload"
               multiple
               :headers="uploadHeaders"
-              :data="{type:'notice_attachment'}"
+              :data="{ type: 'notice_attachment' }"
               :auto-upload="false"
               :on-success="handleUploadSuccess"
               :on-error="handleUploadError"
-              
               class="paper-uploader"
             >
               <div class="upload-placeholder">
