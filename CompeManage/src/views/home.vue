@@ -67,6 +67,7 @@ const quickFunctions = computed(() => {
 
 const bannerStats = computed(() => {
   return [
+    { label: '报名中赛事', value: '8', icon: Promotion },
     { label: '进行中赛事', value: '5', icon: Trophy },
     { label: '我的待办', value: '3', icon: Bell },
   ]
