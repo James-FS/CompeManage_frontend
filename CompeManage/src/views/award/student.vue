@@ -1,54 +1,74 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Trophy, ArrowRight, Timer, Document, DocumentChecked } from '@element-plus/icons-vue'
+import { Trophy, Timer, DocumentChecked } from '@element-plus/icons-vue'
 import api from '@/api'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
 const loading = ref(false)
-const activeTab = ref('registration') // 默认显示“参赛报名”
-const myList = ref([]) 
+const activeTab = ref('registration')
+const myRegList = ref([])
+const myAwardList = ref([])
 const total = ref(0)
 
-// 1. 获取数据
-async function fetchMyList() {
+// ✅ 监听 Tab 切换
+watch(activeTab, (newTab) => {
+  if (newTab === 'registration') {
+    fetchMyRegList()
+  } else if (newTab === 'award') {
+    fetchMyAwardList()
+  }
+})
+
+async function fetchMyRegList() {
   loading.value = true
   try {
     const response = await api.getMyReg()
     if (response.code == 200) {
-      myList.value = response.data.list || []
+      myRegList.value = response.data.list || []
       total.value = response.data.total
     } else {
       ElMessage.error('获取列表失败:' + response.message)
     }
   } catch (error) {
-    ElMessage.error('获取列表失败:', error)
+    ElMessage.error('获取列表失败')
   } finally {
     loading.value = false
   }
 }
 
-// 2. 跳转逻辑
-// A. 查看报名详情
+async function fetchMyAwardList() {
+  loading.value = true
+  try {
+    const response = await api.getMyAwardList()
+    if (response.code == 200) {
+      myAwardList.value = response.data.list || []
+      total.value = response.data.total
+    } else {
+      ElMessage.error('获取列表失败:' + response.message)
+    }
+  } catch (error) {
+    ElMessage.error('获取列表失败')
+  } finally {
+    loading.value = false
+  }
+}
+
 const goDetail = (id) => {
   router.push(`/register/detail/${id}`)
 }
 
-// B. 申报校外奖项
 const goDeclare = () => {
   router.push('/award/student/declare')
 }
 
-// C. 提交作品 (跳转到 work-detail)
 const goSubmitWork = (item, state) => {
   if (state.disabled) return
   router.push({ name: 'work-detail', params: { id: item.id } })
 }
 
-// 3. 核心逻辑：计算作品提交按钮的状态 (复用自 work.vue)
 const getActionState = (item) => {
-  // 必须先通过报名审核 (status: 0待审, 1已过, 2驳回)
   if (item.status !== 1) {
     return {
       disabled: true,
@@ -58,9 +78,8 @@ const getActionState = (item) => {
     }
   }
 
-  // 校验时间
   if (!item.submit_start_time || !item.submit_end_time) {
-     return { disabled: true, btnText: '暂无提交', btnType: 'info', tip: '该赛事未配置提交时间' }
+    return { disabled: true, btnText: '暂无提交', btnType: 'info', tip: '该赛事未配置提交时间' }
   }
 
   const now = new Date().getTime()
@@ -78,8 +97,7 @@ const getActionState = (item) => {
   if (now > end) {
     return { disabled: true, btnText: '提交已截止', btnType: 'warning', tip: '作品提交通道已关闭' }
   }
-  
-  // 进行中
+
   return {
     disabled: false,
     btnText: item.work_url ? '修改作品' : '提交作品',
@@ -88,7 +106,6 @@ const getActionState = (item) => {
   }
 }
 
-// 4. 辅助：获取报名状态标签
 const getStatusTag = (status) => {
   const map = {
     0: { type: 'warning', text: '待审核' },
@@ -99,32 +116,30 @@ const getStatusTag = (status) => {
 }
 
 onMounted(() => {
-  fetchMyList()
+  fetchMyRegList()
 })
 </script>
 
 <template>
   <div class="page-container">
-    
     <div class="page-header">
       <div>
         <h2 class="title">我的竞赛中心</h2>
-        <span class="subtitle">My Competition Center</span>
+        <!-- <span class="subtitle">My Competition Center</span> -->
       </div>
       <el-button type="primary" @click="goDeclare" class="declare-btn">
         <el-icon class="mr-1"><Trophy /></el-icon> 申报校外奖项
       </el-button>
     </div>
 
+
     <el-tabs v-model="activeTab" class="custom-tabs">
-      
       <el-tab-pane label="我的报名" name="registration">
         <div v-loading="loading" class="list-wrapper">
-          <el-empty v-if="myList.length === 0" description="暂无参赛记录" />
+          <el-empty v-if="myRegList.length === 0" description="暂无参赛记录" />
           
           <div class="comp-list">
-            <div v-for="item in myList" :key="item.id" class="comp-card">
-              
+            <div v-for="item in myRegList" :key="item.id" class="comp-card">
               <div class="comp-info" @click="goDetail(item.comp_id)">
                 <div class="name-row">
                   <el-tag
@@ -144,13 +159,12 @@ onMounted(() => {
                     作品提交：{{ item.submit_start_time }} ~ {{ item.submit_end_time }}
                   </span>
                   <span class="meta-item" v-else>
-                     <el-icon><Timer /></el-icon> 作品提交时间待定
+                    <el-icon><Timer /></el-icon> 作品提交时间待定
                   </span>
                 </div>
               </div>
 
               <div class="comp-action">
-                
                 <el-button 
                   link 
                   type="primary" 
@@ -179,29 +193,36 @@ onMounted(() => {
                     </el-tooltip>
                   </div>
                 </template>
-
               </div>
-
             </div>
           </div>
         </div>
       </el-tab-pane>
 
       <el-tab-pane label="我的获奖" name="award">
-        <div class="list-wrapper">
-           <el-empty description="此模块功能待接入" />
+        <div v-loading="loading" class="list-wrapper">
+          <el-empty v-if="myAwardList.length === 0" description="暂无获奖记录" />
+          
+          <!-- ✅ 你可以在这里添加获奖列表的展示 -->
+          <div class="award-list" v-if="myAwardList.length > 0">
+            <div v-for="award in myAwardList" :key="award.id" class="award-card">
+              <h4>{{ award.comp_name }}</h4>
+              <p>{{ award.award_level }}</p>
+            </div>
+          </div>
         </div>
       </el-tab-pane>
-
     </el-tabs>
   </div>
 </template>
-
 <style scoped lang="scss">
 .page-container {
-  padding: 30px;
-  max-width: 1000px;
-  margin: 0 auto;
+  box-sizing: border-box;
+  padding: 24px;
+  flex-direction: column;
+  min-height: calc(100vh - 110px);
+  display: flex;
+  margin: 0px 30px;
 }
 
 .page-header {

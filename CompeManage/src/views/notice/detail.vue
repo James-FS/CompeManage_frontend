@@ -3,71 +3,34 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '@/api'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Search, Edit, Delete, Bell, ArrowLeft, View } from '@element-plus/icons-vue'
-
+import { Plus, Edit, Delete, ArrowLeft, DocumentChecked, DocumentRemove } from '@element-plus/icons-vue'
+import { formatTime } from '@/utils/format'
 const route = useRoute()
 const router = useRouter()
 
 // 1. 状态定义
 const loading = ref(false)
-const compID = route.params.id // 从路由获取当前赛事ID
-const competitionTitle = ref('加载中...') // 页面顶部显示的赛事名称
-const searchKeyword = ref('')
+const compID = route.params.id
+const competitionTitle = ref('加载中...')
 
-// 2. 模拟表格数据
+// 2. 表格数据
 const tableData = ref([])
 
-// 3. 获取数据 (模拟)
-const fetchData = () => {
-  loading.value = true
-  // 模拟 API 请求：GET /api/competition/:ID/notices
-  setTimeout(() => {
-    competitionTitle.value = '第十届“互联网+”大学生创新创业大赛' // 模拟获取到的赛事名
-    tableData.value = [
-      {
-        ID: 101,
-        title: '关于延长报名时间的紧急通知',
-        type: 2, // 1:普通, 2:紧急
-        status: 1, // 1:已发布, 0:草稿
-        viewCount: 1250,
-        publishTime: '2026-03-15 10:00:00',
-        creator: '张老师',
-      },
-      {
-        ID: 102,
-        title: '初赛路演答辩顺序安排公示',
-        type: 1,
-        status: 1,
-        viewCount: 890,
-        publishTime: '2026-04-01 09:30:00',
-        creator: '李助理',
-      },
-      {
-        ID: 103,
-        title: '决赛及颁奖典礼流程草案',
-        type: 1,
-        status: 0, // 草稿
-        viewCount: 0,
-        publishTime: '-',
-        creator: '王主任',
-      },
-    ]
-    loading.value = false
-  }, 500)
-}
-
+// 3. 获取数据
 async function fetchNoticeList() {
+  loading.value = true
   try {
     const res = await api.getNoticeList({ compID: route.params.id })
     tableData.value = res.data.list
   } catch (err) {
     ElMessage.error('获取通知列表失败')
+  } finally {
+    loading.value = false
   }
 }
 
 onMounted(() => {
   fetchNoticeList()
-  // fetchData()
 })
 
 // 4. 操作逻辑
@@ -80,8 +43,6 @@ function handleCreate() {
 }
 
 function handleEdit(row) {
-  // 跳转到编辑页，带上通知ID进行回显
-  // 路由建议配置为：/competition/notice/edit/:noticeID
   router.push({
     name: 'NoticeEdit',
     params: { id: row.ID },
@@ -89,16 +50,21 @@ function handleEdit(row) {
 }
 
 function handleDelete(row) {
-  ElMessageBox.confirm(`确定要删除通知 "${row.title}" 吗？此操作不可恢复。`, '警告', {
-    confirmButtonText: '确定删除',
-    cancelButtonText: '取消',
-    type: 'warning',
-  }).then(async () => {
+  ElMessageBox.confirm(
+    `确定要删除通知 "${row.title}" 吗？此操作不可恢复。`, 
+    '删除确认', 
+    {
+      confirmButtonText: '确定删除',
+      cancelButtonText: '取消',
+      type: 'warning',
+      confirmButtonClass: 'el-button--danger',
+    }
+  ).then(async () => {
     try {
       const res = await api.deleteNotice(row.ID)
       if (res.code === 0) {
         ElMessage.success('删除成功')
-        fetchNoticeList() 
+        fetchNoticeList()
       } else {
         ElMessage.error(res.data.msg || '删除失败')
       }
@@ -108,112 +74,163 @@ function handleDelete(row) {
   })
 }
 
-// 状态切换 (发布/撤回)
-const handleStatusChange = (row) => {
-  const action = row.status === 1 ? '发布' : '撤回'
-  ElMessage.success(`通知已${action}`)
+// 发布/撤回通知
+async function handlePublish(row) {
+  const action = row.status === 1 ? '撤回' : '发布'
+  const newStatus = row.status === 1 ? 0 : 1
+  
+  try {
+    const res = await api.updateNoticeStatus({ 
+      id: row.ID, 
+      status: newStatus 
+    })
+    
+    if (res.code === 0) {
+      ElMessage.success(`${action}成功`)
+      row.status = newStatus // 更新本地状态
+    } else {
+      ElMessage.error(res.msg || `${action}失败`)
+    }
+  } catch (error) {
+    ElMessage.error(`${action}失败：` + error.message)
+  }
 }
 </script>
 
 <template>
   <div class="notice-list-container">
-    <div class="context-header">
-      <div class="left">
-        <el-button link @click="router.back()">
-          <el-icon><ArrowLeft /></el-icon> 返回
-        </el-button>
-        <div class="divIDer"></div>
-        <div class="comp-info">
-          <span class="label">当前管理赛事：</span>
-          <span class="value">{{ competitionTitle }}</span>
-        </div>
-      </div>
-    </div>
+    <!-- 顶部面包屑导航 -->
 
-    <el-card shadow="never" class="main-card">
+    <!-- 主内容卡片 -->
+    <el-card shadow="hover" class="main-card">
+      <!-- 工具栏 -->
       <div class="toolbar">
-        <!-- <div class="filter-box">
-          <el-input
-            v-model="searchKeyword"
-            placeholder="搜索通知标题..."
-            prefix-icon="Search"
-            style="wIDth: 240px"
-            clearable
-            @clear="fetchData"
-          />
-        </div> -->
-        <div class="action-box">
-          <el-button type="primary" @click="handleCreate">
-            <el-icon class="mr-1"><Plus /></el-icon> 发布新通知
-          </el-button>
+        <div class="toolbar-title">
+          <el-icon class="title-icon"><DocumentChecked /></el-icon>
+          <span>通知公告管理</span>
         </div>
+        <el-button type="primary" @click="handleCreate" size="default">
+          <el-icon><Plus /></el-icon>
+          <span>发布新通知</span>
+        </el-button>
       </div>
 
+      <!-- 表格 -->
       <el-table
         :data="tableData"
         v-loading="loading"
-        style="width: 100%"
-        :header-cell-style="{ background: 'var(--table-header-bg)', color: 'var(--text-primary)' }"
+        stripe
+        class="notice-table"
+        :header-cell-style="{ 
+          background: '#f5f7fa', 
+          color: '#606266',
+          fontWeight: '600'
+        }"
       >
-        <el-table-column prop="title" label="通知标题" min-wIDth="200">
+        <!-- 通知标题 -->
+        <el-table-column prop="title" label="通知标题" min-width="200" align="center" show-overflow-tooltip>
           <template #default="{ row }">
-            <span class="table-title" @click="handleEdit(row)">{{ row.title }}</span>
+            <div class="title-cell">
+              <span class="table-title" @click="handleEdit(row)">
+                {{ row.title }}
+              </span>
+            </div>
           </template>
         </el-table-column>
 
-        <!-- <el-table-column prop="type" label="类型" wIDth="100">
+        <!-- 发布时间 -->
+        <el-table-column prop="publish_time" label="发布时间"  align="center">
           <template #default="{ row }">
-            <el-tag :type="row.type === 2 ? 'danger' : 'primary'" effect="light" size="small">
-              {{ row.type === 2 ? '紧急' : '普通' }}
+            <div class="time-cell">
+              <el-icon class="time-icon"><Timer /></el-icon>
+              <span>{{ row.publish_time || '-' }}</span>
+            </div>
+          </template>
+        </el-table-column>
+        
+        <el-table-column prop="publish_time" label="更新时间" align="center">
+          <template #default="{ row }">
+            <div class="time-cell">
+              <el-icon class="time-icon"><Timer /></el-icon>
+              <span>{{ formatTime(row.UpdatedAt,"YYYY-MM-DD HH:mm:ss") || '-' }}</span>
+            </div>
+          </template>
+        </el-table-column>
+
+        <!-- 状态 - 改为标签 -->
+        <el-table-column label="状态"  align="center">
+          <template #default="{ row }">
+            <el-tag 
+              :type="row.status === 1 ? 'success' : 'info'" 
+              effect="plain"
+              size="default"
+            >
+              {{ row.status === 1 ? '已发布' : '草稿' }}
             </el-tag>
           </template>
-        </el-table-column> -->
-
-        <!-- <el-table-column prop="creator" label="发布人" wIDth="120" /> -->
-
-        <el-table-column prop="publish_time" label="发布时间" wIDth="180" align="center">
-          <template #default="{ row }">
-            <span class="time-text">{{ row.publish_time }}</span>
-          </template>
         </el-table-column>
 
-        <!-- <el-table-column label="浏览" wIDth="100" align="center">
-           <template #default="{ row }">
-             <div class="view-data">
-               <el-icon><View /></el-icon> {{ row.viewCount }}
-             </div>
-           </template>
-        </el-table-column> -->
-
-        <el-table-column label="状态" wIDth="100" align="center">
+        <!-- 操作 - 根据状态显示不同按钮 -->
+        <el-table-column label="操作" width="240" fixed="right" align="center">
           <template #default="{ row }">
-            <el-switch
-              v-model="row.status"
-              :active-value="1"
-              :inactive-value="0"
-              size="small"
-              inline-prompt
-              active-text="已发布"
-              inactive-text="草稿"
-              @change="handleStatusChange(row)"
-            />
-          </template>
-        </el-table-column>
+            <div class="action-buttons">
+              <!-- 编辑按钮 -->
+              <el-button 
+                link 
+                type="primary" 
+                size="small" 
+                @click="handleEdit(row)"
+              >
+                <el-icon><Edit /></el-icon>
+                <span>编辑</span>
+              </el-button>
 
-        <el-table-column label="操作" wIDth="180" fixed="right" align="center">
-          <template #default="{ row }">
-            <el-button link type="primary" size="small" @click="handleEdit(row)">
-              <el-icon><Edit /></el-icon> 编辑
-            </el-button>
-            <el-button link type="danger" size="small" @click="handleDelete(row)">
-              <el-icon><Delete /></el-icon> 删除
-            </el-button>
+              <!-- 发布/撤回按钮 - 根据状态显示 -->
+              <el-button
+                v-if="row.status === 0"
+                link
+                type="success"
+                size="small"
+                @click="handlePublish(row)"
+              >
+                <el-icon><DocumentChecked /></el-icon>
+                <span>发布</span>
+              </el-button>
+
+              <el-button
+                v-else
+                link
+                type="warning"
+                size="small"
+                @click="handlePublish(row)"
+              >
+                <el-icon><DocumentRemove /></el-icon>
+                <span>撤回</span>
+              </el-button>
+
+              <!-- 删除按钮 -->
+              <el-button 
+                link 
+                type="danger" 
+                size="small" 
+                @click="handleDelete(row)"
+              >
+                <el-icon><Delete /></el-icon>
+                <span>删除</span>
+              </el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
 
+      <!-- 分页 -->
       <div class="pagination-box">
-        <el-pagination background layout="total, prev, pager, next" :total="tableData.length" />
+        <el-pagination
+          background
+          layout="total, prev, pager, next, jumper"
+          :total="tableData.length"
+          :page-size="10"
+        />
       </div>
     </el-card>
   </div>
@@ -221,104 +238,208 @@ const handleStatusChange = (row) => {
 
 <style scoped lang="scss">
 .notice-list-container {
-  --header-bg: #ffffff;
-  --table-header-bg: #f5f7fa;
-  --brand-color: #409eff;
-
-  background-color: var(--background-color);
-  min-height: calc(100vh - 60px);
-  padding: 20px;
+  box-sizing: border-box;
+  min-height: calc(100vh - 110px);
+  padding: 24px;
+  background: linear-gradient(to bottom, #f0f2f5 0%, #ffffff 100%);
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-/* 顶部情境头 */
+/* ========== 顶部导航 ========== */
 .context-header {
-  background: var(--header-bg);
-  padding: 16px 20px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  background: #ffffff;
+  padding: 16px 24px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: box-shadow 0.3s;
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  }
 
   .left {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 16px;
 
-    .divIDer {
+    .back-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
+      color: #606266;
+      transition: color 0.3s;
+
+      &:hover {
+        color: #409eff;
+      }
+    }
+
+    .divider {
       width: 1px;
-      height: 14px;
-      background: #e4e7ed;
+      height: 16px;
+      background: #dcdfe6;
     }
 
     .comp-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
       font-size: 14px;
+
       .label {
-        color: var(--text-secondary);
+        color: #909399;
       }
+
       .value {
-        font-weight: bold;
-        color: var(--text-primary);
+        font-weight: 600;
+        color: #303133;
+      }
+    }
+  }
+}
+
+/* ========== 主卡片 ========== */
+.main-card {
+  flex: 1;
+  border-radius: 12px;
+
+  :deep(.el-card__body) {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 24px;
+  }
+}
+
+/* ========== 工具栏 ========== */
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #f0f2f5;
+
+  .toolbar-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #303133;
+
+    .title-icon {
+      font-size: 20px;
+      color: #409eff;
+    }
+  }
+}
+
+/* ========== 表格样式 ========== */
+.notice-table {
+  flex: 1;
+
+  .title-cell {
+    display: flex;
+    align-items: center;
+  }
+
+  .table-title {
+    font-weight: 500;
+    color: #303133;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+    
+    &::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: 0;
+      width: 0;
+      height: 2px;
+      background: #409eff;
+      transition: width 0.3s;
+    }
+
+    &:hover {
+      color: #409eff;
+      
+      &::after {
+        width: 100%;
+      }
+    }
+  }
+
+  .time-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    color: #606266;
+    font-size: 13px;
+
+    .time-icon {
+      color: #909399;
+    }
+  }
+
+  .action-buttons {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    .el-button {
+      padding: 4px 8px;
+      
+      span {
         margin-left: 4px;
       }
     }
   }
 }
 
-/* 主卡片样式 */
-.main-card {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-
-  :deep(.el-card__body) {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-  }
-}
-
-.toolbar {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 20px;
-}
-
-/* 表格内样式 */
-.table-title {
-  font-weight: 500;
-  cursor: pointer;
-  transition: color 0.2s;
-
-  &:hover {
-    color: var(--brand-color);
-  }
-}
-
-.time-text {
-  font-family: monospace;
-  color: var(--text-secondary);
-}
-
-.view-data {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  color: var(--text-secondary);
-  font-size: 13px;
-}
-
+/* ========== 分页 ========== */
 .pagination-box {
-  margin-top: auto; /* 推到底部 */
-  padding-top: 20px;
+  margin-top: 24px;
+  padding-top: 16px;
   display: flex;
   justify-content: center;
+  border-top: 1px solid #f0f2f5;
 }
 
-.mr-1 {
-  margin-right: 4px;
+/* ========== 响应式 ========== */
+@media (max-width: 768px) {
+  .notice-list-container {
+    padding: 12px;
+  }
+
+  .context-header {
+    padding: 12px 16px;
+
+    .left {
+      gap: 12px;
+
+      .comp-info {
+        font-size: 13px;
+      }
+    }
+  }
+
+  .main-card {
+    :deep(.el-card__body) {
+      padding: 16px;
+    }
+  }
+
+  .toolbar {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
 }
 </style>
