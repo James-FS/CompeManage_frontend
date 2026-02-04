@@ -401,8 +401,7 @@ onMounted(() => {
         :data="awardList"
         v-loading="loading"
         stripe
-        max-height="450"
-        style="width: 100%"
+        style="width: 100%;flex: 1;"
         @selection-change="handleSelectionChange"
       >
         <el-table-column type="selection" width="40" />

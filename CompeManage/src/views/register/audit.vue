@@ -181,7 +181,7 @@ onMounted(() => {
         </el-form-item>
 
         <el-form-item label="审核状态">
-          <el-select v-model="queryForm.status" placeholder="全部" style="width: 220px" clearable>
+          <el-select v-model="queryForm.status" placeholder="全部" style="width: 180px" clearable>
             <el-option label="待审核" :value="0" />
             <el-option label="已通过" :value="1" />
             <el-option label="已驳回" :value="2" />
@@ -192,7 +192,7 @@ onMounted(() => {
           <el-input
             v-model="queryForm.keyword"
             placeholder="请输入赛事负责人"
-            style="width: 220px"
+            style="width: 200px"
             @keyup.enter="fetchRegList"
           />
         </el-form-item>
@@ -201,7 +201,7 @@ onMounted(() => {
           <el-input
             v-model="queryForm.phone"
             placeholder="请输入联系电话"
-            style="width: 220px"
+            style="width: 200px"
             @keyup.enter="fetchRegList"
           />
         </el-form-item>
@@ -387,7 +387,7 @@ onMounted(() => {
   border-radius: 4px;
   display: flex;
   flex-direction: column;
-  max-height: calc(55vh - 10px);
+  max-height: calc(75vh - 10px);
   box-shadow: var(--card-shadow);
   margin-top: 10px;
 }
