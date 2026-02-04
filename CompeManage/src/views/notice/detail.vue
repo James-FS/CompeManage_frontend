@@ -3,15 +3,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '@/api'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import {
-  Plus,
-  Search,
-  Edit,
-  Delete,
-  Bell,
-  ArrowLeft,
-  View
-} from '@element-plus/icons-vue'
+import { Plus, Search, Edit, Delete, Bell, ArrowLeft, View } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -39,7 +31,7 @@ const fetchData = () => {
         status: 1, // 1:已发布, 0:草稿
         viewCount: 1250,
         publishTime: '2026-03-15 10:00:00',
-        creator: '张老师'
+        creator: '张老师',
       },
       {
         ID: 102,
@@ -48,7 +40,7 @@ const fetchData = () => {
         status: 1,
         viewCount: 890,
         publishTime: '2026-04-01 09:30:00',
-        creator: '李助理'
+        creator: '李助理',
       },
       {
         ID: 103,
@@ -57,19 +49,18 @@ const fetchData = () => {
         status: 0, // 草稿
         viewCount: 0,
         publishTime: '-',
-        creator: '王主任'
-      }
+        creator: '王主任',
+      },
     ]
     loading.value = false
   }, 500)
 }
 
-async function fetchNoticeList(){
-  try{
-    const res = await api.getNoticeList({compID: route.params.id})
+async function fetchNoticeList() {
+  try {
+    const res = await api.getNoticeList({ compID: route.params.id })
     tableData.value = res.data.list
-  }
-  catch(err){
+  } catch (err) {
     ElMessage.error('获取通知列表失败')
   }
 }
@@ -81,34 +72,39 @@ onMounted(() => {
 
 // 4. 操作逻辑
 function handleCreate() {
- router.push({ 
-    name: 'NoticeEdit', 
-    params: { id: 0},
-    query: { compID: compID } 
+  router.push({
+    name: 'NoticeEdit',
+    params: { id: 0 },
+    query: { compID: compID },
   })
 }
 
 function handleEdit(row) {
   // 跳转到编辑页，带上通知ID进行回显
   // 路由建议配置为：/competition/notice/edit/:noticeID
-  router.push({ 
-    name: 'NoticeEdit', 
-    params: { id: row.ID }  
+  router.push({
+    name: 'NoticeEdit',
+    params: { id: row.ID },
   })
 }
 
 function handleDelete(row) {
-  ElMessageBox.confirm(
-    `确定要删除通知 "${row.title}" 吗？此操作不可恢复。`,
-    '警告',
-    {
-      confirmButtonText: '确定删除',
-      cancelButtonText: '取消',
-      type: 'warning',
+  ElMessageBox.confirm(`确定要删除通知 "${row.title}" 吗？此操作不可恢复。`, '警告', {
+    confirmButtonText: '确定删除',
+    cancelButtonText: '取消',
+    type: 'warning',
+  }).then(async () => {
+    try {
+      const res = await api.deleteNotice(row.ID)
+      if (res.code === 0) {
+        ElMessage.success('删除成功')
+        fetchNoticeList() 
+      } else {
+        ElMessage.error(res.data.msg || '删除失败')
+      }
+    } catch (error) {
+      ElMessage.error('删除失败：' + error.message)
     }
-  ).then(() => {
-    ElMessage.success('删除成功')
-    fetchData() // 刷新列表
   })
 }
 
@@ -121,7 +117,6 @@ const handleStatusChange = (row) => {
 
 <template>
   <div class="notice-list-container">
-    
     <div class="context-header">
       <div class="left">
         <el-button link @click="router.back()">
@@ -136,7 +131,6 @@ const handleStatusChange = (row) => {
     </div>
 
     <el-card shadow="never" class="main-card">
-      
       <div class="toolbar">
         <!-- <div class="filter-box">
           <el-input
@@ -155,11 +149,10 @@ const handleStatusChange = (row) => {
         </div>
       </div>
 
-      <el-table 
-        :data="tableData" 
-        v-loading="loading" 
-        style="wIDth: 100%"
-        
+      <el-table
+        :data="tableData"
+        v-loading="loading"
+        style="width: 100%"
         :header-cell-style="{ background: 'var(--table-header-bg)', color: 'var(--text-primary)' }"
       >
         <el-table-column prop="title" label="通知标题" min-wIDth="200">
@@ -176,14 +169,14 @@ const handleStatusChange = (row) => {
           </template>
         </el-table-column> -->
 
-        <el-table-column prop="creator" label="发布人" wIDth="120" />
+        <!-- <el-table-column prop="creator" label="发布人" wIDth="120" /> -->
 
-        <el-table-column prop="publishTime" label="发布时间" wIDth="180">
+        <el-table-column prop="publish_time" label="发布时间" wIDth="180" align="center">
           <template #default="{ row }">
-            <span class="time-text">{{ row.publishTime }}</span>
+            <span class="time-text">{{ row.publish_time }}</span>
           </template>
         </el-table-column>
-        
+
         <!-- <el-table-column label="浏览" wIDth="100" align="center">
            <template #default="{ row }">
              <div class="view-data">
@@ -192,7 +185,7 @@ const handleStatusChange = (row) => {
            </template>
         </el-table-column> -->
 
-        <!-- <el-table-column label="状态" wIDth="100">
+        <el-table-column label="状态" wIDth="100" align="center">
           <template #default="{ row }">
             <el-switch
               v-model="row.status"
@@ -200,12 +193,12 @@ const handleStatusChange = (row) => {
               :inactive-value="0"
               size="small"
               inline-prompt
-              active-text="已发"
+              active-text="已发布"
               inactive-text="草稿"
               @change="handleStatusChange(row)"
             />
           </template>
-        </el-table-column> -->
+        </el-table-column>
 
         <el-table-column label="操作" wIDth="180" fixed="right" align="center">
           <template #default="{ row }">
@@ -218,7 +211,7 @@ const handleStatusChange = (row) => {
           </template>
         </el-table-column>
       </el-table>
-      
+
       <div class="pagination-box">
         <el-pagination background layout="total, prev, pager, next" :total="tableData.length" />
       </div>
@@ -231,7 +224,7 @@ const handleStatusChange = (row) => {
   --header-bg: #ffffff;
   --table-header-bg: #f5f7fa;
   --brand-color: #409eff;
-  
+
   background-color: var(--background-color);
   min-height: calc(100vh - 60px);
   padding: 20px;
@@ -247,25 +240,27 @@ const handleStatusChange = (row) => {
   border-radius: 8px;
   display: flex;
   align-items: center;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
 
   .left {
     display: flex;
     align-items: center;
     gap: 12px;
-    
+
     .divIDer {
-      wIDth: 1px;
+      width: 1px;
       height: 14px;
       background: #e4e7ed;
     }
-    
+
     .comp-info {
       font-size: 14px;
-      .label { color: var(--text-secondary); }
-      .value { 
-        font-weight: bold; 
-        color: var(--text-primary); 
+      .label {
+        color: var(--text-secondary);
+      }
+      .value {
+        font-weight: bold;
+        color: var(--text-primary);
         margin-left: 4px;
       }
     }
@@ -277,7 +272,7 @@ const handleStatusChange = (row) => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  
+
   :deep(.el-card__body) {
     height: 100%;
     display: flex;
@@ -296,7 +291,7 @@ const handleStatusChange = (row) => {
   font-weight: 500;
   cursor: pointer;
   transition: color 0.2s;
-  
+
   &:hover {
     color: var(--brand-color);
   }
@@ -323,5 +318,7 @@ const handleStatusChange = (row) => {
   justify-content: center;
 }
 
-.mr-1 { margin-right: 4px; }
+.mr-1 {
+  margin-right: 4px;
+}
 </style>
