@@ -2,6 +2,7 @@
 import { ref, reactive, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import api from '@/api';
 import { 
   Plus, 
   Delete, 
@@ -54,30 +55,76 @@ const totalAwards = computed(() => {
     return form.award_stats.reduce((sum, item) => sum + Number(item.count || 0), 0);
 });
 
+const buildDisplayFileName = (url, fallbackName) => {
+  if (!url) return fallbackName || '';
+  const fileName = url.split('/').pop() || '';
+  if (fileName.includes('_')) {
+    return fileName.substring(fileName.indexOf('_') + 1) || fileName;
+  }
+  return fileName || fallbackName || '';
+};
+
+const normalizeAttachmentList = (list) => {
+  if (!Array.isArray(list)) return [];
+  return list.map((item) => {
+    if (typeof item === 'string') {
+      return { name: buildDisplayFileName(item), url: item };
+    }
+    if (item?.url) {
+      return { name: item.name || buildDisplayFileName(item.url), url: item.url };
+    }
+    return item;
+  }).filter(Boolean);
+};
+
+const uploadAttachments = async () => {
+  const uploaded = [];
+  for (const item of form.attachments) {
+    if (typeof item === 'string') {
+      uploaded.push({ name: buildDisplayFileName(item), url: item });
+      continue;
+    }
+    if (item?.url && !item?.raw) {
+      uploaded.push({ name: item.name || buildDisplayFileName(item.url), url: item.url });
+      continue;
+    }
+    if (item?.raw) {
+      const formData = new FormData();
+      formData.append('file', item.raw);
+      formData.append('type', 'temp');
+      const res = await api.uploadFile(formData);
+      const data = res?.data || {};
+      if (data.url) {
+        uploaded.push({ name: data.name || item.name, url: data.url });
+      }
+    }
+  }
+  return uploaded;
+};
+
 // 初始化加载数据
 const loadData = async () => {
   loading.value = true;
   try {
-    setTimeout(() => {
-      form.organizer = '计算机学院';
-      form.undertaker = '计算机学院团委';
-      form.college_info.name = '计算机学院';
-      form.manager = '张三';
-      form.time_range = '2025-01-01 至 2025-06-20';
-
-      form.participant_count = 156;
-      form.award_stats = [
-        { level: '一等奖', count: 3 },
-        { level: '二等奖', count: 5 },
-        { level: '三等奖', count: 12 },
-        { level: '优秀奖', count: 20 }
-      ];
-
-      loading.value = false;
-    }, 500);
-
+    const res = await api.getSummaryDetail(compId);
+    const data = res?.data || {};
+    form.comp_name = data.comp_name || compName || '';
+    form.organizer = data.organizer || '';
+    form.undertaker = data.undertaker || '';
+    form.college_info.name = data.college_info?.name || '';
+    form.manager = data.manager || '';
+    form.time_range = data.time_range || '';
+    form.participant_count = data.participant_count || 0;
+    form.award_stats = data.award_stats || [];
+    form.expenses = Array.isArray(data.expenses) && data.expenses.length > 0
+      ? data.expenses
+      : [{ usage: '', amount: 0, remark: '' }];
+    form.summary_content = data.summary_content || '';
+    form.attachments = normalizeAttachmentList(data.attachments || []);
   } catch (error) {
     console.error(error);
+    ElMessage.error('加载总结信息失败');
+  } finally {
     loading.value = false;
   }
 };
@@ -113,15 +160,22 @@ const handleSubmit = async (isArchive = false) => {
         );
 
         loading.value = true;
-        setTimeout(() => {
-            console.log('提交的数据:', { ...form, status: isArchive ? 1 : 0 });
-            ElMessage.success(`${actionText}成功`);
-            if (isArchive) {
-                router.push({ name: 'SummaryList' });
-            }
-            loading.value = false;
-        }, 500);
+        const attachments = await uploadAttachments();
+        const payload = {
+          summary_content: form.summary_content,
+          expenses: form.expenses,
+          attachments,
+          status: isArchive ? 1 : 0
+        };
+        await api.saveSummary(compId, payload);
+        ElMessage.success(`${actionText}成功`);
+        if (isArchive) {
+            router.push({ name: 'SummaryList' });
+        }
       } catch (e) { }
+      finally {
+        loading.value = false;
+      }
     }
   });
 };

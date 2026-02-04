@@ -22,7 +22,7 @@ export const api = {
   getCollegeList: () => get('/api/college/list'),
 
   // ==================== 竞赛相关 ====================
-  getCompetitionList: (params) => get('/api/comp/list',params),
+  getCompetitionList: (params) => get('/api/comp/list', params),
   createCompetition: (data) => post('/api/comp/create', data),
   batchImportCompetition: (data) => post('/api/comp/batch-import', data),
   deleteCompetition: (id) => del(`/api/comp/${id}`),
@@ -35,12 +35,12 @@ export const api = {
   saveRegConfig: (data) => post('/api/reg/config', data),
   getRegConfig: (compID) => get(`/api/reg/config/get?comp_id=${compID}`),
   getRegStatus: (comp_id) => get(`/api/reg/status?comp_id=${comp_id}`),
-  submitReg:(data) => post('/api/reg/submit', data),
-  reSubmitReg:(data) => put('/api/reg/resubmit', data),
-  getRegList:(params) => get('/api/reg/list', params),
-  getRegDetail:(id) => get(`/api/reg/detail?id=${id}`),
-  auditReg:(data) => put('/api/reg/audit', data),
-  getStudentList:(params) => get('/api/reg/user/list', params),
+  submitReg: (data) => post('/api/reg/submit', data),
+  reSubmitReg: (data) => put('/api/reg/resubmit', data),
+  getRegList: (params) => get('/api/reg/list', params),
+  getRegDetail: (id) => get(`/api/reg/detail?id=${id}`),
+  auditReg: (data) => put('/api/reg/audit', data),
+  getStudentList: (params) => get('/api/reg/user/list', params),
 
   // ==================== 赛事申报相关 ====================
   // 院级申报
@@ -60,18 +60,26 @@ export const api = {
   getAllDeclares: (params) => get('/api/declare/all', params),
 
   //==================== 报名相关 ====================
-  getMyReg:(id) => get(`/api/reg/my-reg`,id),
-  submitWork:(data) => put('/api/reg/work-submit', data),
+  getMyReg: (id) => get(`/api/reg/my-reg`, id),
+  submitWork: (data) => put('/api/reg/work-submit', data),
   // ==================== 通知相关 ====================
-  getNoticeList:(params) => get('/api/notice/list', params),
-  getNoticeDetail:(id) => get(`/api/notice/detail/${id}`),
-  createNotice:(data) => post('/api/notice/comp/create', data,{headers: { 'Content-Type': 'multipart/form-data' } }),
-  publishNotice:(id) => put(`/api/notice/${id}/publish`),
-  deleteNotice:(id) => del(`/api/notice/${id}`),
+  getNoticeList: (params) => get('/api/notice/list', params),
+  getNoticeDetail: (id) => get(`/api/notice/detail/${id}`),
+  createNotice: (data) => post('/api/notice/comp/create', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  publishNotice: (id) => put(`/api/notice/${id}/publish`),
+  deleteNotice: (id) => del(`/api/notice/${id}`),
   // ==================== 获奖相关 ====================
-  getAwardCompList:(params) => get('/api/award/list', params),
-  getCompAwards:(comp_id) => get(`/api/award/comp-awards?comp_id=${comp_id}`),
-  getAwardTemplate:(comp_id) => get(`/api/award/export-template?comp_id=${comp_id}`, {},{ responseType: 'blob' }),
+  getAwardCompList: (params) => get('/api/award/list', params),
+  getCompAwards: (comp_id) => get(`/api/award/comp-awards?comp_id=${comp_id}`),
+  getAwardTemplate: (comp_id) => get(`/api/award/export-template?comp_id=${comp_id}`, {}, { responseType: 'blob' }),
+
+  // ==================== 赛事总结相关 ====================
+  getSummaryList: (params) => get('/api/summary/list', params),
+  getSummaryDetail: (id) => get(`/api/summary/${id}`),
+  saveSummary: (id, data) => post(`/api/summary/${id}`, data),
+
+  // ==================== 通用上传 ====================
+  uploadFile: (data) => post('/api/upload', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
 }
 
 export default api
