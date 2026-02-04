@@ -569,7 +569,7 @@ onMounted(() => {
                 </el-table>
             </el-dialog>
 
-            <el-table v-loading="loading" ref="tableRef" :data="tableData" stripe max-height="400" style="width: 100%"
+            <el-table v-loading="loading" ref="tableRef" :data="tableData" stripe height="calc(100vh - 400px)" style="width: 100%"
                 @selection-change="handleSelectionChange">
                 <el-table-column type="selection" width="40" />
                 <el-table-column label="赛事编号" min-width="100" align="center">

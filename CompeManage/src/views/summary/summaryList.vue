@@ -3,7 +3,7 @@ import { ref, reactive, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { Edit, View, Search, Refresh, Download, ArrowDown } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
-// import api from '@/api';
+import api from '@/api';
 
 const router = useRouter();
 const loading = ref(false);
@@ -22,7 +22,7 @@ const searchForm = reactive({
 // 分页数据
 const current_page = ref(1);
 const page_size = ref(10);
-const total = ref(100);
+const total = ref(0);
 
 // 年份相关
 const currentYear = ref(new Date().getFullYear().toString()); // 当前选中的年份
@@ -50,46 +50,31 @@ const handleReset = () => {
     handleSearch();
 };
 
-// 模拟数据：待总结只显示已结束且未填报的
+// 待总结只显示已结束且未填报的
 const loadData = async () => {
     loading.value = true;
-    // const params = { 
-    //   status: 2, // 只查已结束的
-    //   summary_status: searchForm.summary_status ? searchForm.summary_status : undefined
-    // };
-    // const res = await api.getCompetitionList(params);
+    try {
+        const params = {
+            page: current_page.value,
+            page_size: page_size.value,
+            comp_name: searchForm.comp_name || undefined,
+            organizer: searchForm.organizer || undefined,
+            manager: searchForm.manager || undefined,
+            summary_status: searchForm.summary_status !== '' ? searchForm.summary_status : undefined,
+            end_time: searchForm.end_time || undefined,
+            year: searchForm.year || undefined
+        };
 
-    // 模拟数据演示
-    setTimeout(() => {
-        const allData = [
-            { id: 101, comp_name: '2025年大学生程序设计竞赛', end_time: '2025-06-20', organizer: '计算机学院', undertaker: '计算机学院团委', college_info: { name: '计算机学院' }, manager: '张三', summary_status: 0 },
-            { id: 102, comp_name: '2024年英语演讲比赛', end_time: '2024-12-10', organizer: '外国语学院', undertaker: '外国语学院学生会', college_info: { name: '外国语学院' }, manager: '李四', summary_status: 1 },
-            { id: 103, comp_name: '2024年大学生挑战杯', end_time: '2024-11-30', organizer: '学生处', undertaker: '学生处竞赛部', college_info: { name: '学生处' }, manager: '王五', summary_status: 0 }
-        ];
-
-        // 根据筛选条件过滤数据
-        let filtered = allData;
-        if (searchForm.comp_name) {
-            filtered = filtered.filter(item => item.comp_name.includes(searchForm.comp_name));
-        }
-        if (searchForm.organizer) {
-            filtered = filtered.filter(item => item.organizer.includes(searchForm.organizer));
-        }
-        if (searchForm.manager) {
-            filtered = filtered.filter(item => item.manager.includes(searchForm.manager));
-        }
-        if (searchForm.summary_status !== '') {
-            filtered = filtered.filter(item => item.summary_status === parseInt(searchForm.summary_status));
-        }
-
-        total.value = filtered.length;
-        // 分页处理
-        const start = (current_page.value - 1) * page_size.value;
-        const end = start + page_size.value;
-        tableData.value = filtered.slice(start, end);
-
+        const res = await api.getSummaryList(params);
+        const data = res?.data || {};
+        tableData.value = data.list || [];
+        total.value = data.total || 0;
+    } catch (error) {
+        tableData.value = [];
+        total.value = 0;
+    } finally {
         loading.value = false;
-    }, 500);
+    }
 };
 
 // 搜索功能

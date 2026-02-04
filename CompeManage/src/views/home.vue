@@ -1,7 +1,8 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, reactive } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { useRouter } from 'vue-router'
+import api from '@/api'
 import {
   Trophy, Bell, ArrowRight, Promotion,
   Checked, Management, Histogram, Timer,
@@ -17,19 +18,15 @@ const currentDate = new Date().toLocaleDateString('zh-CN', {
   year: 'numeric', month: 'long', day: 'numeric', weekday: 'long'
 })
 
-const notices = ref([
-  { id: 1, title: '关于启动2026年“挑战杯”大学生创业计划竞赛校赛的通知', date: '02-01', tag: '置顶', type: 'danger' },
-  { id: 2, title: '2026年全国大学生数学建模竞赛报名缴费说明', date: '01-28', tag: '最新', type: 'primary' },
-  { id: 3, title: '关于公布2025年度学科竞赛获奖名单的公示', date: '01-25', tag: '公示', type: 'warning' },
-  { id: 4, title: '教务处关于规范学科竞赛学分认定的补充规定', date: '01-20', tag: '通知', type: 'info' },
-  { id: 5, title: '计算机设计大赛校内选拔赛路演安排', date: '01-15', tag: '赛事', type: 'success' },
-])
+const notices = ref([])
 
-const upcomingEvents = ref([
-  { id: 1, title: '蓝桥杯软件赛 - 报名截止', date: '2026-02-15', daysLeft: 3, color: '#F56C6C' },
-  { id: 2, title: '互联网+大赛 - 校赛初审', date: '2026-02-20', daysLeft: 8, color: '#E6A23C' },
-  { id: 3, title: 'ACM校队选拔 - 报名截止', date: '2026-02-28', daysLeft: 16, color: '#409EFF' },
-])
+const upcomingEvents = ref([])
+
+const bannerCounts = reactive({
+  regOpen: 0,
+  ongoing: 0,
+  todo: 0
+})
 
 const myProgressList = computed(() => {
   if (role.value === 'student') {
@@ -67,10 +64,110 @@ const quickFunctions = computed(() => {
 
 const bannerStats = computed(() => {
   return [
-    { label: '报名中赛事', value: '8', icon: Promotion },
-    { label: '进行中赛事', value: '5', icon: Trophy },
-    { label: '我的待办', value: '3', icon: Bell },
+    { label: '报名中赛事', value: String(bannerCounts.regOpen), icon: Promotion },
+    { label: '进行中赛事', value: String(bannerCounts.ongoing), icon: Trophy },
+    { label: '我的待办', value: String(bannerCounts.todo), icon: Bell },
   ]
+})
+
+const formatNoticeDate = (dateStr) => {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  if (Number.isNaN(date.getTime())) return ''
+  const month = `${date.getMonth() + 1}`.padStart(2, '0')
+  const day = `${date.getDate()}`.padStart(2, '0')
+  return `${month}-${day}`
+}
+
+const calcDaysLeft = (dateStr) => {
+  if (!dateStr) return null
+  const date = new Date(dateStr)
+  if (Number.isNaN(date.getTime())) return null
+  const now = new Date()
+  const diff = date.getTime() - now.getTime()
+  return Math.ceil(diff / (24 * 60 * 60 * 1000))
+}
+
+const loadNotices = async () => {
+  const res = await api.getNoticeList({
+    page: 1,
+    page_size: 5,
+    status: 1,
+    is_latest: true
+  })
+  const list = res?.data?.list || []
+  notices.value = list.map((item, index) => {
+    const tag = index === 0 ? '最新' : '通知'
+    const type = index === 0 ? 'primary' : 'info'
+    return {
+      id: item.id,
+      title: item.title,
+      date: formatNoticeDate(item.publish_time),
+      tag,
+      type
+    }
+  })
+}
+
+const loadBannerCounts = async () => {
+  const [regRes, allRes] = await Promise.all([
+    api.getCompetitionList({ page: 1, page_size: 1, status: 'ongoing' }),
+    api.getCompetitionList({ page: 1, page_size: 100 })
+  ])
+
+  bannerCounts.regOpen = regRes?.data?.total || 0
+
+  const list = allRes?.data?.list || []
+  const now = new Date().getTime()
+  let ongoingCount = 0
+  list.forEach((item) => {
+    const start = item?.detail?.comp_start_time ? new Date(item.detail.comp_start_time).getTime() : null
+    const end = item?.detail?.comp_end_time ? new Date(item.detail.comp_end_time).getTime() : null
+    if (start && end && now >= start && now <= end) {
+      ongoingCount += 1
+    }
+  })
+  bannerCounts.ongoing = ongoingCount
+
+  if (role.value === 'school_admin') {
+    const pendingRes = await api.getPendingDeclares({ page: 1, page_size: 1 })
+    bannerCounts.todo = pendingRes?.data?.total || 0
+  } else {
+    bannerCounts.todo = 0
+  }
+}
+
+const loadUpcomingEvents = async () => {
+  const res = await api.getCompetitionList({ page: 1, page_size: 100 })
+  const list = res?.data?.list || []
+  const now = new Date().getTime()
+  const events = list.map((item) => {
+    const endTime = item?.detail?.reg_end_time || item?.detail?.submit_end_time || ''
+    const daysLeft = calcDaysLeft(endTime)
+    return {
+      id: item.id,
+      title: `${item.comp_name} - 报名截止`,
+      date: endTime ? endTime.split('T')[0] : '',
+      daysLeft,
+      color: '#E6A23C'
+    }
+  }).filter(ev => ev.daysLeft !== null && ev.daysLeft >= 0)
+    .sort((a, b) => a.daysLeft - b.daysLeft)
+    .slice(0, 3)
+
+  upcomingEvents.value = events
+}
+
+const initHomeData = async () => {
+  await Promise.all([
+    loadNotices(),
+    loadBannerCounts(),
+    loadUpcomingEvents()
+  ])
+}
+
+onMounted(() => {
+  initHomeData()
 })
 </script>
 
@@ -109,7 +206,10 @@ const bannerStats = computed(() => {
                 </el-icon></span>
             </div>
           </template>
-          <ul class="notice-list">
+          <div v-if="notices.length === 0" class="notice-empty">
+            <el-empty description="暂无数据" />
+          </div>
+          <ul v-else class="notice-list">
             <li v-for="item in notices" :key="item.id" class="notice-item" @click="router.push('/notice/detail')">
               <div class="notice-meta">
                 <el-tag :type="item.type" size="small" effect="plain">{{ item.tag }}</el-tag>
@@ -320,6 +420,10 @@ const bannerStats = computed(() => {
       border-bottom: none;
     }
 
+    &:first-child {
+      padding-top: 0;
+    }
+
     &:hover .title {
       color: #13C2C2;
     }
@@ -346,6 +450,13 @@ const bannerStats = computed(() => {
       flex-shrink: 0;
     }
   }
+}
+
+.notice-empty {
+  height: 430px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 

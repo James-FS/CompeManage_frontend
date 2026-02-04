@@ -2,6 +2,8 @@
 import { ref, reactive, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { User, Trophy, Money, Document, ArrowLeft } from '@element-plus/icons-vue';
+import { ElMessage } from 'element-plus';
+import api from '@/api';
 
 const route = useRoute();
 const router = useRouter();
@@ -32,61 +34,54 @@ const detailData = reactive({
     files: []            // 附件列表
 });
 
-// 模拟数据加载
+const buildDisplayFileName = (url, fallbackName) => {
+    if (!url) return fallbackName || '';
+    const fileName = url.split('/').pop() || '';
+    if (fileName.includes('_')) {
+        return fileName.substring(fileName.indexOf('_') + 1) || fileName;
+    }
+    return fileName || fallbackName || '';
+};
+
+const normalizeAttachmentList = (list) => {
+    if (!Array.isArray(list)) return [];
+    return list.map((item) => {
+        if (typeof item === 'string') {
+            return { name: buildDisplayFileName(item), url: item };
+        }
+        if (item?.url) {
+            return { name: item.name || buildDisplayFileName(item.url), url: item.url };
+        }
+        return item;
+    }).filter(Boolean);
+};
+
+// 数据加载
 const loadData = async () => {
     loading.value = true;
     try {
-        // 模拟网络延迟
-        setTimeout(() => {
-        // 1. 基础信息
-            detailData.comp_name = '2025年大学生程序设计竞赛';
-            detailData.organizer = '计算机学院';
-            detailData.undertaker = '计算机学院团委';
-            detailData.college_info.name = '计算机学院';
-            detailData.manager = '张三';
-            detailData.time_range = '2025-01-01 至 2025-06-20';
-            
-            // 2. 统计数据
-            stats.participantCount = 156;
-            
-            // 3. 获奖数据
-            detailData.award_list = [
-                { level: '一等奖', count: 3 },
-                { level: '二等奖', count: 5 },
-                { level: '三等奖', count: 12 },
-                { level: '优秀奖', count: 20 }
-            ];
-            // 计算获奖总数
-            stats.awardTotal = detailData.award_list.reduce((acc, cur) => acc + cur.count, 0);
+        const res = await api.getSummaryDetail(compId);
+        const data = res?.data || {};
 
-            // 4. 经费数据
-            detailData.expense_list = [
-                { usage: '赛事宣传横幅制作', amount: 300, remark: '校内主干道悬挂' },
-                { usage: '评审专家劳务费', amount: 2000, remark: '5位专家，每人400' },
-                { usage: '获奖证书及奖品', amount: 1500, remark: '定制奖杯与证书' },
-                { usage: '比赛现场饮用水', amount: 200, remark: '农夫山泉5箱' }
-            ];
-            // 计算经费总额
-            stats.expenseTotal = detailData.expense_list.reduce((acc, cur) => acc + cur.amount, 0);
+        detailData.comp_name = data.comp_name || compName || '';
+        detailData.organizer = data.organizer || '';
+        detailData.undertaker = data.undertaker || '';
+        detailData.college_info.name = data.college_info?.name || '';
+        detailData.manager = data.manager || '';
+        detailData.time_range = data.time_range || '';
+        detailData.summary_content = data.summary_content || '';
+        detailData.award_list = data.award_stats || [];
+        detailData.expense_list = data.expenses || [];
+        detailData.files = normalizeAttachmentList(data.attachments || []);
 
-            // 5. 总结正文
-            detailData.summary_content = `本次竞赛在学校领导的高度重视和各部门的大力支持下圆满结束。
-1. 组织严密：成立了专门的竞赛组委会，制定了详细的竞赛章程和实施方案。
-2. 参与度高：共有来自全校10个学院的156名学生报名参赛，覆盖面广。
-3. 成绩斐然：学生在比赛中展现了扎实的专业基础和良好的创新能力。
-存在不足：部分非专业学生对比赛规则不够熟悉，建议明年增加赛前培训环节。`;
-
-            // 6. 附件
-            detailData.files = [
-                { name: '现场照片合集.zip', url: '#' },
-                { name: '获奖名单公示.pdf', url: '#' }
-            ];
-            stats.fileCount = detailData.files.length;
-
-            loading.value = false;
-        }, 500);
+        stats.participantCount = data.participant_count || 0;
+        stats.awardTotal = detailData.award_list.reduce((acc, cur) => acc + Number(cur.count || 0), 0);
+        stats.expenseTotal = detailData.expense_list.reduce((acc, cur) => acc + Number(cur.amount || 0), 0);
+        stats.fileCount = detailData.files.length;
     } catch (error) {
         console.error(error);
+        ElMessage.error('加载总结详情失败');
+    } finally {
         loading.value = false;
     }
 };
