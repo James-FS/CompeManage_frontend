@@ -30,141 +30,6 @@ const levelMap = {
   校级二等奖: { label: '校级二等奖', color: '#409eff' },
 }
 
-// --- 模拟数据 ---
-const mockAwardData = [
-  {
-    id: 1,
-    student_name: '张三',
-    student_id: '20220001',
-    comp_name: '2026年全国大学生计算机设计大赛',
-    award_level: '国家级一等奖',
-    award_date: '2026-05-15',
-    phone: '13800138000',
-    submit_time: '2026-02-02 10:30',
-    status: 0,
-  },
-  {
-    id: 1,
-    student_name: '张三',
-    student_id: '20220001',
-    comp_name: '2026年全国大学生计算机设计大赛',
-    award_level: '国家级一等奖',
-    award_date: '2026-05-15',
-    phone: '13800138000',
-    submit_time: '2026-02-02 10:30',
-    status: 0,
-  },
-  {
-    id: 1,
-    student_name: '张三',
-    student_id: '20220001',
-    comp_name: '2026年全国大学生计算机设计大赛',
-    award_level: '国家级一等奖',
-    award_date: '2026-05-15',
-    phone: '13800138000',
-    submit_time: '2026-02-02 10:30',
-    status: 0,
-  },
-  {
-    id: 1,
-    student_name: '张三',
-    student_id: '20220001',
-    comp_name: '2026年全国大学生计算机设计大赛',
-    award_level: '国家级一等奖',
-    award_date: '2026-05-15',
-    phone: '13800138000',
-    submit_time: '2026-02-02 10:30',
-    status: 0,
-  },
-  {
-    id: 1,
-    student_name: '张三',
-    student_id: '20220001',
-    comp_name: '2026年全国大学生计算机设计大赛',
-    award_level: '国家级一等奖',
-    award_date: '2026-05-15',
-    phone: '13800138000',
-    submit_time: '2026-02-02 10:30',
-    status: 0,
-  },
-  {
-    id: 2,
-    student_name: '李四',
-    student_id: '20220002',
-    comp_name: '第十七届蓝桥杯全国软件和信息技术专业人才大赛',
-    award_level: '省级二等奖',
-    award_date: '2026-04-20',
-    phone: '13800138001',
-    submit_time: '2026-02-01 14:20',
-    status: 1,
-  },
-  {
-    id: 3,
-    student_name: '王五',
-    student_id: '20220003',
-    comp_name: '2026年美国大学生数学建模竞赛(MCM/ICM)',
-    award_level: '国家级二等奖',
-    award_date: '2026-03-10',
-    phone: '13800138002',
-    submit_time: '2026-01-28 09:15',
-    status: 1,
-  },
-  {
-    id: 4,
-    student_name: '赵六',
-    student_id: '20220004',
-    comp_name: '2026年全国大学生机器人大赛RoboMaster',
-    award_level: '校级一等奖',
-    award_date: '2026-06-05',
-    phone: '13800138003',
-    submit_time: '2026-02-02 15:45',
-    status: 0,
-  },
-  {
-    id: 5,
-    student_name: '孙七',
-    student_id: '20220005',
-    comp_name: '2026年ACM-ICPC亚洲区域赛选拔',
-    award_level: '国家级三等奖',
-    award_date: '2026-05-30',
-    phone: '13800138004',
-    submit_time: '2026-01-30 11:22',
-    status: 2,
-  },
-  {
-    id: 6,
-    student_name: '周八',
-    student_id: '20220006',
-    comp_name: '第十七届蓝桥杯全国软件和信息技术专业人才大赛',
-    award_level: '省级一等奖',
-    award_date: '2026-04-15',
-    phone: '13800138005',
-    submit_time: '2026-02-02 08:50',
-    status: 0,
-  },
-  {
-    id: 7,
-    student_name: '吴九',
-    student_id: '20220007',
-    comp_name: '2026年全国大学生计算机设计大赛',
-    award_level: '省级二等奖',
-    award_date: '2026-05-20',
-    phone: '13800138006',
-    submit_time: '2026-01-29 16:30',
-    status: 1,
-  },
-  {
-    id: 8,
-    student_name: '郑十',
-    student_id: '20220008',
-    comp_name: '2026年美国大学生数学建模竞赛(MCM/ICM)',
-    award_level: '校级二等奖',
-    award_date: '2026-03-25',
-    phone: '13800138007',
-    submit_time: '2026-02-02 13:10',
-    status: 0,
-  },
-]
 
 // --- 筛选与搜索 ---
 const queryForm = reactive({
@@ -206,16 +71,13 @@ const handleBatchPass = async () => {
   }).then(async () => {
     loading.value = true
     try {
-      // 模拟 API 调用
-      await new Promise((resolve) => setTimeout(resolve, 500))
-
-      pendingItems.forEach((item) => {
-        item.status = 1
-      })
-
-      ElMessage.success(`成功通过 ${pendingItems.length} 条记录`)
-      selectedRows.value = []
-      fetchAwardList()
+      const ids = pendingItems.map((item) => item.id)
+      const res = await api.batchPassAwardAudit(ids)
+      if (res.code === 200) {
+        ElMessage.success(`成功通过 ${pendingItems.length} 条记录`)
+        selectedRows.value = []
+        fetchAwardList()
+      }
     } catch (error) {
       console.error(error)
       ElMessage.error('批量操作部分或全部失败，请刷新后重试')
@@ -245,17 +107,14 @@ const handleBatchReject = async () => {
   loading.value = true
 
   try {
-    // 模拟 API 调用
-    await new Promise((resolve) => setTimeout(resolve, 500))
-
-    pendingItems.forEach((item) => {
-      item.status = 2
-    })
-
-    ElMessage.success(`成功驳回 ${pendingItems.length} 条记录`)
-    batchRejectDialogVisible.value = false
-    selectedRows.value = []
-    fetchAwardList()
+    const ids = pendingItems.map((item) => item.id)
+    const res = await api.batchRejectAwardAudit(ids, batchRejectReason.value)
+    if (res.code === 200) {
+      ElMessage.success(`成功驳回 ${pendingItems.length} 条记录`)
+      batchRejectDialogVisible.value = false
+      selectedRows.value = []
+      fetchAwardList()
+    }
   } catch (error) {
     console.error(error)
     ElMessage.error('批量操作部分或全部失败，请刷新后重试')
@@ -273,10 +132,11 @@ const handleQuickPass = (row) => {
     type: 'success',
   }).then(async () => {
     try {
-      // 模拟 API 调用
-      await new Promise((resolve) => setTimeout(resolve, 300))
-      row.status = 1
-      ElMessage.success('审核已通过')
+      const res = await api.passAwardAudit(row.id)
+      if (res.code === 200) {
+        row.status = 1
+        ElMessage.success('审核已通过')
+      }
     } catch (e) {
       ElMessage.warning('' + e.message)
     }
@@ -292,38 +152,19 @@ function navigateToDetail(row) {
 async function fetchAwardList() {
   loading.value = true
   try {
-    // 模拟 API 调用
-    await new Promise((resolve) => setTimeout(resolve, 300))
-
-    // 过滤数据
-    let filtered = mockAwardData
-
-    if (queryForm.comp_name) {
-      filtered = filtered.filter((item) => item.comp_name.includes(queryForm.comp_name))
+    const params = {
+      page: queryForm.page,
+      page_size: queryForm.pageSize,
+      keyword: queryForm.keyword,
+      status: queryForm.status,
+      award_level: queryForm.award_level,
+      comp_name: queryForm.comp_name,
     }
-
-    if (queryForm.keyword) {
-      filtered = filtered.filter(
-        (item) =>
-          item.student_name.includes(queryForm.keyword) ||
-          item.student_id.includes(queryForm.keyword),
-      )
+    const res = await api.getAwardAuditList(params)
+    if (res.code === 200) {
+      awardList.value = res.data.list || []
+      total.value = res.data.total || 0
     }
-
-    if (queryForm.award_level) {
-      filtered = filtered.filter((item) => item.award_level === queryForm.award_level)
-    }
-
-    if (queryForm.status !== '') {
-      filtered = filtered.filter((item) => item.status === Number(queryForm.status))
-    }
-
-    total.value = filtered.length
-
-    // 分页
-    const start = (queryForm.page - 1) * queryForm.pageSize
-    const end = start + queryForm.pageSize
-    awardList.value = filtered.slice(start, end)
   } catch (err) {
     ElMessage.info('无相关数据')
   } finally {

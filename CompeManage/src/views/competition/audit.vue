@@ -394,7 +394,7 @@ watch(() => activeTab.value, () => {
                 </div>
             </div>
 
-            <el-table v-loading="loading" :data="filteredTableData" stripe height="400"  style="width: 100%"
+            <el-table v-loading="loading" :data="filteredTableData" stripe height="calc(100vh - 390px)"  style="width: 100%"
                 @selection-change="handleSelectionChange">
                 <el-table-column type="selection" width="50" align="center" />
                 <el-table-column label="状态" width="80" align="center">

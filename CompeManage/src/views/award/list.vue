@@ -10,7 +10,7 @@ const compList = ref([])
 const loading = ref(false)
 const queryParams = ref({
   page: 1,
-  page_size: 10,
+  size: 10,
 })
 const total = ref(0)
 // 获取 Token 用于上传鉴权
@@ -21,7 +21,7 @@ const uploadHeaders = { Authorization: `Bearer ${token}` }
 const fetchList = async () => {
   loading.value = true
   try {
-    const res = await api.getAwardCompList()
+    const res = await api.getAwardCompList(queryParams.value)
     if (res.code === 200) {
       compList.value = res.data.list || []
       total.value = res.data.total || 0
@@ -185,12 +185,12 @@ onMounted(fetchList)
     <div class="pagination-container">
       <el-pagination
         v-model:current-page="queryParams.page"
-        v-model:page-size="queryParams.page_size"
+        v-model:page-size="queryParams.size"
         :total="total"
         layout="total, sizes, prev, pager, next, jumper"
         :page-sizes="[10, 20, 50]"
-        @current-change="fetchCompList"
-        @size-change="fetchCompList"
+        @current-change="fetchList"
+        @size-change="fetchList"
       />
     </div>
   </div>

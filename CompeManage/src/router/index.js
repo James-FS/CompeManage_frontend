@@ -169,6 +169,19 @@ const routes = [
         path: 'detail/:id',
         name: 'AwardDetail',
         component: () => import('@/views/award/detail.vue'),
+        meta: {
+          title: '获奖详情',
+          parent: 'AwardList',
+        },
+      },
+      {
+        path: 'import/:id',
+        name: 'AwardImport',
+        component: () => import('@/views/award/import.vue'),
+        meta: {
+          title: '导入获奖名单',
+          parent: 'AwardDetail',
+        },
       },
       {
         path: 'student',
@@ -202,6 +215,10 @@ const routes = [
         name: 'AwardAuditDetail',
         component: () => import('@/views/award/auditDetail.vue'),
         props: true,
+        meta: {
+          title: '审核详情',
+          parent: 'AwardAudit',
+        },
       },
     ],
   },

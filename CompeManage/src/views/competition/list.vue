@@ -290,7 +290,7 @@ const handleExport = async () => {
         // 1. 构造查询参数，但将 page_size 设置得很大，或者后端支持 page_size=-1 代表全部
         const params = {
             page: 1,
-            page_size: 2000, // 强行获取所有数据
+            page_size: 2000, // 获取所有数据
             year: currentYear.value,
             comp_name: searchForm.comp_name,
             comp_level: searchForm.comp_level,
@@ -572,7 +572,7 @@ onMounted(() => {
             <el-table v-loading="loading" ref="tableRef" :data="tableData" stripe height="calc(100vh - 400px)" style="width: 100%"
                 @selection-change="handleSelectionChange">
                 <el-table-column type="selection" width="40" />
-                <el-table-column label="赛事编号" min-width="100" align="center">
+                <el-table-column label="赛事编号" min-width="100" align="center" show-overflow-tooltip>
                     <template #default="scope">
                         {{ scope.row.comp_code || '-' }}
                     </template>
