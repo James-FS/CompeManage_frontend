@@ -1,11 +1,12 @@
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { 
   Search, Plus, Download, Upload, Delete, Edit, 
   Trophy, Medal, UserFilled, Refresh, MoreFilled 
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import * as XLSX from 'xlsx'
 import api from '@/api'
 
 const route = useRoute()
@@ -15,7 +16,6 @@ const compID = route.params.id
 // 1. 状态定义
 const loading = ref(false)
 const tableData = ref([])
-const total = ref(0)
 const queryParams = ref({
   page: 1,
   size: 10,
@@ -23,105 +23,36 @@ const queryParams = ref({
   level: '',
 })
 
-// 2. 模拟数据 (Mock Data)
-const mockData = [
-  {
-    id: 1,
-    level: '特等奖',
-    projectName: '基于Vue3的智慧校园管理系统',
-    studentName: '林萧',
-    studentID: '2021001001',
-    isTeam: true,
-    members: '顾里, 南湘, 唐宛如',
-    college: '计算机学院',
-    advisor: '宫洺',
-    avatarColor: '#722ed1',
-  },
-  {
-    id: 2,
-    level: '一等奖',
-    projectName: '无人机集群协同控制算法研究',
-    studentName: '楚雨荨',
-    studentID: '2022002002',
-    isTeam: true,
-    members: '慕容云海, 端木磊',
-    college: '自动化学院',
-    advisor: '叶烁',
-    avatarColor: '#f56a00',
-  },
-  {
-    id: 3,
-    level: '一等奖',
-    projectName: '一种新型环保降解材料',
-    studentName: '陆之昂',
-    studentID: '2021003003',
-    isTeam: false, 
-    college: '化工学院',
-    advisor: '傅小司',
-    avatarColor: '#1890ff',
-  },
-  {
-    id: 4,
-    level: '二等奖',
-    projectName: '传统非遗文化的数字化传承',
-    studentName: '方一凡',
-    studentID: '2023004004',
-    isTeam: true,
-    members: '乔英子, 林磊儿',
-    college: '人文学院',
-    advisor: '李萌',
-    avatarColor: '#52c41a',
-  },
-  {
-    id: 5,
-    level: '二等奖',
-    projectName: '校园二手交易小程序',
-    studentName: '余淮',
-    studentID: '2022005005',
-    isTeam: false,
-    college: '软件学院',
-    advisor: '张平',
-    avatarColor: '#faad14',
-  },
-  {
-    id: 6,
-    level: '三等奖',
-    projectName: '智能垃圾分类垃圾桶',
-    studentName: '路星河',
-    studentID: '2022006006',
-    isTeam: false,
-    college: '机械学院',
-    advisor: '潘主任',
-    avatarColor: '#eb2f96',
-  },
-   {
-    id: 7,
-    level: '三等奖',
-    projectName: '英语口语AI陪练',
-    studentName: '李诗情',
-    studentID: '2021007007',
-    isTeam: true,
-    members: '肖鹤云',
-    college: '外语学院',
-    advisor: '卢笛',
-    avatarColor: '#13c2c2',
-  },
-  {
-    id: 8,
-    level: '优秀奖',
-    projectName: '-',
-    studentName: '张万森',
-    studentID: '2023008008',
-    isTeam: false,
-    college: '理学院',
-    advisor: '林北星',
-    avatarColor: '#2f54eb',
-  },
-]
+const avatarPalette = ['#722ed1', '#f56a00', '#1890ff', '#52c41a', '#faad14', '#eb2f96', '#13c2c2', '#2f54eb']
+const getAvatarColor = (seed = '') => {
+  const str = String(seed)
+  let hash = 0
+  for (let i = 0; i < str.length; i++) hash = (hash + str.charCodeAt(i)) % avatarPalette.length
+  return avatarPalette[hash]
+}
 
 // 统计数据
+const filteredData = computed(() => {
+  const keyword = queryParams.value.keyword.trim().toLowerCase()
+  const level = queryParams.value.level
+  return tableData.value.filter((item) => {
+    const levelMatch = !level || item.level === level
+    const keywordMatch = !keyword || [item.projectName, item.studentName, item.studentID, item.members]
+      .filter(Boolean)
+      .some((v) => String(v).toLowerCase().includes(keyword))
+    return levelMatch && keywordMatch
+  })
+})
+
+const total = computed(() => filteredData.value.length)
+
+const pagedData = computed(() => {
+  const start = (queryParams.value.page - 1) * queryParams.value.size
+  return filteredData.value.slice(start, start + queryParams.value.size)
+})
+
 const stats = computed(() => {
-  const data = tableData.value
+  const data = filteredData.value
   return {
     total: data.length,
     level1: data.filter(i => i.level.includes('特') || i.level.includes('一')).length,
@@ -132,16 +63,72 @@ const stats = computed(() => {
 
 const fetchData = async () => {
   loading.value = true
-  // 模拟请求延迟
-  setTimeout(() => {
-    tableData.value = mockData
-    total.value = mockData.length
+  try {
+    const res = await api.getCompAwards(compID)
+    if (res.code === 200) {
+      const list = Array.isArray(res.data) ? res.data : []
+      tableData.value = list.map((item) => ({
+        id: item.id,
+        level: item.award_level || '优秀奖',
+        projectName: item.team_name || '-',
+        studentName: item.leader_name || '未知',
+        studentID: item.leader_id || '-',
+        isTeam: Boolean(item.team_name),
+        members: '',
+        college: item.college || '-',
+        advisor: item.advisor || '-',
+        avatarColor: getAvatarColor(item.leader_name || item.team_name),
+      }))
+    }
+  } catch (error) {
+    ElMessage.error(error.message || '获取获奖列表失败')
+  } finally {
     loading.value = false
-  }, 500)
+  }
 }
 
-const handleExport = () => {
-  ElMessage.success('正在下载 Excel 名单...')
+const handleExport = async () => {
+  try {
+    loading.value = true
+    const data = filteredData.value
+
+    if (!data.length) {
+      ElMessage.warning('暂无数据可导出')
+      return
+    }
+
+    const dataToExport = data.map((item) => ({
+      '奖项等级': item.level || '-',
+      '获奖项目': item.projectName || '-',
+      '获奖者': item.studentName || '-',
+      '学号': item.studentID || '-',
+      '成员': item.members || '-',
+      '所属学院': item.college || '-',
+      '指导老师': item.advisor || '-',
+    }))
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport)
+    const workbook = XLSX.utils.book_new()
+
+    worksheet['!cols'] = [
+      { wch: 12 },
+      { wch: 30 },
+      { wch: 12 },
+      { wch: 16 },
+      { wch: 30 },
+      { wch: 20 },
+      { wch: 12 },
+    ]
+
+    XLSX.utils.book_append_sheet(workbook, worksheet, '获奖名单')
+    XLSX.writeFile(workbook, `获奖名单_${compID}.xlsx`)
+    ElMessage.success('导出成功')
+  } catch (error) {
+    console.error('导出失败：', error)
+    ElMessage.error('导出失败')
+  } finally {
+    loading.value = false
+  }
 }
 
 const handleDelete = (row) => {
@@ -157,6 +144,26 @@ const getLevelStyle = (level) => {
   if (level.includes('三')) return { color: '#096dd9', bg: '#e6f7ff', label: '三等奖' }
   return { color: '#595959', bg: '#fafafa', label: '优秀奖' }
 }
+
+const goImport = () => {
+  router.push({ name: 'AwardImport', params: { id: compID } })
+}
+
+const handlePageChange = (page) => {
+  queryParams.value.page = page
+}
+
+const handleSizeChange = (size) => {
+  queryParams.value.size = size
+  queryParams.value.page = 1
+}
+
+watch(
+  () => [queryParams.value.keyword, queryParams.value.level],
+  () => {
+    queryParams.value.page = 1
+  }
+)
 
 onMounted(() => {
   fetchData()
@@ -210,20 +217,21 @@ onMounted(() => {
         </div>
 
         <div class="right-tools">
-          <el-button type="primary" plain :icon="Upload">导入名单</el-button>
+          <el-button type="primary" plain :icon="Upload" @click="goImport">导入名单</el-button>
           <el-button type="success" plain :icon="Download" @click="handleExport">导出 Excel</el-button>
           <el-button type="primary" :icon="Plus" class="add-btn">手动录入</el-button>
         </div>
       </div>
 
       <el-table 
-        :data="tableData" 
+        :data="pagedData" 
         v-loading="loading" 
         style="width: 100%" 
+        height="calc(100vh - 400px)"
         class="custom-table"
         header-cell-class-name="table-header"
       >
-        <el-table-column type="index" label="#" width="60" align="center" />
+        <el-table-column type="index" label="序号" width="60" align="center" />
         
         <el-table-column prop="level" label="奖项" width="120" align="center">
           <template #default="{ row }">
@@ -236,18 +244,15 @@ onMounted(() => {
           </template>
         </el-table-column>
 
-        <el-table-column prop="projectName" label="获奖项目" min-width="200" show-overflow-tooltip>
+        <el-table-column prop="projectName" label="获奖项目名称" min-width="240" show-overflow-tooltip align="center">
           <template #default="{ row }">
              <span class="project-name">{{ row.projectName && row.projectName !== '-' ? row.projectName : '-' }}</span>
           </template>
         </el-table-column>
 
-        <el-table-column label="获奖者信息" min-width="240">
+        <el-table-column label="获奖者信息" min-width="240" align="center">
           <template #default="{ row }">
             <div class="winner-cell">
-              <div class="avatar-circle" :style="{ backgroundColor: row.avatarColor || '#409eff' }">
-                {{ row.studentName.charAt(0) }}
-              </div>
               <div class="winner-info">
                 <div class="main-row">
                   <span class="name">{{ row.studentName }}</span>
@@ -266,8 +271,8 @@ onMounted(() => {
           </template>
         </el-table-column>
 
-        <el-table-column prop="college" label="所属学院" width="180" show-overflow-tooltip />
-        <el-table-column prop="advisor" label="指导老师" width="120" />
+        <el-table-column prop="college" label="所属学院" width="180" show-overflow-tooltip align="center"/>
+        <el-table-column prop="advisor" label="指导老师" width="120" align="center" />
 
         <el-table-column label="操作" width="150" fixed="right" align="center">
           <template #default="{ row }">
@@ -277,16 +282,21 @@ onMounted(() => {
             </div>
           </template>
         </el-table-column>
+        <template #empty>
+          <el-empty description="暂无数据" />
+        </template>
       </el-table>
 
-      <div class="pagination-footer">
+      <div class="pagination-wrapper">
         <el-pagination 
           background
           layout="total, sizes, prev, pager, next, jumper" 
           :total="total"
+          v-model:current-page="queryParams.page"
           v-model:page-size="queryParams.size"
           :page-sizes="[10, 20, 50]"
-          @current-change="fetchData"
+          @current-change="handlePageChange"
+          @size-change="handleSizeChange"
         />
       </div>
     </div>
@@ -295,20 +305,22 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .award-page-container {
-  padding: 24px 30px;
+  width: 100%;
+  height: 100%;
+  padding: 20px;
   background-color: var(--background-color);
-  min-height: calc(100vh - 60px);
   display: flex;
   flex-direction: column;
   gap: 20px;
+  box-sizing: border-box;
 }
 
 /* 1. 顶部看板 */
 .stat-header {
   background: #fff;
-  border-radius: 8px;
+  border-radius: 4px;
   padding: 20px 30px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  box-shadow: var(--card-shadow);
 
   .stat-group {
     display: flex;
@@ -334,10 +346,9 @@ onMounted(() => {
 /* 2. 表格容器 */
 .table-wrapper {
   background: #fff;
-  border-radius: 8px;
+  border-radius: 4px;
   padding: 24px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
-  flex: 1; /* 撑满剩余高度 */
+  box-shadow: var(--card-shadow);
 }
 
 .toolbar {
@@ -380,25 +391,14 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 12px;
-  
-  .avatar-circle {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    color: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 16px;
-    font-weight: bold;
-    flex-shrink: 0;
-  }
+  justify-content: center;
 
   .winner-info {
     display: flex;
     flex-direction: column;
     gap: 2px;
     min-width: 0; /* 防止溢出 */
+    text-align: left;
     
     .main-row {
       display: flex;
@@ -430,9 +430,9 @@ onMounted(() => {
   :deep(.el-button) { font-size: 16px; padding: 4px; }
 }
 
-.pagination-footer {
-  margin-top: 20px;
+.pagination-wrapper {
+  margin-top: 10px;
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
 }
 </style>

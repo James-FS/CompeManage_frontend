@@ -187,7 +187,7 @@ onMounted(() => {
                 </div>
             </div>
 
-            <el-table v-loading="loading" :data="tableData" stripe style="width: 100%" height="400">
+            <el-table v-loading="loading" :data="tableData" stripe style="width: 100%" height="calc(100vh - 400px)" >
                 <el-table-column prop="comp_name" label="赛事名称" min-width="200" show-overflow-tooltip align="center" />
                 <el-table-column prop="organizer" label="主办单位" min-width="150" show-overflow-tooltip align="center" />
                 <el-table-column prop="undertaker" label="承办单位" min-width="150" show-overflow-tooltip align="center" />

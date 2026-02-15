@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, reactive } from 'vue'
+import { ref, computed, onMounted, reactive, nextTick, watch, onBeforeUnmount } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { useRouter } from 'vue-router'
 import api from '@/api'
@@ -21,6 +21,8 @@ const currentDate = new Date().toLocaleDateString('zh-CN', {
 const notices = ref([])
 
 const upcomingEvents = ref([])
+const visibleEventCount = ref(5)
+const eventStackRef = ref(null)
 
 const bannerCounts = reactive({
   regOpen: 0,
@@ -68,6 +70,10 @@ const bannerStats = computed(() => {
     { label: '进行中赛事', value: String(bannerCounts.ongoing), icon: Trophy },
     { label: '我的待办', value: String(bannerCounts.todo), icon: Bell },
   ]
+})
+
+const displayedUpcomingEvents = computed(() => {
+  return upcomingEvents.value.slice(0, visibleEventCount.value)
 })
 
 const formatNoticeDate = (dateStr) => {
@@ -153,9 +159,38 @@ const loadUpcomingEvents = async () => {
     }
   }).filter(ev => ev.daysLeft !== null && ev.daysLeft >= 0)
     .sort((a, b) => a.daysLeft - b.daysLeft)
-    .slice(0, 3)
+    .slice(0, 5)
 
   upcomingEvents.value = events
+}
+
+const updateEventVisibleCount = async () => {
+  await nextTick()
+  const el = eventStackRef.value
+  if (!el) return
+  const total = Math.min(5, upcomingEvents.value.length)
+  if (total <= 3) {
+    visibleEventCount.value = total
+    return
+  }
+  const firstItem = el.querySelector('.event-mini-item')
+  if (!firstItem) {
+    visibleEventCount.value = total
+    return
+  }
+  const itemHeight = firstItem.getBoundingClientRect().height
+  const styles = window.getComputedStyle(el)
+  const gap = parseFloat(styles.rowGap || styles.gap || '0') || 0
+  const availableHeight = el.clientHeight
+  const heightFor5 = itemHeight * 5 + gap * 4
+  const heightFor4 = itemHeight * 4 + gap * 3
+  if (heightFor5 <= availableHeight) {
+    visibleEventCount.value = Math.min(5, total)
+  } else if (heightFor4 <= availableHeight) {
+    visibleEventCount.value = 4
+  } else {
+    visibleEventCount.value = 3
+  }
 }
 
 const initHomeData = async () => {
@@ -166,8 +201,30 @@ const initHomeData = async () => {
   ])
 }
 
-onMounted(() => {
-  initHomeData()
+let eventResizeObserver = null
+
+watch(upcomingEvents, () => {
+  updateEventVisibleCount()
+}, { deep: true })
+
+onMounted(async () => {
+  await initHomeData()
+  await nextTick()
+  if (eventStackRef.value) {
+    eventResizeObserver = new ResizeObserver(() => {
+      updateEventVisibleCount()
+    })
+    eventResizeObserver.observe(eventStackRef.value)
+  }
+  updateEventVisibleCount()
+})
+
+onBeforeUnmount(() => {
+  if (eventResizeObserver && eventStackRef.value) {
+    eventResizeObserver.unobserve(eventStackRef.value)
+    eventResizeObserver.disconnect()
+  }
+  eventResizeObserver = null
 })
 </script>
 
@@ -226,7 +283,8 @@ onMounted(() => {
       <div class="grid-right">
         <el-card class="portal-card quick-card">
           <template #header>
-            <div class="card-header"><span class="header-title"><span class="deco-line" style="background:#409EFF"></span>功能模块</span></div>
+            <div class="card-header"><span class="header-title"><span class="deco-line"
+                  style="background:#409EFF"></span>功能模块</span></div>
           </template>
           <div class="quick-grid-compact">
             <div v-for="(item, index) in quickFunctions" :key="index" class="quick-item-compact"
@@ -247,8 +305,8 @@ onMounted(() => {
               <span class="header-title"><span class="deco-line" style="background:#E6A23C"></span> 近期截止</span>
             </div>
           </template>
-          <div class="event-stack">
-            <div v-for="ev in upcomingEvents" :key="ev.id" class="event-mini-item">
+          <div class="event-stack" ref="eventStackRef">
+            <div v-for="ev in displayedUpcomingEvents" :key="ev.id" class="event-mini-item">
               <div class="date-box">
                 <span class="d-num">{{ ev.daysLeft }}</span>
                 <span class="d-txt">天</span>
@@ -303,7 +361,7 @@ onMounted(() => {
     .stat-group {
       display: flex;
       gap: 30px;
-      margin-right:40px;
+      margin-right: 40px;
 
       .stat-item {
         display: flex;
@@ -360,6 +418,7 @@ onMounted(() => {
     flex-direction: column;
     gap: 20px;
     flex-shrink: 0;
+    height: calc(100vh - 260px);
   }
 }
 
@@ -402,12 +461,38 @@ onMounted(() => {
   }
 }
 
+.notice-card {
+  height: calc(100vh - 260px);
+  min-height: 320px;
+  display: flex;
+  flex-direction: column;
+
+  :deep(.el-card__body) {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+.event-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+
+  :deep(.el-card__body) {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
 /* 通知列表 */
 .notice-list {
   padding: 0;
   margin: 0;
-  height: 430px;
   list-style: none;
+  flex: 1;
+  overflow: auto;
 
   .notice-item {
     display: flex;
@@ -453,10 +538,10 @@ onMounted(() => {
 }
 
 .notice-empty {
-  height: 430px;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex: 1;
 }
 
 
@@ -466,7 +551,13 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin:10px 0;
+  margin: 10px 0;
+  flex: 1;
+  overflow: auto;
+
+  &:first-child {
+    margin-top: 0;
+  }
 
   .event-mini-item {
     display: flex;
@@ -476,6 +567,8 @@ onMounted(() => {
     border: 1px solid #f0f2f5;
     border-radius: 6px;
     transition: 0.2s;
+
+
 
     &:hover {
       border-color: #E6A23C;

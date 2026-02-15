@@ -76,6 +76,12 @@ export const api = {
   getCompAwards:(comp_id) => get(`/api/award/comp-awards?comp_id=${comp_id}`),
   getAwardTemplate:(comp_id) => get(`/api/award/export-template?comp_id=${comp_id}`, {},{ responseType: 'blob' }),
   getMyAwardList:(params) => get('/api/award/student/my-awards', params),
+  getAwardAuditList: (params) => get('/api/award/audit/list', params),
+  getAwardAuditDetail: (id) => get(`/api/award/audit/detail/${id}`),
+  passAwardAudit: (id) => put(`/api/award/audit/${id}/pass`),
+  rejectAwardAudit: (id, reason) => put(`/api/award/audit/${id}/reject`, { reason }),
+  batchPassAwardAudit: (ids) => put('/api/award/audit/batch/pass', { ids }),
+  batchRejectAwardAudit: (ids, reason) => put('/api/award/audit/batch/reject', { ids, reason }),
 
 
   // ==================== 赛事总结相关 ====================
