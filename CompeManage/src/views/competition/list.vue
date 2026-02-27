@@ -572,11 +572,11 @@ onMounted(() => {
             <el-table v-loading="loading" ref="tableRef" :data="tableData" stripe height="calc(100vh - 400px)" style="width: 100%"
                 @selection-change="handleSelectionChange">
                 <el-table-column type="selection" width="40" />
-                <el-table-column label="赛事编号" min-width="100" align="center" show-overflow-tooltip>
+                <!-- <el-table-column label="赛事编号" min-width="100" align="center" show-overflow-tooltip>
                     <template #default="scope">
                         {{ scope.row.comp_code || '-' }}
                     </template>
-                </el-table-column>
+                </el-table-column> -->
                 <el-table-column label="赛事名称" min-width="200" show-overflow-tooltip align="center">
                     <template #default="scope">
                         {{ scope.row.comp_name || '-' }}

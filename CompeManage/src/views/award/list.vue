@@ -111,7 +111,7 @@ onMounted(fetchList)
         <div class="comp-info">
           <div class="name-row">
             <el-tag
-              v-if="item.status === 1"
+              v-if="item.status !== 2"
               type="success"
               effect="dark"
               size="small"
