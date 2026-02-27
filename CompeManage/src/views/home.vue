@@ -106,12 +106,20 @@ const loadNotices = async () => {
     const tag = index === 0 ? '最新' : '通知'
     const type = index === 0 ? 'primary' : 'info'
     return {
-      id: item.id,
-      title: item.title,
+      id: item.id ?? item.ID,
+      title: item.title || '未命名通知',
       date: formatNoticeDate(item.publish_time),
       tag,
       type
     }
+  })
+}
+
+const goNoticeDetail = (item) => {
+  if (!item?.id) return
+  router.push({
+    name: 'Notice',
+    params: { id: item.id }
   })
 }
 
@@ -267,7 +275,7 @@ onBeforeUnmount(() => {
             <el-empty description="暂无数据" />
           </div>
           <ul v-else class="notice-list">
-            <li v-for="item in notices" :key="item.id" class="notice-item" @click="router.push('/notice/detail')">
+            <li v-for="item in notices" :key="item.id" class="notice-item" @click="goNoticeDetail(item)">
               <div class="notice-meta">
                 <el-tag :type="item.type" size="small" effect="plain">{{ item.tag }}</el-tag>
                 <span class="title">{{ item.title }}</span>

@@ -143,11 +143,21 @@ const routes = [
         path: '/register/work',
         name: 'register-work',
         component: () => import('@/views/register/work.vue'),
+        meta: {
+          title: '作品提交',
+          roles: ['student'],
+        },
       },
       {
         path: '/register/work/detail/:id',
         name: 'work-detail',
         component: () => import('@/views/register/workDetail.vue'),
+        meta: {
+          title: '作品详情',
+          roles: ['student'],
+          parent: 'register-work',
+          activeMenu: '/register/work',
+        },
         props: true,
       },
     ],

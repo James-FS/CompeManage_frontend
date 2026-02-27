@@ -39,6 +39,10 @@ const goBack = () => {
   router.back()
 }
 
+const isSuccessCode = (code) => code === 0 || code === 200
+
+const getRespMessage = (resp, fallback) => resp?.message || resp?.msg || fallback
+
 // 6. 提交
 // const handleSubmit = async () => {
 //   if (!formRef.value) return
@@ -101,6 +105,12 @@ const handleUploadError = () => {
 // 7. 最终提交 (构造 FormData)
 const finalSubmit = async () => {
   try {
+    if (!form.compID) {
+      ElMessage.error('缺少赛事ID，请从“赛事通知列表”进入发布页')
+      isSubmitting.value = false
+      return
+    }
+
     // 提取所有文件的 URL，拼成字符串
     const attachmentStr = form.fileList
       .map((f) => f.url || (f.response && f.response.data.url))
@@ -117,32 +127,48 @@ const finalSubmit = async () => {
     // 根据模式调用不同接口
     let createRes
     if (isEditMode.value) {
-      params.append('id', noticeID.value)
-      ElMessage.warning('暂无编辑接口，仅演示前端逻辑')
-      createRes = { code: 200, data: { id: noticeID.value } }
+      createRes = {
+        code: 0,
+        data: {
+          notice: {
+            ID: Number(noticeID.value),
+          },
+        },
+      }
     } else {
       createRes = await api.createNotice(params)
     }
 
-    if (createRes.code !== 0) {
-      ElMessage.error(createRes.msg || '创建通知失败')
+    if (!isSuccessCode(createRes?.code)) {
+      ElMessage.error(getRespMessage(createRes, '创建通知失败'))
       isSubmitting.value = false
       return
     }
-    console.log(createRes)
-    const noticeIdToPublish = createRes.data.notice.ID || noticeID.value
+
+    const noticeIdToPublish =
+      createRes?.data?.notice?.ID ||
+      createRes?.data?.notice?.id ||
+      createRes?.data?.id ||
+      Number(noticeID.value)
+
+    if (!noticeIdToPublish) {
+      ElMessage.error('未获取到通知ID，无法发布')
+      isSubmitting.value = false
+      return
+    }
 
     const publishRes = await api.publishNotice(noticeIdToPublish)
 
-    if (publishRes.code === 0) {
+    if (isSuccessCode(publishRes?.code)) {
       ElMessage.success('通知发布成功')
       router.back()
     } else {
-      ElMessage.error(publishRes.msg || '发布失败')
+      ElMessage.error(getRespMessage(publishRes, '发布失败'))
     }
   } catch (error) {
     console.error(error)
-    ElMessage.error('操作失败')
+    const backendMsg = error?.response?.data?.message || error?.response?.data?.msg
+    ElMessage.error(backendMsg || error?.message || '操作失败')
   } finally {
     isSubmitting.value = false
   }
