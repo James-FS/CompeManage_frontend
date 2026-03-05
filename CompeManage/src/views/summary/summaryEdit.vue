@@ -7,8 +7,6 @@ import {
   Plus, 
   Delete, 
   UploadFilled, 
-  User, 
-  Trophy,
 } from '@element-plus/icons-vue';
 
 const route = useRoute();
@@ -53,6 +51,10 @@ const totalExpense = computed(() => {
 
 const totalAwards = computed(() => {
     return form.award_stats.reduce((sum, item) => sum + Number(item.count || 0), 0);
+});
+
+const unawardedCount = computed(() => {
+  return Math.max(Number(form.participant_count || 0) - Number(totalAwards.value || 0), 0);
 });
 
 const buildDisplayFileName = (url, fallbackName) => {
@@ -209,58 +211,31 @@ onMounted(() => {
           </el-descriptions>
         </el-card>
 
-        <div class="section-title">赛事数据统计</div>
+        <el-card shadow="never" class="section-card">
+          <template #header>
+            <div class="card-header"><span>赛事数据统计</span></div>
+          </template>
+          <el-card shadow="never" class="distribution-card compact-card" :body-style="{ padding: '0px' }">
+            <el-table :data="form.award_stats" stripe style="width: 100%" size="small" :show-header="true">
+              <el-table-column prop="level" label="奖项等级" align="center">
+                <template #default="{ row }">
+                  <span class="text-xs">{{ row.level }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column prop="count" label="人数" align="center">
+                <template #default="{ row }">
+                  <el-tag size="small" effect="plain">{{ row.count }}</el-tag>
+                </template>
+              </el-table-column>
+            </el-table>
+          </el-card>
+          <div class="stats-summary">
+            <span>未获奖人数：{{ unawardedCount }} 人</span>
+            <span>总人数：{{ form.participant_count }} 人</span>
+          </div>
+        </el-card>
         
-        <el-row :gutter="15" class="stats-overview-row">
-            <!-- 左侧：参赛人数和获奖总数上下显示 -->
-            <el-col :span="6">
-                <div class="stats-left-column">
-                    <el-card shadow="hover" class="stat-card compact-card">
-                        <div class="stat-item">
-                            <div class="stat-icon bg-blue small-icon">
-                                <el-icon><User /></el-icon>
-                            </div>
-                            <div class="stat-info">
-                                <div class="label">参赛人数</div>
-                                <div class="value">{{ form.participant_count }} <span class="unit">人</span></div>
-                            </div>
-                        </div>
-                    </el-card>
-
-                    <el-card shadow="hover" class="stat-card compact-card">
-                        <div class="stat-item">
-                            <div class="stat-icon bg-orange small-icon">
-                                <el-icon><Trophy /></el-icon>
-                            </div>
-                            <div class="stat-info">
-                                <div class="label">获奖总数</div>
-                                <div class="value">{{ totalAwards }} <span class="unit">项</span></div>
-                            </div>
-                        </div>
-                    </el-card>
-                </div>
-            </el-col>
-
-            <!-- 右侧：获奖详情表格 -->
-            <el-col :span="18">
-                <el-card shadow="never" class="distribution-card compact-card" :body-style="{ padding: '0px' }">
-                    <el-table :data="form.award_stats" stripe style="width: 100%" size="small" :show-header="true">
-                        <el-table-column prop="level" label="奖项等级" align="center">
-                            <template #default="{ row }">
-                                <span class="text-xs">{{ row.level }}</span>
-                            </template>
-                        </el-table-column>
-                        <el-table-column prop="count" label="人数" align="center">
-                             <template #default="{ row }">
-                                <el-tag size="small" effect="plain">{{ row.count }}</el-tag>
-                            </template>
-                        </el-table-column>
-                    </el-table>
-                </el-card>
-            </el-col>
-        </el-row>
-        
-        <el-card shadow="never" class="section-card mt-15">
+        <el-card shadow="never" class="section-card">
              <template #header>
                 <div class="card-header">
                     <span>经费使用情况编辑</span>
@@ -346,15 +321,6 @@ onMounted(() => {
 
 
 
-.section-title {
-    font-size: 14px;
-    font-weight: bold;
-    color: #303133;
-    margin-bottom: 10px;
-    border-left: 3px solid #409EFF;
-    padding-left: 8px;
-}
-
 .section-card {
   margin-bottom: 15px;
   :deep(.el-card__header) {
@@ -419,68 +385,25 @@ onMounted(() => {
     }
 }
 
-/* 紧凑型统计区域样式 */
-.stats-overview-row {
-    margin-bottom: 15px;
-    display: flex;
-    align-items: stretch; /* 让高度一致 */
+.compact-card {
+  border: none;
+  box-shadow: var(--card-shadow);
+  :deep(.el-card__body) {
+    padding: 0;
+  }
+}
 
-    .stats-left-column {
-        display: flex;
-        flex-direction: column;
-        gap: 15px;
+.distribution-card {
+  border: 1px solid #EBEEF5;
+  overflow: hidden;
+}
 
-        .stat-card {
-            flex: 1;
-        }
-    }
-
-    .compact-card {
-        border: none;
-        box-shadow: var(--card-shadow);
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-
-        :deep(.el-card__body) {
-            padding: 12px 15px;
-        }
-
-        .stat-item {
-            display: flex;
-            align-items: center;
-            padding: 5px 0; /* 移除内边距 */
-            
-            .small-icon {
-                width: 40px;
-                height: 40px;
-                font-size: 20px;
-                border-radius: 50%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                margin-right: 12px;
-                flex-shrink: 0;
-                color: #fff;
-                
-                &.bg-blue { background-color: #409EFF; }
-                &.bg-orange { background-color: #E6A23C; }
-                &.bg-green { background-color: #67C23A; }
-            }
-
-            .stat-info {
-                flex: 1;
-                .label { font-size: 12px; color: #909399; margin-bottom: 2px; }
-                .value { font-size: 20px; font-weight: bold; color: #303133; }
-                .unit { font-size: 12px; color: #909399; font-weight: normal; margin-left: 2px; }
-            }
-        }
-    }
-    
-    .distribution-card {
-        /* 表格容器样式微调 */
-        border: 1px solid #EBEEF5;
-        overflow: hidden;
-    }
+.stats-summary {
+  display: flex;
+  justify-content: flex-end;
+  gap: 24px;
+  margin-top: 10px;
+  font-size: 13px;
+  color: #606266;
 }
 </style>

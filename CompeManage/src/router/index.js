@@ -50,6 +50,18 @@ const routes = [
         },
       },
       {
+        path: 'edit/:id',
+        name: 'CompetitionEdit',
+        component: () => import('@/views/competition/edit.vue'),
+        props: true,
+        meta: {
+          title: '编辑赛事',
+          roles: ['school_admin'],
+          parent: 'CompetitionList',
+          activeMenu: '/competition/list',
+        }
+      },
+      {
         path: 'audit',
         name: 'CompetitionAudit',
         component: () => import('@/views/competition/audit.vue'),
