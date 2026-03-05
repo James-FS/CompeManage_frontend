@@ -30,6 +30,8 @@ export const api = {
   restoreCompetition: (id) => put(`/api/comp/${id}/restore`),
   getManagerList: (params) => get('/api/comp/manager/list', params),
   getCompetitionYears: () => get('/api/comp/years'),
+  getCompetitionDetail: (id) => get(`/api/comp/${id}`),
+  updateCompetition: (id, data) => put(`/api/comp/${id}`, data),
 
   // ==================== 报名相关 ====================
   saveRegConfig: (data) => post('/api/reg/config', data),
@@ -88,6 +90,9 @@ export const api = {
   getSummaryList: (params) => get('/api/summary/list', params),
   getSummaryDetail: (id) => get(`/api/summary/${id}`),
   saveSummary: (id, data) => post(`/api/summary/${id}`, data),
+
+  // ==================== 数据看板相关 ====================
+  getStatisticsDashboard: (params) => get('/api/statistics/dashboard', params),
 
   // ==================== 通用上传 ====================
   uploadFile: (data) => post('/api/upload', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
