@@ -122,6 +122,33 @@ const attachmentList = computed(() => {
     .filter((item) => item !== null)
 })
 
+const workList = computed(() => {
+  const urlStr = detail.value.work_url
+  if (!urlStr) return []
+  //  多个附件用逗号分隔
+  const urls = urlStr.split(',')
+  return urls
+    .map((url) => {
+      url = url.trim()
+      if (!url) return null
+
+      //  获取文件名 (去掉路径)
+      // 例如: /static/202601/123456_需求.docx -> 123456_需求.docx
+      let fileName = url.substring(url.lastIndexOf('/') + 1)
+      //  去掉时间戳/ID前缀 (去掉第一个下划线前的内容)
+      // 例如: 123456_需求.docx -> 需求.docx
+      if (fileName.indexOf('_') > -1) {
+        fileName = fileName.substring(fileName.indexOf('_') + 1)
+      }
+
+      return {
+        name: fileName,
+        url: url,
+      }
+    })
+    .filter((item) => item !== null)
+})
+
 // 修改打开附件的方法，支持传入具体的 URL
 const openAttachment = (url) => {
   if (!url) return
@@ -230,7 +257,7 @@ onMounted(() => {
       </div>
 
       <div class="info-section">
-        <h3 class="section-title">附件材料</h3>
+        <h3 class="section-title">报名材料</h3>
 
         <div v-if="attachmentList.length > 0" class="attachment-list">
           <div
@@ -251,6 +278,30 @@ onMounted(() => {
         </div>
 
         <div v-else class="empty-attachment">未上传附件</div>
+      </div>
+
+      <div class="info-section">
+        <h3 class="section-title">作品资料</h3>
+
+        <div v-if="workList.length > 0" class="attachment-list">
+          <div
+            v-for="(file, index) in workList"
+            :key="index"
+            class="attachment-box"
+            @click="openAttachment(file.url)"
+          >
+            <div class="file-icon-area">
+              <el-icon><Document /></el-icon>
+            </div>
+            <div class="file-content">
+              <div class="file-name">{{ file.name }}</div>
+              <div class="file-desc">点击预览或下载</div>
+            </div>
+            <el-icon class="download-icon"><Download /></el-icon>
+          </div>
+        </div>
+
+        <div v-else class="empty-attachment">未上传作品资料</div>
       </div>
 
       <div class="info-section" v-if="detail.status == 2">

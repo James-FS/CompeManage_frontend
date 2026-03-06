@@ -50,6 +50,7 @@ const rules = {
   timeRange: [{ required: true, message: '请设置报名起止时间', trigger: 'change' }],
 }
 
+const workRange = Array.isArray(form.workTimeRange) ? form.workTimeRange : []
 // --- 奖项操作逻辑 (朴素版) ---
 const addAward = () => form.awards.push('')
 
@@ -101,8 +102,8 @@ async function handleSave() {
 
         reg_start_time: formatToGoTime(form.timeRange[0]),
         reg_end_time: formatToGoTime(form.timeRange[1]),
-        submit_start_time: form.workTimeRange.length === 2 ? formatToGoTime(form.workTimeRange[0]) : null,
-        submit_end_time: form.workTimeRange.length === 2 ? formatToGoTime(form.workTimeRange[1]) : null,
+        submit_start_time: workRange.length === 2 ? formatToGoTime(workRange[0]) : null,
+  submit_end_time: workRange.length === 2 ? formatToGoTime(workRange[1]) : null,
       }
 
       try {
