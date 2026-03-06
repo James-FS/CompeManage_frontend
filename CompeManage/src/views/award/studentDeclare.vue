@@ -9,11 +9,11 @@ const router = useRouter()
 const formRef = ref(null)
 const isSubmitting = ref(false)
 
-// 🔍 搜索相关
+//  搜索相关
 const searchLoading = ref(false)
 const compOptions = ref([]) // 搜索结果列表
 
-// 📝 表单数据模型
+//  表单数据模型
 const form = reactive({
   compID: null,        // 选中的赛事ID
   compName: '',        // 回显用的赛事名 (提交时后端可能不需要，但前端展示用)
@@ -28,7 +28,7 @@ const form = reactive({
 const token = localStorage.getItem('token')
 const uploadHeaders = { Authorization: `Bearer ${token}` }
 
-// 🚩 校验规则
+// 校验规则
 const rules = {
   compID: [{ required: true, message: '必须锁定一个具体的赛事', trigger: 'change' }],
   awardLevel: [{ required: true, message: '请选择标准归档等级', trigger: 'change' }],
@@ -37,21 +37,21 @@ const rules = {
   awardDate: [{ required: true, message: '请选择获奖日期', trigger: 'change' }],
 }
 
-// 🔎 核心：远程搜索赛事 (带年份显示)
+//  核心：远程搜索赛事 (带年份显示)
 const onSearchComp = async (query) => {
   if (query) {
     searchLoading.value = true
     try {
       // 调用后端模糊搜索接口
       // 后端应返回按年份倒序排列的列表
-      const res = await api.getCompetitionList({ keyword: query, page_size: 20 })
+      const res = await api.searchCompList({ keyword: query, page_size: 20 })
       if (res.code === 200) {
-        compOptions.value = res.data.list.map(item => ({
+        compOptions.value = res.data.map(item => ({
           value: item.id,
           label: item.comp_name,
           year: item.year,         
-          level: item.comp_level,
-          organizer: item.organizer
+          // level: item.comp_level,
+          // organizer: item.organizer
         }))
       }
     } catch (error) {
@@ -72,7 +72,7 @@ const handleCompChange = (val) => {
   }
 }
 
-// 📤 上传成功回调
+//  上传成功回调
 const handleUploadSuccess = (response) => {
   if (response.code === 200) {
     form.certImage = response.data.url
@@ -82,7 +82,7 @@ const handleUploadSuccess = (response) => {
   }
 }
 
-// 🚀 提交申报
+//  提交申报
 const handleSubmit = async () => {
   if (!formRef.value) return
   await formRef.value.validate(async (valid) => {
@@ -100,7 +100,7 @@ const handleSubmit = async () => {
             award_date: form.awardDate
         }
 
-        const res = await api.declareExternalAward(payload)
+        const res = await api.submitAward(payload)
         
         if (res.code === 200) {
           ElMessage.success({

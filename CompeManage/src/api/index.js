@@ -82,7 +82,8 @@ export const api = {
   rejectAwardAudit: (id, reason) => put(`/api/award/audit/${id}/reject`, { reason }),
   batchPassAwardAudit: (ids) => put('/api/award/audit/batch/pass', { ids }),
   batchRejectAwardAudit: (ids, reason) => put('/api/award/audit/batch/reject', { ids, reason }),
-
+  searchCompList: (params) => get('/api/award/comp/list', params),
+  submitAward: (data) => post('/api/award/student/supplement', data),
 
   // ==================== 赛事总结相关 ====================
   getSummaryList: (params) => get('/api/summary/list', params),
