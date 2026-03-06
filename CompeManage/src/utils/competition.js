@@ -68,6 +68,7 @@ export const FILTER_STATUS_OPTIONS = {
  */
 export const getTimeState = (startTime, endTime) => {
   const now = new Date().getTime()
+  
   const start = new Date(startTime).getTime()
   const end = new Date(endTime).getTime()
 
