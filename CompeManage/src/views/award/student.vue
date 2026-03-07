@@ -110,7 +110,8 @@ const getStatusTag = (status) => {
   const map = {
     0: { type: 'warning', text: '待审核' },
     1: { type: 'success', text: '已报名' },
-    2: { type: 'danger', text: '已驳回' }
+    2: { type: 'danger', text: '已驳回' },
+    3: { type: 'info', text: '申报补录' }
   }
   return map[status] || { type: 'info', text: '未知' }
 }
@@ -203,7 +204,7 @@ onMounted(() => {
         <div v-loading="loading" class="list-wrapper">
           <el-empty v-if="myAwardList.length === 0" description="暂无获奖记录" />
           
-          <!-- ✅ 你可以在这里添加获奖列表的展示 -->
+         
           <div class="award-list" v-if="myAwardList.length > 0">
             <div v-for="award in myAwardList" :key="award.id" class="award-card">
               <h4>{{ award.comp_name }}</h4>

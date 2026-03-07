@@ -25,6 +25,7 @@ const formRef = ref(null)
 let maxMembers = ref()
 let minMembers = ref()
 let need_advisor = ref()
+let need_attachment = ref()
 let compType = 'team' // team / individual
 const uploadedUrls = ref([])
 const uploadRef = ref(null)
@@ -37,6 +38,7 @@ const rejectReason = ref('') // 驳回理由
 const isReadOnly = computed(() => pageStatus.value === 1) // 是否只读
 const isSelectingLeader = ref(false)
 const compInfo = ref({})
+const isSelectingAdvisor = ref(false)
 const formData = reactive({
   teamName: '',
   leader: {
@@ -50,6 +52,14 @@ const formData = reactive({
   // 队员列表 - 默认为空
   members: [],
   fileList: [],
+  advisorInfo: {
+    id: null,
+    username: '',
+    name: '',
+    phone: '',
+    email: '',
+    college: '',
+  },
 })
 
 /* --- 校验规则 --- */
@@ -78,11 +88,18 @@ const studentTotal = ref(0)
 
 // 打开学生选择弹窗
 const openStudentSelect = (target = -1) => {
- if (target === 'leader') {
+  if (target === 'advisor') {
+    //  选择指导老师
+    isSelectingAdvisor.value = true
+    isSelectingLeader.value = false
+    currentMemberEditIndex.value = -1
+  } else if (target === 'leader') {
     isSelectingLeader.value = true
+    isSelectingAdvisor.value = false
     currentMemberEditIndex.value = -1
   } else {
     isSelectingLeader.value = false
+    isSelectingAdvisor.value = false
     currentMemberEditIndex.value = target // -1 表示新增成员，>=0 表示编辑成员
   }
   studentDialogVisible.value = true
@@ -122,7 +139,17 @@ const handleDialogClose = () => {
 
 //  确认选择学生
 const selectStudent = (row) => {
-  if (isSelectingLeader.value) {
+  if (isSelectingAdvisor.value) {
+    formData.advisorInfo = {
+      id: row.id,
+      username: row.username,
+      name: row.name,
+      phone: '', // 前端手动填写
+      email: '', // 前端手动填写
+      college: row.college || '',
+    }
+    ElMessage.success(`已选择指导老师：${row.name}`)
+  } else if (isSelectingLeader.value) {
     // 选择负责人
     formData.leader.name = row.name
     formData.leader.stuID = row.username
@@ -155,6 +182,7 @@ const selectStudent = (row) => {
 
   studentDialogVisible.value = false
   isSelectingLeader.value = false
+  isSelectingAdvisor.value = false
 }
 
 // ==================== 原有方法 ====================
@@ -225,6 +253,27 @@ async function checkRegStatus() {
           status: 'success', // 标记为已成功，防止重复上传
         }))
       }
+
+      if (data.advisor_info) {
+        try {
+          // 如果是 JSON 字符串，先解析
+          const advisorData = typeof data.advisor_info === 'string' 
+            ? JSON.parse(data.advisor_info) 
+            : data.advisor_info
+          
+          formData.advisorInfo = {
+            id: advisorData.id || null,
+            username: advisorData.username || '',
+            name: advisorData.name || '',
+            phone: advisorData.phone || '',
+            email: advisorData.email || '',
+            college: advisorData.college || '',
+          }
+        } catch (e) {
+          console.error('解析指导老师信息失败:', e)
+        }
+      }
+
       const leaderData = data.members.find((m) => m.is_leader)
       const memberData = data.members.filter((m) => !m.is_leader)
       if (leaderData) {
@@ -266,6 +315,7 @@ async function fetchRegSettings() {
     minMembers.value = config.min_team_member
     compInfo.value.title = config.comp_name
     need_advisor.value = config.need_advisor
+    need_attachment.value = config.need_attachment
     if (maxMembers.value > 1) {
       compInfo.value.compType = 2
       compInfo.value.limitText = `团队赛 (${minMembers.value}-${maxMembers.value}人)`
@@ -280,11 +330,12 @@ async function fetchRegSettings() {
 
 async function fetchStudentList() {
   studentLoading.value = true
+  const role = isSelectingAdvisor.value ? 'teacher' : 'student'
   try {
     const response = await api.getStudentList({
       page: studentCurrentPage.value,
       page_size: studentPageSize.value,
-      role: 'student',
+      role: role,
       search: searchForm.name || searchForm.username || '',
     })
     if (response.code === 200) {
@@ -300,6 +351,10 @@ async function fetchStudentList() {
 
 async function submitVerify() {
   if (!formRef.value) return
+  if (need_advisor.value === 2 && !formData.advisorInfo.name) {
+    ElMessage.error('该赛事要求必须选择指导老师')
+    return
+  }
   await formRef.value.validate((valid) => {
     if (valid) {
       // 核心判断：有没有待上传的文件？
@@ -323,6 +378,7 @@ async function submitForm(attachmentURL) {
     leader: formData.leader,
     members: formData.members,
     attachment_url: attachmentURL,
+    advisor_info: formData.advisorInfo,
   }
   try {
     let response
@@ -339,7 +395,7 @@ async function submitForm(attachmentURL) {
       ElMessage.error(response.msg || '报名失败')
     }
   } catch (error) {
-    ElMessage.error(error.response.data.msg || '报名失败')
+    ElMessage.error(error.response.msg || '报名失败')
   }
 }
 
@@ -592,7 +648,7 @@ onMounted(() => {
 
                     <el-col :span="12" :xs="24">
                       <el-form-item
-                        label="电子邮箱"
+                        label="联系邮箱"
                         :prop="'members.' + i + '.email'"
                         :rules="{ required: true, message: '请输入邮箱', trigger: 'blur' }"
                       >
@@ -610,7 +666,79 @@ onMounted(() => {
             </div>
           </div>
 
-          <div class="form-section">
+          <div class="form-section" v-if="need_advisor > 0">
+            <div class="section-header">
+              <h3 class="section-title" style="margin: 0">
+                指导老师信息
+                <span v-if="need_advisor === 2" class="required-mark">*必填</span>
+              </h3>
+              <el-button
+                v-if="!isReadOnly && !formData.advisorInfo.name"
+                link
+                type="primary"
+                @click="openStudentSelect('advisor')"
+                :icon="Plus"
+              >
+                选择指导老师
+              </el-button>
+              <el-button
+                v-if="!isReadOnly && formData.advisorInfo.name"
+                link
+                type="primary"
+                @click="openStudentSelect('advisor')"
+              >
+                重新选择
+              </el-button>
+            </div>
+
+            <div class="info-grid">
+              <el-empty
+                v-if="!formData.advisorInfo.name"
+                description="请先选择指导老师"
+                :image-size="80"
+              />
+
+              <el-row v-else :gutter="20">
+      <el-col :span="8" :xs="24">
+        <el-form-item label="姓名">
+          <el-input v-model="formData.advisorInfo.name" prefix-icon="User" :disabled="true" />
+        </el-form-item>
+      </el-col>
+      <el-col :span="8" :xs="24">
+        <el-form-item label="工号">
+          <el-input v-model="formData.advisorInfo.username" :disabled="true" />
+        </el-form-item>
+      </el-col>
+      <el-col :span="8" :xs="24">
+        <el-form-item label="学院">
+          <el-input v-model="formData.advisorInfo.college" :disabled="true" />
+        </el-form-item>
+      </el-col>
+      <el-col :span="12" :xs="24">
+        <el-form-item label="电话">
+          <el-input
+            v-model="formData.advisorInfo.phone"
+            placeholder="请输入电话"
+            prefix-icon="Iphone"
+            :disabled="isReadOnly"
+          />
+        </el-form-item>
+      </el-col>
+      <el-col :span="12" :xs="24">
+        <el-form-item label="邮箱">
+          <el-input
+            v-model="formData.advisorInfo.email"
+            placeholder="请输入邮箱"
+            prefix-icon="Message"
+            :disabled="isReadOnly"
+          />
+        </el-form-item>
+      </el-col>
+    </el-row>
+            </div>
+          </div>
+
+          <div class="form-section" v-if="need_attachment > 0">
             <h3 class="section-title">附件材料</h3>
             <el-upload
               ref="uploadRef"
@@ -644,10 +772,10 @@ onMounted(() => {
     </div>
   </div>
 
-  <!-- ✅ 学生选择弹窗 -->
+  <!--  学生选择弹窗 -->
   <el-dialog
     v-model="studentDialogVisible"
-    :title="isSelectingLeader ? '选择负责人' : '选择队员'"
+    :title="isSelectingAdvisor ? '选择指导老师' : isSelectingLeader ? '选择负责人' : '选择队员'"
     width="800px"
     align-center
     append-to-body
@@ -805,13 +933,12 @@ onMounted(() => {
 }
 
 .content-area {
-  max-width: 900px;
+  max-width: 1000px;
   width: 100%;
   margin: 0 auto;
   padding: 0 20px 40px;
   position: relative;
   z-index: 5;
-
   .form-card {
     background: #fff;
     border-radius: 8px;

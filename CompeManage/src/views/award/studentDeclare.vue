@@ -1,28 +1,55 @@
 <script setup>
-import { reactive, ref } from 'vue'
+import { reactive, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { ArrowLeft, Trophy, UploadFilled, Medal, InfoFilled } from '@element-plus/icons-vue'
-import api from '@/api' // 假设你已封装好 API
+import { 
+  ArrowLeft, Trophy, UploadFilled, InfoFilled, Plus, Delete, User, Postcard, Iphone, Message 
+} from '@element-plus/icons-vue'
+import api from '@/api'
+import { debounce } from '@/utils/debounce'
 
 const router = useRouter()
 const formRef = ref(null)
 const isSubmitting = ref(false)
 
-//  搜索相关
+// 搜索相关
 const searchLoading = ref(false)
 const compOptions = ref([]) // 搜索结果列表
 
-//  表单数据模型
+// ==================== 学生选择相关变量 ====================
+const studentDialogVisible = ref(false)
+const studentLoading = ref(false)
+const studentList = ref([])
+const currentMemberEditIndex = ref(-1) // -1表示新增，>=0表示编辑第几个成员
+const isSelectingLeader = ref(false) // true: 选队长，false: 选队员
+const searchForm = reactive({
+  name: '',
+  username: '',
+  college: '',
+})
+const studentCurrentPage = ref(1)
+const studentPageSize = ref(10)
+const studentTotal = ref(0)
+
+// 表单数据模型
 const form = reactive({
-  compID: null,        // 选中的赛事ID
-  compName: '',        // 回显用的赛事名 (提交时后端可能不需要，但前端展示用)
-  awardLevel: '',      // 标准等级 (用于统计)
-  awardSpecific: '',   // 证书具体名称 (如: 金奖、最佳创意奖)
-  teamName: '',        // 团队/项目名称
-  teammates: '',       // 队友姓名备注
-  certImage: '',       // 证书图片URL
-  awardDate: '',       // 获奖日期
+  compID: null,
+  compName: '',
+  awardLevel: '',
+  awardSpecific: '',
+  teamName: '',
+  certImage: '',
+  awardDate: '',
+  
+  // ✅ 添加队长和成员信息
+  leader: {
+    name: '',
+    stuID: '',
+    phone: '',
+    email: '',
+    college: '',
+  },
+  members: [], // 团队成员列表（不包括队长）
 })
 
 const token = localStorage.getItem('token')
@@ -37,21 +64,18 @@ const rules = {
   awardDate: [{ required: true, message: '请选择获奖日期', trigger: 'change' }],
 }
 
-//  核心：远程搜索赛事 (带年份显示)
+// ==================== 赛事搜索相关方法 ====================
+
 const onSearchComp = async (query) => {
   if (query) {
     searchLoading.value = true
     try {
-      // 调用后端模糊搜索接口
-      // 后端应返回按年份倒序排列的列表
       const res = await api.searchCompList({ keyword: query, page_size: 20 })
       if (res.code === 200) {
         compOptions.value = res.data.map(item => ({
           value: item.id,
           label: item.comp_name,
-          year: item.year,         
-          // level: item.comp_level,
-          // organizer: item.organizer
+          year: item.year,
         }))
       }
     } catch (error) {
@@ -64,7 +88,6 @@ const onSearchComp = async (query) => {
   }
 }
 
-// 选中赛事回调
 const handleCompChange = (val) => {
   const selected = compOptions.value.find(item => item.value === val)
   if (selected) {
@@ -72,7 +95,119 @@ const handleCompChange = (val) => {
   }
 }
 
-//  上传成功回调
+// ==================== 学生选择相关方法 ====================
+
+// 打开学生选择弹窗
+const openStudentSelect = (target = 'leader') => {
+  if (target === 'leader') {
+    isSelectingLeader.value = true
+    currentMemberEditIndex.value = -1
+  } else {
+    isSelectingLeader.value = false
+    currentMemberEditIndex.value = target // -1 表示新增成员，>=0 表示编辑成员
+  }
+  studentDialogVisible.value = true
+  fetchStudentList()
+}
+
+const debouncedSearch = debounce(() => {
+  studentCurrentPage.value = 1
+  fetchStudentList()
+}, 500)
+
+// 分页处理
+const handleStudentSizeChange = (val) => {
+  studentPageSize.value = val
+  studentCurrentPage.value = 1
+  fetchStudentList()
+}
+
+const handleStudentCurrentChange = (val) => {
+  studentCurrentPage.value = val
+  fetchStudentList()
+}
+
+// 重置搜索
+const resetSearch = () => {
+  searchForm.name = ''
+  searchForm.username = ''
+  searchForm.college = ''
+  studentCurrentPage.value = 1
+  fetchStudentList()
+}
+
+const handleDialogClose = () => {
+  isSelectingLeader.value = false
+  currentMemberEditIndex.value = -1
+}
+
+// 确认选择学生
+const selectStudent = (row) => {
+  if (isSelectingLeader.value) {
+    // 选择队长
+    form.leader.name = row.name
+    form.leader.stuID = row.username
+    form.leader.college = row.college
+    form.leader.phone = ''
+    form.leader.email = ''
+    ElMessage.success(`已选择队长：${row.name}，请补充手机号和邮箱`)
+  } else if (currentMemberEditIndex.value === -1) {
+    // 新增成员模式
+    form.members.push({
+      name: row.name,
+      stuID: row.username,
+      phone: '',
+      email: '',
+      college: row.college,
+    })
+    ElMessage.success(`已添加成员：${row.name}，请补充手机号和邮箱`)
+  } else {
+    // 编辑已有成员模式
+    const member = form.members[currentMemberEditIndex.value]
+    member.name = row.name
+    member.stuID = row.username
+    member.college = row.college
+    ElMessage.success(`成员已更新：${row.name}`)
+  }
+
+  studentDialogVisible.value = false
+  isSelectingLeader.value = false
+}
+
+// 获取学生列表
+async function fetchStudentList() {
+  studentLoading.value = true
+  try {
+    const response = await api.getStudentList({
+      page: studentCurrentPage.value,
+      page_size: studentPageSize.value,
+      role: 'student',
+      search: searchForm.name || searchForm.username || '',
+    })
+    if (response.code === 200) {
+      studentList.value = response.data.list
+      studentTotal.value = response.data.total
+    }
+  } catch (error) {
+    ElMessage.error('获取学生列表失败，请稍后重试')
+  } finally {
+    studentLoading.value = false
+  }
+}
+
+// 添加成员
+function addMember() {
+  openStudentSelect(-1)
+}
+
+// 删除成员
+function removeMember(index) {
+  form.members.splice(index, 1)
+  ElMessage.success('成员已删除')
+}
+
+// ==================== 上传和提交相关方法 ====================
+
 const handleUploadSuccess = (response) => {
   if (response.code === 200) {
     form.certImage = response.data.url
@@ -82,36 +217,85 @@ const handleUploadSuccess = (response) => {
   }
 }
 
-//  提交申报
 const handleSubmit = async () => {
   if (!formRef.value) return
   await formRef.value.validate(async (valid) => {
     if (valid) {
+      //  检查队长是否已选择
+      if (!form.leader.name) {
+        ElMessage.error('请先选择队长')
+        return
+      }
+
+      //  检查队长手机号和邮箱
+      if (!form.leader.phone) {
+        ElMessage.error('请填写队长手机号')
+        return
+      }
+      if (!form.leader.email) {
+        ElMessage.error('请填写队长邮箱')
+        return
+      }
+
+      //  如果有团队成员，检查成员信息完整性
+      for (let i = 0; i < form.members.length; i++) {
+        const member = form.members[i]
+        if (!member.phone) {
+          ElMessage.error(`成员${i + 1}的手机号不能为空`)
+          return
+        }
+        if (!member.email) {
+          ElMessage.error(`成员${i + 1}的邮箱不能为空`)
+          return
+        }
+      }
+
       isSubmitting.value = true
       try {
-        // 构造提交数据
+        //  构造符合后端期望的数据结构
         const payload = {
-            comp_id: form.compID,
-            award_level: form.awardLevel,      // 标准等级
-            award_specific: form.awardSpecific,// 具体名称
-            team_name: form.teamName || '个人参赛', 
-            teammates: form.teammates,         // 队友备注
-            cert_image: form.certImage,
-            award_date: form.awardDate
+          comp_id: form.compID,
+          award_level: form.awardLevel,
+          award_name: form.awardSpecific,
+          team_name: form.teamName || '个人参赛',
+          proof_url: form.certImage,
+          members: [
+            {
+              name: form.leader.name,
+              student_id: form.leader.stuID,
+              phone: form.leader.phone,
+              email: form.leader.email,
+              college: form.leader.college,
+              is_leader: true,
+            },
+            // 添加其他团队成员
+            ...form.members.map(m => ({
+              name: m.name,
+              student_id: m.stuID,
+              phone: m.phone,
+              email: m.email,
+              college: m.college,
+              is_leader: false,
+            }))
+          ]
         }
 
         const res = await api.submitAward(payload)
-        
+
         if (res.code === 200) {
           ElMessage.success({
-            message: '申报成功！已自动归档至“我的竞赛档案”',
+            message: '补录申报成功！',
             duration: 2000
           })
-          router.push('/reg/my-reg') // 跳回列表页
+          setTimeout(() => {
+            router.back()
+          }, 2000)
+        } else {
+          ElMessage.error(res.msg || '补录申报失败')
         }
       } catch (error) {
         console.error(error)
-        ElMessage.error('申报提交失败，请联系管理员')
+        ElMessage.error(error.response?.data?.msg || '补录申报失败，请联系管理员')
       } finally {
         isSubmitting.value = false
       }
@@ -149,13 +333,14 @@ const goBack = () => router.back()
           <div class="alert-content">
             <div class="alert-title">申报须知</div>
             <div class="alert-desc">
-             请务必确认赛事年份，避免选错届次（如选成去年的比赛）。
+              请务必确认赛事年份，避免选错届次（如选成去年的比赛）。
             </div>
           </div>
         </div>
 
         <el-form ref="formRef" :model="form" :rules="rules" label-position="top" class="declare-form">
           
+          <!-- 赛事锁定 -->
           <div class="form-section">
             <div class="section-title">01 赛事锁定</div>
             
@@ -185,20 +370,163 @@ const goBack = () => router.back()
                       </el-tag>
                       {{ item.label }}
                     </span>
-                    <span class="comp-meta">
-                      <span class="organizer">{{ item.organizer }}</span>
-                      <el-tag size="small" type="info" effect="plain">{{ item.level }}</el-tag>
-                    </span>
                   </div>
                 </el-option>
               </el-select>
               <div class="help-text">
                 <el-icon><InfoFilled /></el-icon> 
-                如果没有找到对应年份的赛事，请联系学院管理员在后台“竞赛目录”中添加。
+                如果没有找到对应年份的赛事，请联系学院管理员在后台"竞赛目录"中添加。
               </div>
             </el-form-item>
           </div>
 
+          <!-- 队长信息 -->
+          <div class="form-section">
+            <div class="section-header">
+              <h3 class="section-title" style="margin: 0">队长信息</h3>
+              <el-button
+                v-if="!form.leader.name"
+                link
+                type="primary"
+                @click="openStudentSelect('leader')"
+                :icon="Plus"
+              >
+                选择队长
+              </el-button>
+              <el-button
+                v-if="form.leader.name"
+                link
+                type="primary"
+                @click="openStudentSelect('leader')"
+              >
+                重新选择
+              </el-button>
+            </div>
+
+            <div class="info-grid">
+              <el-empty
+                v-if="!form.leader.name"
+                description="请先选择队长"
+                :image-size="80"
+              />
+
+              <el-row v-else :gutter="20">
+                <el-col :span="8" :xs="24">
+                  <el-form-item label="姓名">
+                    <el-input v-model="form.leader.name" :prefix-icon="User" :disabled="true" />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8" :xs="24">
+                  <el-form-item label="学号">
+                    <el-input v-model="form.leader.stuID" :prefix-icon="Postcard" :disabled="true" />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8" :xs="24">
+                  <el-form-item label="学院">
+                    <el-input v-model="form.leader.college" :disabled="true" />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12" :xs="24">
+                  <el-form-item label="手机号" prop="leader.phone">
+                    <el-input
+                      v-model="form.leader.phone"
+                      placeholder="请输入手机号"
+                      :prefix-icon="Iphone"
+                    />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12" :xs="24">
+                  <el-form-item label="邮箱" prop="leader.email">
+                    <el-input
+                      v-model="form.leader.email"
+                      placeholder="请输入邮箱"
+                      :prefix-icon="Message"
+                    />
+                  </el-form-item>
+                </el-col>
+              </el-row>
+            </div>
+          </div>
+
+          <!-- 团队成员 -->
+          <div class="form-section">
+            <div class="section-header">
+              <h3 class="section-title" style="margin: 0">团队成员</h3>
+              <el-button link type="primary" @click="addMember" :icon="Plus">
+                添加成员
+              </el-button>
+            </div>
+
+            <div class="member-grid-container">
+              <div v-if="form.members.length === 0" class="empty-tip">
+                <el-empty description="暂无成员（可选）" :image-size="60" />
+              </div>
+
+              <div v-for="(m, i) in form.members" :key="i" class="member-card">
+                <div class="card-header">
+                  <span class="member-index">成员 {{ i + 1 }}</span>
+                  <div>
+                    <el-button
+                      type="primary"
+                      link
+                      size="small"
+                      @click="openStudentSelect(i)"
+                    >
+                      重新选择
+                    </el-button>
+                    <el-button
+                      type="danger"
+                      link
+                      :icon="Delete"
+                      @click="removeMember(i)"
+                    >
+                      删除
+                    </el-button>
+                  </div>
+                </div>
+
+                <div class="card-body">
+                  <el-row :gutter="20">
+                    <el-col :span="8" :xs="24">
+                      <el-form-item label="姓名">
+                        <el-input v-model="m.name" :prefix-icon="User" :disabled="true" />
+                      </el-form-item>
+                    </el-col>
+                    <el-col :span="8" :xs="24">
+                      <el-form-item label="学号">
+                        <el-input v-model="m.stuID" :prefix-icon="Postcard" :disabled="true" />
+                      </el-form-item>
+                    </el-col>
+                    <el-col :span="8" :xs="24">
+                      <el-form-item label="学院">
+                        <el-input v-model="m.college" :disabled="true" />
+                      </el-form-item>
+                    </el-col>
+                    <el-col :span="12" :xs="24">
+                      <el-form-item label="手机号">
+                        <el-input
+                          v-model="m.phone"
+                          placeholder="请输入手机号"
+                          :prefix-icon="Iphone"
+                        />
+                      </el-form-item>
+                    </el-col>
+                    <el-col :span="12" :xs="24">
+                      <el-form-item label="邮箱">
+                        <el-input
+                          v-model="m.email"
+                          placeholder="请输入邮箱"
+                          :prefix-icon="Message"
+                        />
+                      </el-form-item>
+                    </el-col>
+                  </el-row>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 获奖详情 -->
           <div class="form-section">
             <div class="section-title">02 获奖详情</div>
             
@@ -222,31 +550,23 @@ const goBack = () => router.back()
             </div>
 
             <div class="form-row-2">
-               <el-form-item label="获奖日期 (证书落款时间)" prop="awardDate">
-                 <el-date-picker 
-                    v-model="form.awardDate" 
-                    type="date" 
-                    placeholder="选择日期" 
-                    format="YYYY-MM-DD"
-                    value-format="YYYY-MM-DD"
-                    style="width: 100%"
-                 />
+              <el-form-item label="获奖日期" prop="awardDate">
+                <el-date-picker 
+                  v-model="form.awardDate" 
+                  type="date" 
+                  placeholder="选择日期" 
+                  format="YYYY-MM-DD"
+                  value-format="YYYY-MM-DD"
+                  style="width: 100%"
+                />
               </el-form-item>
-               <el-form-item label="团队/项目名称" prop="teamName">
-                  <el-input v-model="form.teamName" placeholder="个人参赛可不填" />
-               </el-form-item>
+              <el-form-item label="团队/项目名称">
+                <el-input v-model="form.teamName" placeholder="个人参赛可不填" />
+              </el-form-item>
             </div>
-
-            <el-form-item label="团队成员备注 (仅供审核参考)" prop="teammates">
-              <el-input 
-                v-model="form.teammates" 
-                type="textarea" 
-                :rows="2"
-                placeholder="如果是团队赛，请列出所有队友姓名（如：张三、李四），方便老师核对证书信息。" 
-              />
-            </el-form-item>
           </div>
 
+          <!-- 证明件上传 -->
           <div class="form-section">
             <div class="section-title">03 证明件上传</div>
             
@@ -264,12 +584,12 @@ const goBack = () => router.back()
                 <div v-else class="upload-area">
                   <el-icon class="upload-icon"><UploadFilled /></el-icon>
                   <div class="upload-text">点击上传证明材料</div>
-                  <!-- <div class="upload-tip">支持 JPG/PNG 格式，确保文字清晰可见</div> -->
                 </div>
               </el-upload>
             </el-form-item>
           </div>
 
+          <!-- 提交按钮 -->
           <div class="form-footer">
             <el-button @click="goBack" class="btn-cancel">取消申报</el-button>
             <el-button type="primary" :loading="isSubmitting" @click="handleSubmit" class="btn-submit">
@@ -281,10 +601,189 @@ const goBack = () => router.back()
       </div>
     </div>
   </div>
+
+  <!--  学生选择弹窗 -->
+  <el-dialog
+    v-model="studentDialogVisible"
+    :title="isSelectingLeader ? '选择队长' : '选择队员'"
+    width="800px"
+    align-center
+    append-to-body
+    @close="handleDialogClose"
+  >
+    <div class="search-bar">
+      <el-form :inline="true" :model="searchForm" class="search-form-inline">
+        <el-form-item label="姓名">
+          <el-input
+            v-model="searchForm.name"
+            placeholder="输入姓名"
+            clearable
+            @input="debouncedSearch"
+            @clear="fetchStudentList"
+            style="width: 120px"
+          />
+        </el-form-item>
+        <el-form-item label="学号">
+          <el-input
+            v-model="searchForm.username"
+            placeholder="输入学号"
+            clearable
+            @input="debouncedSearch"
+            @clear="fetchStudentList"
+            style="width: 120px"
+          />
+        </el-form-item>
+        <el-form-item label="学院">
+          <el-select
+            v-model="searchForm.college"
+            placeholder="选择学院"
+            clearable
+            @change="fetchStudentList"
+            @clear="fetchStudentList"
+            style="width: 180px"
+          >
+            <el-option label="计算机科学与网络工程学院" value="计算机科学与网络工程学院" />
+            <el-option label="电子信息工程学院" value="电子信息工程学院" />
+            <el-option label="经济管理学院" value="经济管理学院" />
+            <el-option label="数学学院" value="数学学院" />
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-button @click="resetSearch">重置</el-button>
+        </el-form-item>
+      </el-form>
+    </div>
+
+    <el-table
+      :data="studentList"
+      border
+      stripe
+      v-loading="studentLoading"
+      height="350"
+      style="width: 100%"
+    >
+      <el-table-column prop="username" label="学号" width="120" align="center" />
+      <el-table-column prop="name" label="姓名" width="120" align="center" />
+      <el-table-column prop="college" label="所属学院" min-width="200" align="center" />
+      <el-table-column label="操作" width="100" align="center" fixed="right">
+        <template #default="{ row }">
+          <el-button type="primary" link @click="selectStudent(row)">选择</el-button>
+        </template>
+      </el-table-column>
+      <template #empty>
+        <el-empty description="暂无数据" />
+      </template>
+    </el-table>
+
+    <div class="pagination-wrapper">
+      <el-pagination
+        v-model:current-page="studentCurrentPage"
+        v-model:page-size="studentPageSize"
+        :page-sizes="[10, 20, 30]"
+        layout="total, sizes, prev, pager, next, jumper"
+        :total="studentTotal"
+        @size-change="handleStudentSizeChange"
+        @current-change="handleStudentCurrentChange"
+      />
+    </div>
+  </el-dialog>
 </template>
 
 <style scoped lang="scss">
-/* 页面背景 */
+/* ... 保留原有样式 ... */
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.info-grid {
+  background: #fcfcfc;
+  border: 1px solid #ebeef5;
+  padding: 24px;
+  border-radius: 6px;
+}
+
+.member-grid-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+
+  .empty-tip {
+    border: 1px dashed #dcdfe6;
+    border-radius: 8px;
+    padding: 20px 0;
+  }
+
+  .member-card {
+    background-color: #fcfcfc;
+    border: 1px solid #ebeef5;
+    border-radius: 8px;
+    transition: all 0.3s;
+
+    &:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      border-color: #dcdfe6;
+      background-color: #fff;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 20px;
+      border-bottom: 1px solid #ebeef5;
+      background-color: #fafafa;
+      border-radius: 8px 8px 0 0;
+
+      .member-index {
+        font-weight: 600;
+        font-size: 14px;
+        color: #606266;
+
+        &::before {
+          content: '';
+          display: inline-block;
+          width: 3px;
+          height: 12px;
+          background-color: var(--primary-color, #a71d31);
+          margin-right: 8px;
+          border-radius: 2px;
+        }
+      }
+
+      div {
+        display: flex;
+        gap: 8px;
+      }
+    }
+
+    .card-body {
+      padding: 20px;
+      padding-bottom: 0;
+    }
+  }
+}
+
+.search-bar {
+  margin-bottom: 15px;
+
+  :deep(.el-form--inline .el-form-item) {
+    margin-right: 15px;
+  }
+}
+
+.pagination-wrapper {
+  margin-top: 15px;
+  display: flex;
+  justify-content: flex-end;
+  padding: 15px 0;
+  border-top: 1px solid #eee;
+}
+
+/* 页面背景等原有样式保留 */
 .paper-container {
   background-color: #f0f2f5;
   min-height: 100vh;
@@ -294,7 +793,6 @@ const goBack = () => router.back()
   align-items: flex-start;
 }
 
-/* 纸张主体 */
 .paper-sheet {
   width: 100%;
   max-width: 760px;
@@ -305,7 +803,6 @@ const goBack = () => router.back()
   margin-bottom: 40px;
 }
 
-/* 顶部 Header (荣誉红) */
 .paper-header {
   background: linear-gradient(135deg, #a71d31 0%, #7d1524 100%);
   color: #fff;
@@ -368,7 +865,6 @@ const goBack = () => router.back()
   padding: 40px 50px;
 }
 
-/* 提示条样式 */
 .info-alert {
   background: #fff8e6;
   border: 1px solid #ffeedb;
@@ -397,7 +893,6 @@ const goBack = () => router.back()
   }
 }
 
-/* 表单区块 */
 .form-section {
   margin-bottom: 40px;
   
@@ -419,10 +914,10 @@ const goBack = () => router.back()
   }
 }
 
-/* 搜索框和帮助文本 */
 .search-select {
   width: 100%;
 }
+
 .help-text {
   font-size: 12px;
   color: #909399;
@@ -432,7 +927,6 @@ const goBack = () => router.back()
   gap: 4px;
 }
 
-/* 网格布局 */
 .form-row-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -440,7 +934,6 @@ const goBack = () => router.back()
   margin-bottom: 10px;
 }
 
-/* 上传组件美化 */
 .cert-uploader {
   width: 100%;
   :deep(.el-upload) {
@@ -481,12 +974,6 @@ const goBack = () => router.back()
     font-weight: 600;
     color: #606266;
   }
-  
-  .upload-tip {
-    font-size: 12px;
-    color: #909399;
-    margin-top: 6px;
-  }
 }
 
 .cert-img {
@@ -498,7 +985,6 @@ const goBack = () => router.back()
   border-radius: 6px;
 }
 
-/* 底部按钮区 */
 .form-footer {
   margin-top: 50px;
   display: flex;
@@ -524,12 +1010,6 @@ const goBack = () => router.back()
     padding: 12px 24px;
   }
 }
-
-/* =================================
-   下拉框自定义项 (需要写在全局或非scoped里，
-   但Vue3支持在scoped里用 :deep 没法穿透popper，
-   所以最好加一个 style 标签或用 popper-class)
-   ================================= */
 </style>
 
 <style>
@@ -546,20 +1026,5 @@ const goBack = () => router.back()
   color: #303133;
   display: flex;
   align-items: center;
-}
-
-.comp-select-popper .comp-meta {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.comp-select-popper .organizer {
-  font-size: 12px;
-  color: #909399;
-  max-width: 150px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 </style>
