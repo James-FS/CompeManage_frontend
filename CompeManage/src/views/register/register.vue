@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { Search, ArrowRight, Calendar, User, Bell } from '@element-plus/icons-vue' // 引入必要的图标
+import { Search, ArrowRight, Calendar, User, Bell } from '@element-plus/icons-vue'
 import { ElPagination, ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 import { api } from '@/api'
@@ -8,30 +8,23 @@ import { formatTimeRange } from '@/utils/format'
 import { 
   COMP_CATEGORIES, 
   getParticipantType,
-  getStatusConfig
+  getStatusConfig,
+  getTimeState,
 } from '@/utils/competition'
-const router = useRouter()
-// 1. 定义所有的学科分类 (模拟数据)
 
+const router = useRouter()
 const compList = ref([])
 
 const queryParams = ref({
   page: 1,
   page_size: 10,
-  keyword: '',
+  comp_name: '',
+  comp_level:'',
   category: '全部',
-})
-
-const query = ref({
-  page: 1,
-  page_size: 10,
   is_my: false,
+  is_reg: true,
 })
 
-
-
-let currentPage = ref(1)
-let pageSize = ref(10)
 let total = ref(0)
 
 function NavigateToRegister(compID) {
@@ -43,10 +36,17 @@ async function fetchCompList() {
     const response = await api.getCompetitionList(queryParams.value)
     if (response.code == 200) {
       compList.value = response.data.list.map((item) => {
-        const detail=item.Detail||{}
-        return{
-        ...item,
-        timeRange: formatTimeRange(detail.RegStartTime, detail.RegEndTime),
+        const detail = item.detail || {} 
+        const timeState = getTimeState(
+          detail.reg_start_time, 
+          detail.reg_end_time
+        )
+        
+        return {
+          ...item, 
+          detail: detail, 
+          timeState,
+          timeRange: formatTimeRange(detail.reg_start_time, detail.reg_end_time),
         }
       })
       total.value = response.data.total
@@ -54,6 +54,13 @@ async function fetchCompList() {
   } catch (error) {
     ElMessage.error(error.message || '获取竞赛列表失败')
   }
+}
+
+function handleFilterChange(key, value) { 
+  if (queryParams.value[key] === value) return
+  queryParams.value[key] = value
+  queryParams.value.page = 1
+  fetchCompList()
 }
 
 onMounted(() => {
@@ -66,18 +73,19 @@ onMounted(() => {
     <div class="filter-panel">
       <div class="search-row">
         <el-input
-          v-model="queryParams.keyword"
+          v-model="queryParams.comp_name"
           placeholder="搜索赛事名称"
           prefix-icon="Search"
           clearable
+          @keyup.enter="fetchCompList"
         >
-          <template #append><el-button type="primary">搜索</el-button></template>
+          <template #append><el-button @click="fetchCompList"  type="primary">搜索</el-button></template>
         </el-input>
       </div>
 
       <el-divider class="filter-divider" />
 
-      <div class="discipline-row">
+      <!-- <div class="discipline-row">
         <span class="filter-label">学科分类：</span>
         <div class="options-area">
           <span
@@ -90,7 +98,7 @@ onMounted(() => {
             {{ cat }}
           </span>
         </div>
-      </div>
+      </div> -->
 
       <div class="level-row">
         <span class="filter-label">赛事级别：</span>
@@ -99,8 +107,8 @@ onMounted(() => {
             v-for="lvl in ['全部', '国家级', '省级', '校级']"
             :key="lvl"
             class="filter-tag"
-            :class="{ active: queryParams.CompLevel === lvl }"
-            @click="queryParams.CompLevel = lvl"
+            :class="{ active: queryParams.comp_level === lvl }"
+            @click="handleFilterChange('comp_level', lvl)"
           >
             {{ lvl }}
           </span>
@@ -114,13 +122,13 @@ onMounted(() => {
             v-for="(label, value) in {
               all: '全部',
               upcoming: '未开始',
-              ongoing: '进行中',
+              ongoing: '报名中',
               ended: '已结束',
             }"
             :key="value"
             class="filter-tag"
             :class="{ active: queryParams.status === value }"
-            @click="queryParams.status = value"
+           @click="handleFilterChange('status', value)"
           >
             {{ label }}
           </span>
@@ -129,27 +137,27 @@ onMounted(() => {
     </div>
 
     <div class="comp-list">
-      <div class="comp-item" v-for="item in compList" :key="item.ID">
+      <div class="comp-item" v-for="item in compList" :key="item.id">
         <div class="comp-info">
           <div class="name-row">
             <el-tag
-              :type="getStatusConfig(item.Status).tagType"
+              :type="item.timeState.tagType"
               effect="dark"
               size="small"
               class="status-badge"
             >
-              {{ getStatusConfig(item.Status).tagText }}
+              {{ item.timeState.tagText }}
             </el-tag>
-            <h3 class="comp-name">{{ item.CompName }}</h3>
+            <h3 class="comp-name">{{ item.comp_name }}</h3>
           </div>
           <div class="meta-row">
             <el-tag effect="plain" type="primary" size="small" class="level-tag">
-              {{ item.CompLevel }}
+              {{ item.comp_level }}
             </el-tag>
 
             <span class="divider"></span>
             <span class="meta-text">
-              <el-icon><User /></el-icon> {{ item.Organizer }}
+              <el-icon><User /></el-icon> {{ item.organizer }}
             </span>
 
             <span class="divider"></span>
@@ -159,8 +167,8 @@ onMounted(() => {
             </span>
           </div>
           <div class="tag-row">
-            <el-tag  size="small" type="info" class="extra-tag">
-              {{ getParticipantType(item.Detail.ParticipantType) }}
+            <el-tag size="small" type="info" class="extra-tag">
+              {{ getParticipantType(item.detail.participant_type) }}
             </el-tag>
           </div>
         </div>
@@ -171,12 +179,12 @@ onMounted(() => {
             </el-button>
 
             <el-button
-              :type="item.status === 0 || item.status === 3 ? 'info' : 'primary'"
-              :disabled="item.status === 3"
+              :type="item.timeState.type"
+              :disabled="item.timeState.disabled"
               @click="NavigateToRegister(item.id)"
               class="primary-btn"
             >
-              {{ getStatusConfig(item.Status).label }}
+              {{ item.timeState.label }}
               <el-icon class="el-icon--right"><ArrowRight /></el-icon>
             </el-button>
           </div>
@@ -190,7 +198,9 @@ onMounted(() => {
         v-model:page-size="queryParams.page_size"
         :total="total"
         layout="total, sizes, prev, pager, next, jumper"
-        :page-sizes="[10, 20, 50, 100]"
+        :page-sizes="[10, 20, 50]"
+        @current-change="fetchCompList"
+        @size-change="fetchCompList"
       />
     </div>
   </div>
@@ -202,14 +212,14 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   background-color: var(--background-color);
-  padding: 20px;
+  padding: var(--container-padding);
 }
 .filter-panel {
   box-sizing: border-box;
   background-color: #fff;
-  padding: 24px;
-  border-radius: 4px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  padding: var(--item-padding);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
   .filter-divider {
     margin: 16px 0;
   }
@@ -247,12 +257,12 @@ onMounted(() => {
         white-space: nowrap;
 
         &:hover {
-          color: #13c2c2;
+          color: var(--primary-color);
           background-color: #f0fdfa;
         }
 
         &.active {
-          background-color: #13c2c2;
+          background-color: var(--primary-color);
           color: #fff;
           font-weight: 500;
         }
@@ -271,7 +281,7 @@ onMounted(() => {
 
   .comp-item {
     background-color: #fff;
-    padding: 24px;
+    padding: var(--item-padding);
     border-radius: 8px;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05); /* 默认微弱阴影 */
     border: 1px solid transparent;
@@ -284,7 +294,7 @@ onMounted(() => {
       transform: translateY(-2px);
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
       .comp-name {
-        color: #13c2c2;
+        color: var(--primary-color);
       }
     }
     .comp-info {
@@ -357,7 +367,7 @@ onMounted(() => {
           color: #909399;
           font-weight: normal;
           &:hover {
-            color: #13c2c2;
+            color: var(--primary-color);
           }
           .el-icon {
             margin-right: 4px;
@@ -373,12 +383,12 @@ onMounted(() => {
           font-weight: 600;
           border: none;
           &.el-button--primary {
-            background: linear-gradient(135deg, #13c2c2 0%, #36cfc9 100%);
-            box-shadow: 0 4px 12px rgba(19, 194, 194, 0.3);
+            background: linear-gradient(135deg, var(--primary-color) 0%, #36cfc9 100%);
+            box-shadow: var(--primary-btn-shadow);
             transition: all 0.3s;
             &:hover {
               transform: translateY(-1px);
-              box-shadow: 0 6px 16px rgba(19, 194, 194, 0.4);
+              box-shadow: var(--primary-btn-hover-shadow);
             }
           }
         }

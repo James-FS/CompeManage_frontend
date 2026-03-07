@@ -3,11 +3,16 @@ import { reactive, ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, Promotion, Paperclip, Document } from '@element-plus/icons-vue'
-
+import { formatTime } from '@/utils/format'
+import api from '@/api'
 const route = useRoute()
 const router = useRouter()
 const formRef = ref(null)
 const isSubmitting = ref(false)
+const uploadRef = ref(null) // 上传组件引用
+const noticeID = ref(null)
+const token = localStorage.getItem('token')
+const uploadHeaders = { Authorization: `Bearer ${token}` }
 
 // 1. 判断模式
 const isEditMode = computed(() => {
@@ -20,7 +25,8 @@ const form = reactive({
   title: '',
   content: '',
   fileList: [],
-  competitionId: null,
+  publish_time: '',
+  compID: route.query.compID || '',
 })
 
 // 3. 校验规则
@@ -29,40 +35,155 @@ const rules = {
   content: [{ required: true, message: '请输入正文内容', trigger: 'blur' }],
 }
 
-// 5. 返回
 const goBack = () => {
   router.back()
 }
 
+const isSuccessCode = (code) => code === 0 || code === 200
+
+const getRespMessage = (resp, fallback) => resp?.message || resp?.msg || fallback
+
 // 6. 提交
-const handleSubmit = async () => {
-  if (!formRef.value) return
-  await formRef.value.validate((valid) => {
-    if (valid) {
-      isSubmitting.value = true
-      setTimeout(() => {
-        isSubmitting.value = false
-        ElMessage.success(isEditMode.value ? '修改已保存' : '通知已发布')
-        goBack()
-      }, 800)
-    }
-  })
-}
+// const handleSubmit = async () => {
+//   if (!formRef.value) return
+//   await formRef.value.validate((valid) => {
+//     if (valid) {
+//       isSubmitting.value = true
+//       setTimeout(() => {
+//         isSubmitting.value = false
+//         ElMessage.success(isEditMode.value ? '修改已保存' : '通知已发布')
+//         goBack()
+//       }, 800)
+//     }
+//   })
+// }
 
 const handleFileChange = (uploadFile, uploadFiles) => {
   form.fileList = uploadFiles
 }
 
-onMounted(() => {
-  const noticeID = route.params.id
-  if (isEditMode.value) {
-    // === 编辑模式模拟回显 ===
-    setTimeout(() => {
-      form.title = '关于延长2026年互联网+大赛报名时间的紧急通知'
-      form.content = '各位同学：\n\n接到组委会最新通知，原定于...'
-      form.competitionId = 1
-    }, 500)
+const handleSubmit = async () => {
+  if (!formRef.value) return
+  await formRef.value.validate((valid) => {
+    if (valid) {
+      isSubmitting.value = true
+      // 判断是否有“待上传”的文件 (status === 'ready')
+      const hasNewFile = form.fileList.some((f) => f.status === 'ready')
+      if (hasNewFile) {
+        // 有新文件：手动触发上传，等待 onSuccess 回调
+        uploadRef.value.submit()
+      } else {
+        // 无新文件：直接提交表单
+        finalSubmit()
+      }
+    }
+  })
+}
+
+const handleUploadSuccess = (response, uploadFile, uploadFiles) => {
+  if (response.code !== 200) {
+    ElMessage.error(response.msg || '上传失败')
+    isSubmitting.value = false
+    return
   }
+
+  // 必须手动把后端返回的 URL 赋给文件对象
+  uploadFile.url = response.data.url
+
+  // 检查是否所有文件都处理完毕 (全部变成 success)
+  const isAllSuccess = uploadFiles.every((item) => item.status === 'success')
+  if (isAllSuccess) {
+    finalSubmit() // 所有文件上传完毕，执行最终提交
+  }
+}
+
+const handleUploadError = () => {
+  ElMessage.error('网络错误，文件上传失败')
+  isSubmitting.value = false
+}
+
+// 7. 最终提交 (构造 FormData)
+const finalSubmit = async () => {
+  try {
+    if (!form.compID) {
+      ElMessage.error('缺少赛事ID，请从“赛事通知列表”进入发布页')
+      isSubmitting.value = false
+      return
+    }
+
+    // 提取所有文件的 URL，拼成字符串
+    const attachmentStr = form.fileList
+      .map((f) => f.url || (f.response && f.response.data.url))
+      .filter((url) => url)
+      .join(',')
+
+    const params = new FormData()
+    params.append('title', form.title)
+    params.append('content', form.content)
+    params.append('publish_time', formatTime(new Date()))
+    params.append('compID', form.compID)
+    params.append('attachment', attachmentStr)
+
+    // 根据模式调用不同接口
+    let createRes
+    if (isEditMode.value) {
+      createRes = {
+        code: 0,
+        data: {
+          notice: {
+            ID: Number(noticeID.value),
+          },
+        },
+      }
+    } else {
+      createRes = await api.createNotice(params)
+    }
+
+    if (!isSuccessCode(createRes?.code)) {
+      ElMessage.error(getRespMessage(createRes, '创建通知失败'))
+      isSubmitting.value = false
+      return
+    }
+
+    const noticeIdToPublish =
+      createRes?.data?.notice?.ID ||
+      createRes?.data?.notice?.id ||
+      createRes?.data?.id ||
+      Number(noticeID.value)
+
+    if (!noticeIdToPublish) {
+      ElMessage.error('未获取到通知ID，无法发布')
+      isSubmitting.value = false
+      return
+    }
+
+    const publishRes = await api.publishNotice(noticeIdToPublish)
+
+    if (isSuccessCode(publishRes?.code)) {
+      ElMessage.success('通知发布成功')
+      router.back()
+    } else {
+      ElMessage.error(getRespMessage(publishRes, '发布失败'))
+    }
+  } catch (error) {
+    console.error(error)
+    const backendMsg = error?.response?.data?.message || error?.response?.data?.msg
+    ElMessage.error(backendMsg || error?.message || '操作失败')
+  } finally {
+    isSubmitting.value = false
+  }
+}
+
+onMounted(() => {
+  noticeID.value = route.params.id
+  // if (isEditMode.value) {
+  //   // === 编辑模式模拟回显 ===
+  //   setTimeout(() => {
+  //     form.title = '关于延长2026年互联网+大赛报名时间的紧急通知'
+  //     form.content = '各位同学：\n\n接到组委会最新通知，原定于...'
+  //     form.compID = 1
+  //   }, 500)
+  // }
 })
 </script>
 
@@ -76,9 +197,6 @@ onMounted(() => {
             <span>返回</span>
           </div>
           <div class="header-divider"></div>
-          <!-- <div class="icon-box">
-            <el-icon><Document /></el-icon>
-          </div> -->
           <div class="header-text">
             <h1 class="main-title">{{ isEditMode ? '通知公告编辑' : '发布新通知' }}</h1>
           </div>
@@ -91,7 +209,6 @@ onMounted(() => {
         <el-form ref="formRef" :model="form" :rules="rules" class="paper-form">
           <div class="section-block">
             <div class="section-label">
-              <!-- <span class="num">01</span> -->
               <span class="text">通知标题</span>
             </div>
             <el-form-item prop="title" class="input-item-underline">
@@ -101,7 +218,6 @@ onMounted(() => {
 
           <div class="section-block">
             <div class="section-label">
-              <!-- <span class="num">02</span> -->
               <span class="text">正文内容</span>
             </div>
             <el-form-item prop="content">
@@ -118,16 +234,19 @@ onMounted(() => {
 
           <div class="section-block">
             <div class="section-label">
-              <!-- <span class="num">03</span> -->
               <span class="text">附件材料</span>
             </div>
             <el-upload
+              ref="uploadRef"
               v-model:file-list="form.fileList"
               drag
-              action="#"
+              action="/api/upload"
               multiple
+              :headers="uploadHeaders"
+              :data="{ type: 'notice_attachment' }"
               :auto-upload="false"
-              :on-change="handleFileChange"
+              :on-success="handleUploadSuccess"
+              :on-error="handleUploadError"
               class="paper-uploader"
             >
               <div class="upload-placeholder">

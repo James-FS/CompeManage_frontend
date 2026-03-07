@@ -2,15 +2,19 @@
 import { onMounted, reactive, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Setting, Select, User, UserFilled } from '@element-plus/icons-vue'
+import { 
+  Setting, Select, User, UserFilled,
+  Top, Bottom, Delete, Plus 
+} from '@element-plus/icons-vue'
 import { api } from '@/api'
 import { formatToGoTime } from '@/utils/format'
-const route = useRoute()
 
+const route = useRoute()
+const router = useRouter()
 const isSaving = ref(false)
 const formRef = ref(null)
+const comp_name = ref('')
 
-// 默认时间范围选中时的具体时间点 (00:00:00 - 23:59:59)
 const defaultTime = [new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 2, 1, 23, 59, 59)]
 
 const gradeOptions = [
@@ -18,39 +22,59 @@ const gradeOptions = [
   { label: '大二', value: 2 },
   { label: '大三', value: 3 },
   { label: '大四', value: 4 },
-  { label: '研究生', value: 9 }, // 9 代表特殊处理
+  { label: '研究生', value: 9 },
 ]
 
 const competitionYear = ref(2026)
 const getEntranceYear = (gradeValue) => {
   if (gradeValue === 9) return '不限年份'
-  // 简单的减法逻辑，足以覆盖90%的情况
   return `${competitionYear.value - gradeValue}级`
 }
+
 // 表单数据模型
 const form = reactive({
-  type: 1, // 1:个人, 2:团队
+  type: 1, 
   minMember: 1,
   maxMember: 3,
-  timeRange: [], // [开始时间, 结束时间]
-  grades: [], // 限制年级
-  advisorRequired: 0, // 指导老师是否必填
-  attachmentType: 1, // 0:无, 1:选填, 2:必填
+  timeRange: [], 
+  workTimeRange: [], 
+  grades: [], 
+  advisorRequired: 0, 
+  allowAdvisor: false,
+  attachmentType: 1,
+  
+  awards: ['一等奖', '二等奖', '三等奖'], 
 })
 
-// 校验规则
 const rules = {
   timeRange: [{ required: true, message: '请设置报名起止时间', trigger: 'change' }],
 }
 
-// 切换赛制时的逻辑处理
+const workRange = Array.isArray(form.workTimeRange) ? form.workTimeRange : []
+// --- 奖项操作逻辑 (朴素版) ---
+const addAward = () => form.awards.push('')
+
+const removeAward = (index) => form.awards.splice(index, 1)
+
+const moveUp = (index) => {
+  if (index === 0) return
+  const temp = form.awards[index]
+  form.awards[index] = form.awards[index - 1]
+  form.awards[index - 1] = temp
+}
+
+const moveDown = (index) => {
+  if (index === form.awards.length - 1) return
+  const temp = form.awards[index]
+  form.awards[index] = form.awards[index + 1]
+  form.awards[index + 1] = temp
+}
+
 const handleTypeChange = (val) => {
   if (val === 1) {
-    // 如果切回个人赛，重置团队限制
     form.minMember = 1
     form.maxMember = 1
   } else {
-    // 切到团队赛，给个默认值
     form.minMember = 2
     form.maxMember = 5
   }
@@ -63,7 +87,7 @@ async function handleSave() {
   await formRef.value.validate(async (valid) => {
     if (valid) {
       isSaving.value = true
-      // 模拟构造发送给后端的数据
+      
       const submitData = {
         comp_id: Number(route.params.id),
         participant_type: form.type,
@@ -72,19 +96,26 @@ async function handleSave() {
         grade_requirement: form.grades,
         need_advisor: form.allowAdvisor ? (form.advisorRequired ? 2 : 1) : 0,
         need_attachment: form.attachmentType,
+        
+        // 过滤空行提交
+        award_hierarchy: form.awards.filter(item => item && item.trim() !== ''),
+
         reg_start_time: formatToGoTime(form.timeRange[0]),
         reg_end_time: formatToGoTime(form.timeRange[1]),
+        submit_start_time: workRange.length === 2 ? formatToGoTime(workRange[0]) : null,
+  submit_end_time: workRange.length === 2 ? formatToGoTime(workRange[1]) : null,
       }
 
       try {
         const response = await api.saveRegConfig(submitData)
         if (response.code === 200) {
           ElMessage.success('报名设置已更新')
+          router.back()
         }
       } catch (err) {
+        console.error(err)
       } finally {
         isSaving.value = false
-        fetchConfig()
       }
     } else {
       ElMessage.error('表单验证未通过，请检查输入项')
@@ -92,7 +123,7 @@ async function handleSave() {
   })
 }
 
-// 获取已有设置
+// 获取配置
 async function fetchConfig() {
   const compID = Number(route.params.id)
   try {
@@ -102,10 +133,10 @@ async function fetchConfig() {
       form.type = data.participant_type
       form.minMember = data.min_team_member || 1
       form.maxMember = data.max_team_member || 1
-      form.timeRange = [data.reg_start_time, data.reg_end_time]
       form.grades = data.grade_requirement || []
-      form.advisorRequired = data.need_advisor
       form.attachmentType = data.need_attachment
+      comp_name.value = data.comp_name || ''
+      
       if (data.need_advisor === 0) {
         form.allowAdvisor = false
         form.advisorRequired = false
@@ -113,16 +144,32 @@ async function fetchConfig() {
         form.allowAdvisor = true
         form.advisorRequired = (data.need_advisor === 2)
       }
+
       if (data.reg_start_time && data.reg_end_time) {
         form.timeRange = [new Date(data.reg_start_time), new Date(data.reg_end_time)]
+      }
+      if(data.submit_start_time && data.submit_end_time) {
+        form.workTimeRange = [new Date(data.submit_start_time), new Date(data.submit_end_time)]
+      }
+
+      // 奖项回显
+      if (data.award_hierarchy) {
+         try {
+           form.awards = typeof data.award_hierarchy === 'string' 
+             ? JSON.parse(data.award_hierarchy) 
+             : data.award_hierarchy
+         } catch (e) {
+           form.awards = ['一等奖', '二等奖', '三等奖']
+         }
       } else {
-        form.timeRange = []
+         form.awards = ['一等奖', '二等奖', '三等奖']
       }
     }
   } catch (error) {
-    ElMessage.error(error.message || '获取报名配置失败')
+    ElMessage.error(error.message || '获取配置失败')
   }
 }
+
 onMounted(() => {
   fetchConfig()
 })
@@ -136,9 +183,7 @@ onMounted(() => {
           <div class="header-title">
             <el-icon class="icon"><Setting /></el-icon>
             <span class="title">报名规则配置</span>
-            <el-tag type="info" size="small" effect="plain" class="ml-2"
-              >当前赛事：第十届互联网大赛</el-tag
-            >
+            <el-tag type="info" size="small" effect="plain" class="ml-2">当前赛事：{{ comp_name }}</el-tag>
           </div>
           <el-button type="primary" :loading="isSaving" @click="handleSave">
             <el-icon><Select /></el-icon> 保存设置
@@ -178,7 +223,6 @@ onMounted(() => {
                 :disabled="form.type === 1"
               />
               <span class="separator">至</span>
-
               <el-input-number
                 v-model="form.maxMember"
                 :min="form.minMember"
@@ -188,10 +232,6 @@ onMounted(() => {
               />
               <span class="suffix">人 / 队</span>
             </div>
-
-            <!-- <div class="form-tip">
-            {{ form.type === 1 ? '个人赛固定为 1 人' : '包括队长在内的人数范围' }}
-          </div> -->
           </el-form-item>
         </transition>
 
@@ -203,7 +243,19 @@ onMounted(() => {
             start-placeholder="开始报名"
             end-placeholder="报名截止"
             format="YYYY-MM-DD HH:mm"
-           
+            :default-time="defaultTime"
+            style="width: 100%; max-width: 400px"
+          />
+        </el-form-item>
+
+        <el-form-item label="作品提交时间" prop="workTimeRange">
+          <el-date-picker
+            v-model="form.workTimeRange"
+            type="datetimerange"
+            range-separator="至"
+            start-placeholder="开始提交"
+            end-placeholder="提交截止"
+            format="YYYY-MM-DD HH:mm"
             :default-time="defaultTime"
             style="width: 100%; max-width: 400px"
           />
@@ -228,11 +280,12 @@ onMounted(() => {
               :key="item.value"
               :label="item.label"
               :value="item.value"
-              ><span style="float: left">{{ item.label }}</span>
+            >
+              <span style="float: left">{{ item.label }}</span>
               <span style="float: right; color: #8492a6; font-size: 13px; margin-left: 10px">
                 {{ getEntranceYear(item.value) }}
-              </span></el-option
-            >
+              </span>
+            </el-option>
           </el-select>
           <div class="form-tip">不选默认所有年级学生均可报名</div>
         </el-form-item>
@@ -253,6 +306,55 @@ onMounted(() => {
         </el-form-item>
 
         <el-divider border-style="dashed" />
+        
+        <div class="form-section-title">奖项排名规则</div>
+        <el-form-item >
+          <div class="award-list-simple">
+
+
+            <div v-for="(item, index) in form.awards" :key="index" class="award-row-simple">
+              <span class="rank-label">第 {{ index + 1 }} 级</span>
+              
+              <el-input 
+                v-model="form.awards[index]" 
+                placeholder="请输入，如：一等奖" 
+                style="width: 220px"
+              />
+              
+              <div class="btn-box">
+                <el-button 
+                  link 
+                  type="primary" 
+                  :disabled="index === 0"
+                  @click="moveUp(index)"
+                  :icon="Top"
+                  title="上移"
+                />
+                <el-button 
+                  link 
+                  type="primary" 
+                  :disabled="index === form.awards.length - 1"
+                  @click="moveDown(index)"
+                  :icon="Bottom"
+                  title="下移"
+                />
+                <el-button 
+                  link 
+                  type="danger" 
+                  @click="removeAward(index)"
+                  :icon="Delete"
+                  title="删除"
+                />
+              </div>
+            </div>
+
+            <el-button type="primary" link :icon="Plus" @click="addAward" style="margin-top: 5px;">
+              添加一个等级
+            </el-button>
+          </div>
+        </el-form-item>
+
+        <el-divider border-style="dashed" />
 
         <div class="form-section-title">材料提交</div>
 
@@ -262,7 +364,6 @@ onMounted(() => {
             <el-radio :value="1" border>选填 (可选上传)</el-radio>
             <el-radio :value="2" border class="is-required-radio">必须上传 (必填)</el-radio>
           </el-radio-group>
-          <!-- <div class="form-tip">通常用于收集报名表、项目计划书等文件</div> -->
         </el-form-item>
       </el-form>
     </el-card>
@@ -272,11 +373,11 @@ onMounted(() => {
 <style scoped lang="scss">
 .config-container {
   box-sizing: border-box;
-  padding: 20px;
-  background-color: var(--background-color); /* 假设你有这个全局变量，没有就删掉 */
-  height: calc(100vh - 60px);
+  padding: var(--container-padding);
+  background-color: var(--background-color);
+  min-height: calc(100vh - 110px);
   display: flex;
-  justify-content: center; /* 居中显示，更像表单 */
+  justify-content: center;
 }
 
 .form-card {
@@ -312,7 +413,6 @@ onMounted(() => {
   padding: 10px 20px;
 }
 
-/* 分组标题样式 */
 .form-section-title {
   font-size: 14px;
   font-weight: bold;
@@ -323,24 +423,14 @@ onMounted(() => {
   line-height: 1;
 }
 
-/* 团队人数输入框布局 */
 .flex-row {
   display: flex;
   align-items: center;
   gap: 10px;
-
-  .separator {
-    color: #909399;
-  }
-
-  .suffix {
-    margin-left: 10px;
-    color: #606266;
-    font-size: 13px;
-  }
+  .separator { color: #909399; }
+  .suffix { margin-left: 10px; color: #606266; font-size: 13px; }
 }
 
-/* 垂直布局辅助 */
 .flex-column {
   display: flex;
   flex-direction: column;
@@ -353,7 +443,6 @@ onMounted(() => {
   border-left: 2px solid #e4e7ed;
 }
 
-/* 提示文字 */
 .form-tip {
   font-size: 12px;
   color: #909399;
@@ -361,16 +450,46 @@ onMounted(() => {
   margin-top: 6px;
 }
 
-.ml-2 {
-  margin-left: 8px;
-}
-.mr-1 {
-  margin-right: 4px;
+.ml-2 { margin-left: 8px; }
+.mr-1 { margin-right: 4px; }
+
+/* === 简约奖项样式 === */
+.award-list-simple {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 450px;
 }
 
-// :deep(.is-required-radio.is-checked) {
-//   --el-radio-button-checked-bg-color: #f56c6c;
-//   --el-radio-button-checked-border-color: #f56c6c;
-//   --el-color-primary: #f56c6c; /* 让选中的点变成红色 */
-// }
+.award-tip {
+  font-size: 13px;
+  color: #606266;
+  background-color: #f4f4f5;
+  padding: 8px 12px;
+  border-radius: 4px;
+  margin-bottom: 5px;
+}
+
+.award-row-simple {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  
+  .rank-label {
+    width: 60px;
+    font-size: 13px;
+    color: #606266;
+  }
+  
+  .btn-box {
+    display: flex;
+    gap: 2px;
+    /* 让图标稍微大一点 */
+    :deep(.el-button) {
+      padding: 6px;
+      font-size: 16px;
+    }
+  }
+}
 </style>

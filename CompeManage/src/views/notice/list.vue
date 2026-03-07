@@ -1,94 +1,85 @@
 <script setup>
-import { ElTable, ElTableColumn, ElPagination,ElTag, ElInput, ElDatePicker, ElButton, ElIcon } from 'element-plus'
+import { ElTable, ElTableColumn, ElPagination, ElInput, ElDatePicker, ElButton, ElMessage } from 'element-plus'
 import { Search, Refresh } from '@element-plus/icons-vue';
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
+import api from '@/api'
+
 let currentPage = ref(1)
 let pageSize = ref(10)
-let total = ref(5000)
+let total = ref(0)
+let loading = ref(false)
 const searchForm = reactive({
     keyword: '',
     dateRange: [] // 这是一个数组 [开始日期, 结束日期]
 });
-let noticeList = ref([
-  {
-    id: 1,
-    title: '关于举办广州大学第二十届ACM大学生程序设计竞赛的通知',
-    date: '2026-01-16',
-    dept: '教务处',
-    tag: '置顶',
-    tagType: 'danger',
-  },
-  {
-    id: 6,
-    title: '关于举办广州大学第二十届ACM大学生程序设计竞赛的通知',
-    date: '2026-01-16',
-    dept: '教务处',
-    tag: '置顶',
-    tagType: 'danger',
-  },
-  {
-    id: 7,
-    title: '关于举办广州大学第二十届ACM大学生程序设计竞赛的通知',
-    date: '2026-01-16',
-    dept: '教务处',
-    tag: '置顶',
-    tagType: 'danger',
-  },
-  {
-    id: 8,
-    title: '关于举办广州大学第二十届ACM大学生程序设计竞赛的通知',
-    date: '2026-01-16',
-    dept: '教务处',
-    tag: '置顶',
-    tagType: 'danger',
-  },
-  {
-    id: 9,
-    title: '关于举办广州大学第二十届ACM大学生程序设计竞赛的通知',
-    date: '2026-01-16',
-    dept: '教务处',
-    tag: '置顶',
-    tagType: 'danger',
-  },
-  {
-    id: 2,
-    title: '第十五届“蓝桥杯”全国软件和信息技术专业人才大赛报名通知',
-    date: '2026-02-10',
-    dept: '计算机学院',
-    tag: '热点',
-    tagType: 'warning',
-  },
-  {
-    id: 3,
-    title: '2026年大学生创新创业训练计划项目申报指南',
-    date: '2026-03-05',
-    dept: '创新创业学院',
-    tag: '通知',
-    tagType: 'info',
-  },
-  {
-    id: 4,
-    title: '关于开展2026年度学科竞赛获奖统计工作的通知',
-    date: '2026-03-12',
-    dept: '教务处',
-    tag: '',
-    tagType: '',
-  },
-  {
-    id: 5,
-    title: '2026年全国大学生英语竞赛(NECCS)报名通知',
-    date: '2026-04-01',
-    dept: '外国语学院',
-    tag: '',
-    tagType: '',
-  },
-])
+let noticeList = ref([])
+
+function formatDateTime(dateTime) {
+    if (!dateTime) return '--';
+    return String(dateTime).slice(0, 10);
+}
+
+async function fetchNoticeList() {
+    loading.value = true;
+    try {
+        const [startTime, endTime] = searchForm.dateRange || [];
+        const params = {
+            page: currentPage.value,
+            page_size: pageSize.value,
+            start_time: startTime || undefined,
+            end_time: endTime || undefined,
+            is_latest: true,
+            keyword: searchForm.keyword || undefined,
+        };
+
+        const res = await api.getNoticeList(params);
+        const data = res?.data || {};
+        const list = Array.isArray(data.list) ? data.list : [];
+
+        noticeList.value = list.map((item) => ({
+            ...item,
+            id: item.id ?? item.ID,
+            title: item.title || '--',
+            dept: item.dept || '--',
+            date: formatDateTime(item.publish_time || item.updated_at || item.created_at),
+        }));
+        total.value = Number(data.total) || 0;
+    } catch (error) {
+        noticeList.value = [];
+        total.value = 0;
+        ElMessage.error(error?.message || '获取通知列表失败');
+    } finally {
+        loading.value = false;
+    }
+}
+
+function handleSearch() {
+    currentPage.value = 1;
+    fetchNoticeList();
+}
+
+function handleSizeChange(size) {
+    pageSize.value = size;
+    currentPage.value = 1;
+    fetchNoticeList();
+}
+
+function handleCurrentChange(page) {
+    currentPage.value = page;
+    fetchNoticeList();
+}
 
 function ResetFilter(){
     searchForm.keyword = '';
     searchForm.dateRange = [];
-    
+    currentPage.value = 1;
+    pageSize.value = 10;
+    fetchNoticeList();
 }
+
+onMounted(() => {
+    fetchNoticeList();
+});
 </script>
 
 <template>
@@ -115,13 +106,14 @@ function ResetFilter(){
                         class="date-input"
             />
 
-            <el-button type="primary" :icon="Search" >查询</el-button>
+            <el-button type="primary" :icon="Search" @click="handleSearch">查询</el-button>
             <el-button :icon="Refresh" @click="ResetFilter">重置</el-button>
         </div>
       </div>
       <div class="list-body">
         <el-table
           :data="noticeList"
+          v-loading="loading"
           :header-cell-style="{ 
               background: '#f8fafc', 
               color: '#64748b', 
@@ -148,6 +140,10 @@ function ResetFilter(){
                 <span class="table-date">{{ scope.row.date }}</span>
              </template>
           </el-table-column>
+
+          <template #empty>
+            <el-empty description="暂无数据" />
+          </template>
         </el-table>
         <div class="pagination-container">
           <el-pagination
@@ -171,57 +167,62 @@ function ResetFilter(){
   min-height: 100%;
   box-sizing: border-box;
   padding: 20px 40px;
-  background-color: #f0fdfa; /* 基础底色 */
-  /* 两个巨大的径向渐变光晕 */
+  background-color: #fafbfc;
   background-image:
-    radial-gradient(at 0% 0%, rgba(19, 194, 194, 0.15) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(59, 130, 246, 0.1) 0px, transparent 50%);
-
-  /* 这种背景通常不需要 repeat，覆盖全屏即可 */
+    radial-gradient(at 0% 0%, rgba(19, 194, 194, 0.06) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(59, 130, 246, 0.04) 0px, transparent 50%);
   background-repeat: no-repeat;
-  background-attachment: fixed; /* 滚动时背景不动，很高级 */
+  background-attachment: fixed;
+
   .list-container {
     display: flex;
     flex-direction: column;
     height: 85vh;
     align-items: stretch;
-    background-color: #fff;
+    background-color: rgba(255, 255, 255, 0.9); /* 90% 不透明度 */
     border-radius: 16px;
     padding: 30px;
-    // min-height: 900px;
     max-width: 1440px;
-    margin:0 auto;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
-    border-bottom: 1px solid #f0f0f0;
+    margin: 0 auto;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+    backdrop-filter: blur(8px); /* 毛玻璃效果 */
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    
     .list-header {
       display: flex;
       flex-direction: row;
       justify-content: space-between;
       align-items: center;
-      border-left: 4px solid #13c2c2;
+      border-left: 4px solid var(--primary-color);
       padding-left: 12px;
       margin-bottom: 40px;
+      
       .header-title {
         font-size: 20px;
         font-weight: 600;
-        color: #333;
+        color: var(--text-primary);
       }
-      .header-filter{
+      
+      .header-filter {
         display: flex;
-        gap:12px;
-        .date-input{
-            width:280px;
+        gap: 12px;
+        
+        .date-input {
+          width: 280px;
         }
-        .search-input{
-            width:280px;
+        
+        .search-input {
+          width: 280px;
         }
       }
     }
+    
     .list-body {
       display: flex;
       flex-direction: column;
       flex: 1;
       overflow: hidden;
+      
       .pagination-container {
         margin-top: auto;
         display: flex;
@@ -234,36 +235,41 @@ function ResetFilter(){
 .list-table {
   width: 100%;
   max-height: 600px;
-  margin-bottom:15px;
+  margin-bottom: 15px;
+
+  :deep(.el-table__inner-wrapper::before) {
+    display: none;
+  }
+  
   :deep(.el-table__row) {
     height: 60px; 
-    font-size: 14px; /* 默认字号 */
-    color: #606266;  /* 默认文字颜色 */
+    font-size: 14px;
+    color: #606266;
   }
 
   :deep(.el-table__body tr:hover > td) {
-    background-color: #f0fdfa !important; 
+    background-color: #f5fffe !important; /* 改为更浅的冷色调 */
   }
+  
   .table-title {
-    color: #303133;     
+    color: var(--text-primary);     
     font-size: 15px;     
     font-weight: 500;    
     cursor: pointer;
     transition: color 0.2s;
 
     &:hover {
-        color: #13c2c2;  /* 鼠标放上去变品牌色 */
+      color: var(--primary-color);
     }
   }
 
   .table-dept {
-    color: #606266;
-
+    color: var(--table-text);
   }
 
   .table-date {
-    color: #909399;         
-    font-family: Menlo, Monaco, Consolas, monospace; /* 稍微带点代码感/数字感的字体 */
+    color: var(--text-secondary);         
+    font-family: Menlo, Monaco, Consolas, monospace;
   }
 }
 </style>
