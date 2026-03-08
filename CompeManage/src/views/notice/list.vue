@@ -3,7 +3,8 @@ import { ElTable, ElTableColumn, ElPagination, ElInput, ElDatePicker, ElButton, 
 import { Search, Refresh } from '@element-plus/icons-vue';
 import { ref, reactive, onMounted } from 'vue'
 import api from '@/api'
-
+import { useRouter } from 'vue-router'
+const router = useRouter()
 let currentPage = ref(1)
 let pageSize = ref(10)
 let total = ref(0)
@@ -77,6 +78,16 @@ function ResetFilter(){
     fetchNoticeList();
 }
 
+function goToDetail(row) {
+    if (row && row.id) {
+        router.push({
+    name: 'Notice',
+    params: { id: row.id }
+  });
+    } else {
+        ElMessage.error('无法获取通知ID');
+    }
+}
 onMounted(() => {
     fetchNoticeList();
 });
@@ -121,6 +132,7 @@ onMounted(() => {
               fontSize: '14px',
               fontWeight: '600' 
           }"
+          @row-click="goToDetail"
           class="list-table"
         >
           <el-table-column label="通知标题" min-width="400">
