@@ -68,7 +68,7 @@ export const api = {
  
   // ==================== 通知相关 ====================
   getNoticeList: (params) => get('/api/notice/list', params),
-  getNoticeDetail: (id) => get(`/api/notice/detail/${id}`),
+  getNoticeDetail: (id) => get(`/api/notice/${id}`),
   createNotice: (data) => post('/api/notice/comp/create', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
   publishNotice: (id) => put(`/api/notice/${id}/publish`),
   deleteNotice: (id) => del(`/api/notice/${id}`),
