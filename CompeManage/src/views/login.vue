@@ -67,7 +67,8 @@ const quickFill = (roleKey) => {
 
             <div class="login-right">
                 <h3>用户登录</h3>
-                <el-form ref="formRef" :model="loginForm" :rules="rules" class="login-form" size="large">
+                <el-form ref="formRef" :model="loginForm" :rules="rules" class="login-form" size="large"
+                    @submit.prevent>
                     <el-form-item prop="username">
                         <el-input v-model="loginForm.username" placeholder="请输入用户名" :prefix-icon="User" />
                     </el-form-item>
@@ -77,7 +78,8 @@ const quickFill = (roleKey) => {
                             show-password @keyup.enter="handleLogin" />
                     </el-form-item>
 
-                    <el-button type="primary" class="login-btn" :loading="loading" @click="handleLogin">
+                    <el-button type="primary" class="login-btn" :loading="loading" native-type="button"
+                        @click="handleLogin">
                         立即登录
                     </el-button>
 
