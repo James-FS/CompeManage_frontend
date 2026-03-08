@@ -618,7 +618,7 @@ const queryManagerByWorkId = async (row) => {
                                 </el-form-item>
                             </div>
                             <el-table :data="historyTableData" border v-loading="historyLoading"
-                                @selection-change="handleSelectionChange" height="400">
+                                @selection-change="handleSelectionChange" height="calc(100vh - 400px)">
                                 <el-table-column type="selection" width="40" align="center" />
                                 <el-table-column prop="comp_name" label="赛事名称" min-width="280" align="center" />
                                 <el-table-column prop="comp_level" label="赛事级别" width="100" align="center" />
