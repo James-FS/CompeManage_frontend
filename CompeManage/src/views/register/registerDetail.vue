@@ -26,6 +26,7 @@ let maxMembers = ref()
 let minMembers = ref()
 let need_advisor = ref()
 let need_attachment = ref()
+let tracks = ref([]) // 新增：赛道列表
 let compType = 'team' // team / individual
 const uploadedUrls = ref([])
 const uploadRef = ref(null)
@@ -60,6 +61,7 @@ const formData = reactive({
     email: '',
     college: '',
   },
+  track: '', // 新增：选择的赛道
 })
 
 /* --- 校验规则 --- */
@@ -68,6 +70,7 @@ const rules = {
   'leader.name': [{ required: true, message: '请输入姓名', trigger: 'blur' }],
   'leader.phone': [{ required: true, message: '请输入手机号', trigger: 'blur' }],
   'leader.email': [{ required: true, message: '请输入邮箱', trigger: 'blur' }],
+  track: [{ required: true, message: '请选择赛道', trigger: 'change' }],
 }
 
 // ==================== 学生选择相关变量 ====================
@@ -245,6 +248,8 @@ async function checkRegStatus() {
         pageStatus.value = 1
       }
       formData.teamName = data.team_name
+      formData.track = data.track || '' // 新增：回显赛道
+
       if (data.attachment_url) {
         const urls = data.attachment_url.split(',')
         formData.fileList = urls.map((url) => ({
@@ -316,6 +321,18 @@ async function fetchRegSettings() {
     compInfo.value.title = config.comp_name
     need_advisor.value = config.need_advisor
     need_attachment.value = config.need_attachment
+    
+    // 新增：获取赛道配置
+    if (config.track && config.track.length > 0) {
+      tracks.value = config.track
+      // 如果有赛道，则赛道字段为必填，更新校验规则
+      rules.track = [{ required: true, message: '请选择赛道', trigger: 'change' }]
+    } else {
+      tracks.value = []
+      // 如果没有赛道，则赛道字段不必填
+      rules.track = []
+    }
+
     if (maxMembers.value > 1) {
       compInfo.value.compType = 2
       compInfo.value.limitText = `团队赛 (${minMembers.value}-${maxMembers.value}人)`
@@ -351,10 +368,18 @@ async function fetchStudentList() {
 
 async function submitVerify() {
   if (!formRef.value) return
+  
+  // 检查赛道是否必填
+  if (tracks.value.length > 0 && !formData.track) {
+    ElMessage.error('请选择赛道')
+    return
+  }
+  
   if (need_advisor.value === 2 && !formData.advisorInfo.name) {
     ElMessage.error('该赛事要求必须选择指导老师')
     return
   }
+  
   await formRef.value.validate((valid) => {
     if (valid) {
       // 核心判断：有没有待上传的文件？
@@ -379,6 +404,7 @@ async function submitForm(attachmentURL) {
     members: formData.members,
     attachment_url: attachmentURL,
     advisor_info: formData.advisorInfo,
+    track: formData.track, // 新增：提交赛道
   }
   try {
     let response
@@ -465,6 +491,34 @@ onMounted(() => {
               <el-col :span="24">
                 <el-form-item label="团队名称" prop="teamName" :disabled="isReadOnly">
                   <el-input v-model="formData.teamName" prefix-icon="Trophy" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+          </div>
+
+          <!-- 新增：赛道选择区域 -->
+          <div class="form-section" v-if="tracks.length > 0">
+            <h3 class="section-title">
+              选择赛道
+              <span class="required-mark">*</span>
+            </h3>
+            <el-row>
+              <el-col :span="24">
+                <el-form-item prop="track" :disabled="isReadOnly">
+                  <el-select
+                    v-model="formData.track"
+                    placeholder="请选择参赛赛道"
+                    clearable
+                    :disabled="isReadOnly"
+                    style="width: 100%"
+                  >
+                    <el-option
+                      v-for="item in tracks"
+                      :key="item"
+                      :label="item"
+                      :value="item"
+                    />
+                  </el-select>
                 </el-form-item>
               </el-col>
             </el-row>
@@ -670,7 +724,7 @@ onMounted(() => {
             <div class="section-header">
               <h3 class="section-title" style="margin: 0">
                 指导老师信息
-                <span v-if="need_advisor === 2" class="required-mark">*必填</span>
+                <span v-if="need_advisor === 2" class="required-mark">*</span>
               </h3>
               <el-button
                 v-if="!isReadOnly && !formData.advisorInfo.name"
@@ -957,6 +1011,12 @@ onMounted(() => {
         margin-bottom: 20px;
         padding-left: 12px;
         border-left: 4px solid var(--primary-color);
+
+        .required-mark {
+          color: #f56c6c;
+          margin-left: 4px;
+          font-size: 14px;
+        }
       }
 
       .section-header {

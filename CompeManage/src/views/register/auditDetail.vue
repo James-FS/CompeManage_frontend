@@ -196,7 +196,7 @@ onMounted(() => {
       <div class="info-section">
         <h3 class="section-title">基础信息</h3>
         <el-descriptions :column="2" border>
-          <el-descriptions-item label="参赛赛事" :span="2">
+          <el-descriptions-item label="参赛赛事" >
             <span class="comp-name">{{ detail.comp_name }}</span>
           </el-descriptions-item>
           <el-descriptions-item label="团队名称">
@@ -204,6 +204,9 @@ onMounted(() => {
           </el-descriptions-item>
           <el-descriptions-item label="提交时间">
             {{ detail.update_time }}
+          </el-descriptions-item>
+          <el-descriptions-item label="参赛赛道" >
+            <span class="comp-name">{{ detail.track }}</span>
           </el-descriptions-item>
         </el-descriptions>
       </div>
