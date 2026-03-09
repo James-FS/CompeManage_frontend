@@ -39,6 +39,7 @@ const handleReset = () => {
 const loading = ref(false);
 
 const multipleSelection = ref([]);
+const collegeList = ref([]);
 
 // 多选处理
 const handleSelectionChange = (val) => {
@@ -79,7 +80,7 @@ const handleSearch = async () => {
                     page_size: page_size.value,
                     comp_name: searchForm.comp_name,
                     comp_level: searchForm.comp_level,
-                    college_id: searchForm.college
+                    college_id: searchForm.college || undefined
                 });
             } else {
                 // 审核记录（已审核）
@@ -88,7 +89,7 @@ const handleSearch = async () => {
                     page_size: page_size.value,
                     comp_name: searchForm.comp_name,
                     comp_level: searchForm.comp_level,
-                    college_id: searchForm.college
+                    college_id: searchForm.college || undefined
                 });
             }
         } else {
@@ -133,6 +134,20 @@ const handleSearch = async () => {
         console.error(error);
     } finally {
         loading.value = false;
+    }
+};
+
+// 加载学院列表
+const loadCollegeList = async () => {
+    try {
+        const response = await api.getCollegeList();
+        if (response.code === 0 || response.code === 200) {
+            collegeList.value = response.data || [];
+        } else {
+            ElMessage.error('加载学院列表失败');
+        }
+    } catch (error) {
+        console.error('加载学院列表失败：', error);
     }
 };
 
@@ -340,6 +355,7 @@ const getStatusText = (status) => {
 
 // 生命周期
 onMounted(() => {
+    loadCollegeList();
     handleSearch();
 });
 
@@ -359,9 +375,12 @@ watch(() => activeTab.value, () => {
                 </el-form-item>
                 <el-form-item label="所属学院" v-if="currentRole === 'school_admin'">
                     <el-select v-model="searchForm.college" placeholder="选择学院" clearable style="width: 220px">
-                        <el-option label="计算机科学与网络工程学院" value="计算机科学与网络工程学院"></el-option>
-                        <el-option label="土木工程学院" value="土木工程学院"></el-option>
-                        <el-option label="经济管理学院" value="经济管理学院"></el-option>
+                        <el-option
+                            v-for="college in collegeList"
+                            :key="college.id"
+                            :label="college.name"
+                            :value="college.id"
+                        />
                     </el-select>
                 </el-form-item>
                 <el-form-item>
