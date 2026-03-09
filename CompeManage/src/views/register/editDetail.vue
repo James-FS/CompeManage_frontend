@@ -51,7 +51,7 @@ const rules = {
   timeRange: [{ required: true, message: '请设置报名起止时间', trigger: 'change' }],
 }
 
-const workRange = Array.isArray(form.workTimeRange) ? form.workTimeRange : []
+
 
 // --- 赛道操作逻辑 ---
 const addTrack = () => form.tracks.push('')
@@ -94,7 +94,7 @@ async function handleSave() {
   await formRef.value.validate(async (valid) => {
     if (valid) {
       isSaving.value = true
-      
+      const workRange = Array.isArray(form.workTimeRange) ? form.workTimeRange : []
       const submitData = {
         comp_id: Number(route.params.id),
         participant_type: form.type,
