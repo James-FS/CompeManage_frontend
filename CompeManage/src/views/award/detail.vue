@@ -203,7 +203,6 @@ onMounted(() => {
           <el-input 
             v-model="queryParams.keyword" 
             placeholder="搜索姓名 / 学号 / 项目" 
-            prefix-icon="Search"
             class="search-box"
             clearable
           />
@@ -219,7 +218,7 @@ onMounted(() => {
         <div class="right-tools">
           <el-button type="primary" plain :icon="Upload" @click="goImport">导入名单</el-button>
           <el-button type="success" plain :icon="Download" @click="handleExport">导出 Excel</el-button>
-          <el-button type="primary" :icon="Plus" class="add-btn">手动录入</el-button>
+          <!-- <el-button type="primary" :icon="Plus" class="add-btn">手动录入</el-button> -->
         </div>
       </div>
 

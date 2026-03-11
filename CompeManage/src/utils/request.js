@@ -36,14 +36,16 @@ service.interceptors.response.use(
     const isLoginRequest = response.config?.url?.includes('/api/login')
     
     // 根据后端返回的数据结构进行处理
-    // 这里假设后端返回格式为 { code: number, message: string, data: any }
+    // 后端可能返回 { code, msg, data } 或 { code, message, data }
     if (res.code !== undefined && res.code !== 200 && res.code !== 0) {
+      const errorMsg = res.message || res.msg || '请求失败'
+
       // 登录接口返回 401 时，交给登录页提示账号/密码错误，不做过期跳转
       if (res.code === 401 && isLoginRequest) {
-        return Promise.reject(new Error(res.message || '账号或密码错误'))
+        return Promise.reject(new Error(errorMsg || '账号或密码错误'))
       }
 
-      ElMessage.error(res.message || '请求失败')
+      ElMessage.error(errorMsg)
 
       // 401 未授权，清除 token 并跳转到登录页
       if (res.code === 401) {
@@ -52,7 +54,7 @@ service.interceptors.response.use(
         window.location.href = '/login'
       }
       
-      return Promise.reject(new Error(res.message || '请求失败'))
+      return Promise.reject(new Error(errorMsg))
     }
     
     return res
@@ -80,7 +82,7 @@ service.interceptors.response.use(
       } else if (status === 500) {
         ElMessage.error('服务器内部错误')
       } else {
-        ElMessage.error(data?.message || error.message || '请求失败')
+        ElMessage.error(data?.message || data?.msg || error.message || '请求失败')
       }
     } else if (error.request) {
       ElMessage.error('网络错误，请检查网络连接')

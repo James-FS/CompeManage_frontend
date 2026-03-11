@@ -490,7 +490,7 @@ onMounted(() => {
             <el-row>
               <el-col :span="24">
                 <el-form-item label="团队名称" prop="teamName" :disabled="isReadOnly">
-                  <el-input v-model="formData.teamName" prefix-icon="Trophy" />
+                  <el-input v-model="formData.teamName"/>
                 </el-form-item>
               </el-col>
             </el-row>
@@ -557,14 +557,13 @@ onMounted(() => {
               <el-row v-else :gutter="20">
                 <el-col :span="8" :xs="24">
                   <el-form-item label="姓名">
-                    <el-input v-model="formData.leader.name" prefix-icon="User" :disabled="true" />
+                    <el-input v-model="formData.leader.name"  :disabled="true" />
                   </el-form-item>
                 </el-col>
                 <el-col :span="8" :xs="24">
                   <el-form-item label="学号">
                     <el-input
                       v-model="formData.leader.stuID"
-                      prefix-icon="Postcard"
                       :disabled="true"
                     />
                   </el-form-item>
@@ -649,7 +648,6 @@ onMounted(() => {
                         <el-input
                           v-model="m.name"
                           placeholder="填写真实姓名"
-                          prefix-icon="User"
                           :disabled="true"
                         />
                       </el-form-item>
@@ -664,7 +662,6 @@ onMounted(() => {
                         <el-input
                           v-model="m.stuID"
                           placeholder="填写学号"
-                          prefix-icon="Postcard"
                           :disabled="true"
                         />
                       </el-form-item>
@@ -679,7 +676,6 @@ onMounted(() => {
                         <el-input
                           v-model="m.phone"
                           placeholder="填写手机号"
-                          prefix-icon="Iphone"
                           :disabled="isReadOnly"
                         />
                       </el-form-item>
@@ -694,7 +690,6 @@ onMounted(() => {
                         <el-input
                           v-model="m.college"
                           placeholder="例如：计算机科学与网络工程学院"
-                          prefix-icon="School"
                           :disabled="true"
                         />
                       </el-form-item>
@@ -709,7 +704,6 @@ onMounted(() => {
                         <el-input
                           v-model="m.email"
                           placeholder="接收比赛通知使用"
-                          prefix-icon="Message"
                           :disabled="isReadOnly"
                         />
                       </el-form-item>
@@ -755,7 +749,7 @@ onMounted(() => {
               <el-row v-else :gutter="20">
       <el-col :span="8" :xs="24">
         <el-form-item label="姓名">
-          <el-input v-model="formData.advisorInfo.name" prefix-icon="User" :disabled="true" />
+          <el-input v-model="formData.advisorInfo.name" :disabled="true" />
         </el-form-item>
       </el-col>
       <el-col :span="8" :xs="24">
@@ -773,7 +767,6 @@ onMounted(() => {
           <el-input
             v-model="formData.advisorInfo.phone"
             placeholder="请输入电话"
-            prefix-icon="Iphone"
             :disabled="isReadOnly"
           />
         </el-form-item>
@@ -783,7 +776,6 @@ onMounted(() => {
           <el-input
             v-model="formData.advisorInfo.email"
             placeholder="请输入邮箱"
-            prefix-icon="Message"
             :disabled="isReadOnly"
           />
         </el-form-item>
