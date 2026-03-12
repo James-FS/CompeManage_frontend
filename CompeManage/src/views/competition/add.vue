@@ -21,7 +21,6 @@ const rules = {
     //blur: 输入框失去焦点时触发验证  change: 选择框值变化时触发验证
     comp_name: [{ required: true, message: '请输入赛事名称', trigger: 'blur' }],
     comp_level: [{ required: true, message: '请选择赛事级别', trigger: 'change' }],
-    college: [{ required: true, message: '请选择所属学院', trigger: 'change' }],
     manager: [{ required: true, message: '请输入赛事负责人', trigger: 'change' }],
 };
 const handleSubmit = async (formEl) => {

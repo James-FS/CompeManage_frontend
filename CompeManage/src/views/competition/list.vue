@@ -252,7 +252,7 @@ const handleDelete = async (row) => {
             // 重新加载列表
             handleSearch();
         } catch (error) {
-            ElMessage.error(error.message || '删除失败');
+            console.error('删除失败:', error);
         }
     }).catch(() => { });
 };
@@ -283,7 +283,7 @@ const handleBatchDelete = async () => {
             // 重新加载列表
             handleSearch();
         } catch (error) {
-            ElMessage.error(error.message || '批量删除失败');
+            console.error('批量删除失败:', error);
         }
     }).catch(() => { });
 };
