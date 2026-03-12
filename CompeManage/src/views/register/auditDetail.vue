@@ -271,7 +271,7 @@ onMounted(() => {
           <el-table-column prop="name" label="姓名" width="120" />
           <el-table-column prop="student_id" label="学号" width="150">
             <template #default="scope">
-              {{ scope.row.student_id || scope.row.username || '—' }}
+              {{ scope.row.stu_id || scope.row.username || '—' }}
             </template>
           </el-table-column>
           <el-table-column prop="college" label="学院" width="150" />
@@ -296,7 +296,7 @@ onMounted(() => {
           </div>
           <div class="grid-item">
             <span class="label"><el-icon><Postcard /></el-icon> 工号</span>
-            <span class="value">{{ advisorInfo.work_id || advisorInfo.workId || '' }}</span>
+            <span class="value">{{ advisorInfo.username }}</span>
           </div>
           <div class="grid-item">
             <span class="label"><el-icon><Postcard /></el-icon> 所属学院</span>
