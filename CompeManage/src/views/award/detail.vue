@@ -3,7 +3,7 @@ import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { 
   Search, Plus, Download, Upload, Delete, Edit, 
-  Trophy, Medal, UserFilled, Refresh, MoreFilled 
+  Trophy, Medal, UserFilled, Refresh, MoreFilled, Close
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import * as XLSX from 'xlsx'
@@ -16,6 +16,13 @@ const compID = route.params.id
 // 1. 状态定义
 const loading = ref(false)
 const tableData = ref([])
+const awardHierarchy = ref([])  // 保存赛事的奖项级别列表
+
+// ✅ 新增：团队成员弹窗相关
+const memberDialogVisible = ref(false)
+const currentTeamMembers = ref([])
+const currentTeamName = ref('')
+
 const queryParams = ref({
   page: 1,
   size: 10,
@@ -29,6 +36,13 @@ const getAvatarColor = (seed = '') => {
   let hash = 0
   for (let i = 0; i < str.length; i++) hash = (hash + str.charCodeAt(i)) % avatarPalette.length
   return avatarPalette[hash]
+}
+
+const getStatColor = (award) => {
+  if (award.includes('一')) return { color: '#fa8c16' }  // 一等奖 - 金色
+  if (award.includes('二')) return { color: '#8c8c8c' }  // 二等奖 - 银色
+  if (award.includes('三')) return { color: '#d48806' }  // 三等奖 - 铜色
+  return { color: '#303133' }  // 其他 - 默认色
 }
 
 // 统计数据
@@ -51,14 +65,20 @@ const pagedData = computed(() => {
   return filteredData.value.slice(start, start + queryParams.value.size)
 })
 
+// 统计数据使用后端返回的 awardHierarchy
 const stats = computed(() => {
   const data = filteredData.value
-  return {
+  const statObj = {
     total: data.length,
-    level1: data.filter(i => i.level.includes('特') || i.level.includes('一')).length,
-    level2: data.filter(i => i.level.includes('二')).length,
-    level3: data.filter(i => i.level.includes('三')).length,
   }
+
+  // 动态统计每个奖项等级的数量
+  awardHierarchy.value.forEach((award, index) => {
+    const count = data.filter(i => i.award_name === award).length
+    statObj[`level${index + 1}`] = count
+  })
+
+  return statObj
 })
 
 const fetchData = async () => {
@@ -66,17 +86,21 @@ const fetchData = async () => {
   try {
     const res = await api.getCompAwards(compID)
     if (res.code === 200) {
-      const list = Array.isArray(res.data) ? res.data : []
+      // 获取奖项级别列表
+      awardHierarchy.value = Array.isArray(res.data.award_hierarchy) ? res.data.award_hierarchy : []
+      
+      const list = Array.isArray(res.data.list) ? res.data.list : []
       tableData.value = list.map((item) => ({
         id: item.id,
         level: item.award_level || '优秀奖',
+        award_name: item.award_name || '',
         projectName: item.team_name || '-',
         studentName: item.leader_name || '未知',
         studentID: item.leader_id || '-',
         isTeam: Boolean(item.team_name),
-        members: '',
-        college: item.college || '-',
-        advisor: item.advisor || '-',
+        members: item.members || [],  // ✅ 修改：直接保存后端返回的 members 数组
+        college: item.leader_college || '-',
+        advisor: item.advisor_name || '-',
         avatarColor: getAvatarColor(item.leader_name || item.team_name),
       }))
     }
@@ -136,6 +160,17 @@ const handleDelete = (row) => {
     .then(() => ElMessage.success('删除成功'))
 }
 
+// ✅ 新增：打开团队成员弹窗
+const handleViewTeam = (row) => {
+  if (!row.isTeam) {
+    ElMessage.warning('该项目不是团队项目')
+    return
+  }
+  currentTeamName.value = row.projectName
+  currentTeamMembers.value = Array.isArray(row.members) ? row.members : []
+  memberDialogVisible.value = true
+}
+
 // 辅助：奖项样式映射
 const getLevelStyle = (level) => {
   if (level.includes('特')) return { color: '#722ed1', bg: '#f9f0ff', label: '特等奖' }
@@ -180,21 +215,14 @@ onMounted(() => {
           <div class="lbl">获奖总数</div>
         </div>
         <div class="divider"></div>
-        <div class="stat-item">
-          <div class="val text-gold">{{ stats.level1 }}</div>
-          <div class="lbl">特/一等奖</div>
-        </div>
-        <div class="stat-item">
-          <div class="val text-silver">{{ stats.level2 }}</div>
-          <div class="lbl">二等奖</div>
-        </div>
-        <div class="stat-item">
-          <div class="val text-bronze">{{ stats.level3 }}</div>
-          <div class="lbl">三等奖</div>
+        
+        <div v-for="(award, index) in awardHierarchy" :key="index" class="stat-item">
+          <div class="val" :style="getStatColor(award)">{{ stats[`level${index + 1}`] || 0 }}</div>
+          <div class="lbl">{{ award }}</div>
         </div>
       </div>
       
-      </div>
+    </div>
 
     <div class="table-wrapper">
       
@@ -208,10 +236,7 @@ onMounted(() => {
             clearable
           />
           <el-select v-model="queryParams.level" placeholder="所有等级" clearable style="width: 140px">
-            <el-option label="特等奖" value="特等奖" />
-            <el-option label="一等奖" value="一等奖" />
-            <el-option label="二等奖" value="二等奖" />
-            <el-option label="三等奖" value="三等奖" />
+            <el-option v-for="award in awardHierarchy" :key="award" :label="award" :value="award" />
           </el-select>
           <el-button :icon="Refresh" circle @click="fetchData" />
         </div>
@@ -257,14 +282,18 @@ onMounted(() => {
                 <div class="main-row">
                   <span class="name">{{ row.studentName }}</span>
                   <span class="sid">{{ row.studentID }}</span>
-                  <el-tag v-if="row.isTeam" size="small" effect="light" round class="team-tag">团队</el-tag>
-                </div>
-                <div v-if="row.isTeam && row.members" class="sub-row">
-                  <el-tooltip :content="row.members" placement="top" effect="light">
-                    <span class="members-text">
-                      <el-icon class="icon"><MoreFilled /></el-icon> 成员: {{ row.members }}
-                    </span>
-                  </el-tooltip>
+                  <!-- ✅ 修改：点击团队标签打开成员详情 -->
+                  <el-tag 
+                    v-if="row.isTeam" 
+                    size="small" 
+                    effect="light" 
+                    round 
+                    class="team-tag"
+                    style="cursor: pointer;"
+                    @click="handleViewTeam(row)"
+                  >
+                    团队
+                  </el-tag>
                 </div>
               </div>
             </div>
@@ -300,6 +329,40 @@ onMounted(() => {
         />
       </div>
     </div>
+
+    <!-- ✅ 新增：团队成员详情弹窗 -->
+    <el-dialog
+      v-model="memberDialogVisible"
+      title="团队成员信息"
+      width="600px"
+      align-center
+    >
+      <div class="member-dialog-content">
+        <div class="dialog-section">
+          <div class="section-title">项目名称</div>
+          <div class="section-content">{{ currentTeamName }}</div>
+        </div>
+
+        <div class="dialog-section">
+          <div class="section-title">团队成员（共 {{ currentTeamMembers.length }} 人）</div>
+          <div v-if="currentTeamMembers.length === 0" class="empty-members">
+            暂无成员信息
+          </div>
+          <el-table v-else :data="currentTeamMembers" border stripe style="width: 100%">
+            <el-table-column type="index" label="序号" width="60" align="center" />
+            <el-table-column prop="name" label="姓名" width="100" />
+            <el-table-column prop="student_id" label="学号" width="120" />
+            <el-table-column prop="college" label="学院" min-width="120" />
+            <el-table-column prop="phone" label="电话" min-width="120" />
+            <el-table-column prop="email" label="邮箱" min-width="150" show-overflow-tooltip />
+          </el-table>
+        </div>
+      </div>
+
+      <template #footer>
+        <el-button @click="memberDialogVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -397,7 +460,7 @@ onMounted(() => {
     display: flex;
     flex-direction: column;
     gap: 2px;
-    min-width: 0; /* 防止溢出 */
+    min-width: 0;
     text-align: left;
     
     .main-row {
@@ -406,21 +469,11 @@ onMounted(() => {
       gap: 8px;
       .name { font-weight: 600; color: #303133; }
       .sid { font-size: 12px; color: #909399; font-family: monospace; }
-      .team-tag { transform: scale(0.9); }
-    }
-
-    .sub-row {
-      .members-text {
-        font-size: 12px;
-        color: #909399;
-        display: block;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        max-width: 200px;
-        cursor: help;
-        
-        .icon { font-size: 12px; vertical-align: -1px; }
+      .team-tag { 
+        transform: scale(0.9);
+        &:hover {
+          opacity: 0.8;
+        }
       }
     }
   }
@@ -434,5 +487,40 @@ onMounted(() => {
   margin-top: 10px;
   display: flex;
   justify-content: center;
+}
+
+/* ✅ 新增：团队成员弹窗样式 */
+.member-dialog-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+
+  .dialog-section {
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #303133;
+      margin-bottom: 10px;
+      padding-left: 10px;
+      border-left: 3px solid #409eff;
+    }
+
+    .section-content {
+      font-size: 14px;
+      color: #606266;
+      padding: 10px;
+      background: #f5f7fa;
+      border-radius: 4px;
+    }
+
+    .empty-members {
+      text-align: center;
+      padding: 30px;
+      background: #f5f7fa;
+      border-radius: 4px;
+      color: #909399;
+      font-size: 13px;
+    }
+  }
 }
 </style>
