@@ -41,7 +41,7 @@ const form = reactive({
   grades: [], 
   advisorRequired: 0, 
   allowAdvisor: false,
-  attachmentType: 1,
+  attachmentType: null,
   enableTrack: false,  // 新增：是否启用赛道配置
   tracks: [],  // 新增：赛道列表
   awards: ['一等奖', '二等奖', '三等奖'], 
@@ -49,6 +49,7 @@ const form = reactive({
 
 const rules = {
   timeRange: [{ required: true, message: '请设置报名起止时间', trigger: 'change' }],
+  attachmentType: [{ required: true, message: '请选择附件上传要求', trigger: 'change' }],
 }
 
 
@@ -143,7 +144,7 @@ async function fetchConfig() {
       form.minMember = data.min_team_member || 1
       form.maxMember = data.max_team_member || 1
       form.grades = data.grade_requirement || []
-      form.attachmentType = data.need_attachment
+      form.attachmentType = data.need_attachment ?? null
       comp_name.value = data.comp_name || ''
       
       if (data.need_advisor === 0) {
@@ -427,7 +428,7 @@ onMounted(() => {
 
         <div class="form-section-title">材料提交</div>
 
-        <el-form-item label="附件上传要求">
+        <el-form-item label="附件上传要求" prop="attachmentType">
           <el-radio-group v-model="form.attachmentType">
             <el-radio :value="0" border>无需附件</el-radio>
             <el-radio :value="1" border>选填 (可选上传)</el-radio>

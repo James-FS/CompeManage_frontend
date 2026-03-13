@@ -60,8 +60,8 @@ const toggleCollapse = () => {
 const activeMenu = ref(route.path);
 
 // 监听路由变化，自动更新激活菜单
-watch(() => route.path, (newPath) => {
-  activeMenu.value = newPath;
+watch(() => route.fullPath, () => {
+  activeMenu.value = route.meta?.activeMenu || route.path;
 }, { immediate: true });
 
 // 菜单点击事件

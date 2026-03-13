@@ -35,11 +35,6 @@ const allMenus = [
         title: userStore.role === 'school_admin' ? '赛事审核' : '赛事申报',
         roles: ['school_admin', 'college_admin'],
       },
-      {
-        path: '/competition/declare',
-        title: '新增申报',
-        roles: ['college_admin'],
-      },
     ],
   },
   {
@@ -51,7 +46,7 @@ const allMenus = [
       {
         path: '/register',
         title: '赛事报名',
-        roles: ['school_admin', 'college_admin', 'student', 'competition_manager'],
+        roles: ['school_admin', 'college_admin', 'student'],
       },
       {
         path: '/register/edit',
