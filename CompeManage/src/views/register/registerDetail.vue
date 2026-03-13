@@ -70,6 +70,8 @@ const rules = {
   'leader.name': [{ required: true, message: '请输入姓名', trigger: 'blur' }],
   'leader.phone': [{ required: true, message: '请输入手机号', trigger: 'blur' }],
   'leader.email': [{ required: true, message: '请输入邮箱', trigger: 'blur' }],
+  'advisorInfo.phone': [{ required: true, message: '请输入手机号', trigger: 'blur' }],
+  'advisorInfo.email': [{ required: true, message: '请输入邮箱', trigger: 'blur' }],
   track: [{ required: true, message: '请选择赛道', trigger: 'change' }],
 }
 
@@ -647,7 +649,6 @@ onMounted(() => {
                       >
                         <el-input
                           v-model="m.name"
-                          placeholder="填写真实姓名"
                           :disabled="true"
                         />
                       </el-form-item>
@@ -661,7 +662,6 @@ onMounted(() => {
                       >
                         <el-input
                           v-model="m.stuID"
-                          placeholder="填写学号"
                           :disabled="true"
                         />
                       </el-form-item>
@@ -669,33 +669,19 @@ onMounted(() => {
 
                     <el-col :span="8" :xs="24">
                       <el-form-item
-                        label="手机号"
+                        label="联系电话"
                         :prop="'members.' + i + '.phone'"
                         :rules="{ required: true, message: '请输入手机号', trigger: 'blur' }"
                       >
                         <el-input
                           v-model="m.phone"
-                          placeholder="填写手机号"
+                          placeholder="请输入手机号"
                           :disabled="isReadOnly"
                         />
                       </el-form-item>
                     </el-col>
 
-                    <el-col :span="12" :xs="24">
-                      <el-form-item
-                        label="所属学院"
-                        :prop="'members.' + i + '.college'"
-                        :rules="{ required: true, message: '请输入所属学院', trigger: 'blur' }"
-                      >
-                        <el-input
-                          v-model="m.college"
-                          placeholder="例如：计算机科学与网络工程学院"
-                          :disabled="true"
-                        />
-                      </el-form-item>
-                    </el-col>
-
-                    <el-col :span="12" :xs="24">
+                    <el-col :span="8" :xs="24">
                       <el-form-item
                         label="联系邮箱"
                         :prop="'members.' + i + '.email'"
@@ -703,8 +689,22 @@ onMounted(() => {
                       >
                         <el-input
                           v-model="m.email"
-                          placeholder="接收比赛通知使用"
+                          placeholder="请输入邮箱"
                           :disabled="isReadOnly"
+                        />
+                      </el-form-item>
+                    </el-col>
+
+                    <el-col :span="8" :xs="24">
+                      <el-form-item
+                        label="所属学院"
+                        :prop="'members.' + i + '.college'"
+                        :rules="{ required: true, message: '请输入所属学院', trigger: 'blur' }"
+                      >
+                        <el-input
+                          v-model="m.college"
+                          placeholder="所属学院"
+                          :disabled="true"
                         />
                       </el-form-item>
                     </el-col>
@@ -747,40 +747,44 @@ onMounted(() => {
               />
 
               <el-row v-else :gutter="20">
-      <el-col :span="8" :xs="24">
-        <el-form-item label="姓名">
-          <el-input v-model="formData.advisorInfo.name" :disabled="true" />
-        </el-form-item>
-      </el-col>
-      <el-col :span="8" :xs="24">
-        <el-form-item label="工号">
-          <el-input v-model="formData.advisorInfo.username" :disabled="true" />
-        </el-form-item>
-      </el-col>
-      <el-col :span="8" :xs="24">
-        <el-form-item label="学院">
-          <el-input v-model="formData.advisorInfo.college" :disabled="true" />
-        </el-form-item>
-      </el-col>
-      <el-col :span="12" :xs="24">
-        <el-form-item label="电话">
-          <el-input
-            v-model="formData.advisorInfo.phone"
-            placeholder="请输入电话"
-            :disabled="isReadOnly"
-          />
-        </el-form-item>
-      </el-col>
-      <el-col :span="12" :xs="24">
-        <el-form-item label="邮箱">
-          <el-input
-            v-model="formData.advisorInfo.email"
-            placeholder="请输入邮箱"
-            :disabled="isReadOnly"
-          />
-        </el-form-item>
-      </el-col>
-    </el-row>
+                <el-col :span="8" :xs="24">
+                  <el-form-item label="姓名">
+                    <el-input v-model="formData.advisorInfo.name" :disabled="true" />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8" :xs="24">
+                  <el-form-item label="工号">
+                    <el-input v-model="formData.advisorInfo.username" :disabled="true" />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8" :xs="24">
+                  <el-form-item label="联系电话" prop="advisorInfo.phone">
+                    <el-input
+                      v-model="formData.advisorInfo.phone"
+                      placeholder="请输入手机号"
+                      :disabled="isReadOnly"
+                    />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8" :xs="24">
+                  <el-form-item label="联系邮箱" prop="advisorInfo.email">
+                    <el-input
+                      v-model="formData.advisorInfo.email"
+                      placeholder="请输入邮箱"
+                      :disabled="isReadOnly"
+                    />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8" :xs="24">
+                  <el-form-item label="所属学院">
+                    <el-input
+                      v-model="formData.advisorInfo.college"
+                      placeholder="所属学院"
+                      :disabled="true"
+                    />
+                  </el-form-item>
+                </el-col>
+              </el-row>
             </div>
           </div>
 
