@@ -18,7 +18,7 @@ import {
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { debounce } from '@/utils/debounce'
-
+import { isValidPhone, isValidEmail, phoneRule, emailRule } from '@/utils/validators'
 const router = useRouter()
 const route = useRoute()
 const formRef = ref(null)
@@ -68,10 +68,22 @@ const formData = reactive({
 const rules = {
   teamName: [{ required: true, message: '请输入团队名称', trigger: 'blur' }],
   'leader.name': [{ required: true, message: '请输入姓名', trigger: 'blur' }],
-  'leader.phone': [{ required: true, message: '请输入手机号', trigger: 'blur' }],
-  'leader.email': [{ required: true, message: '请输入邮箱', trigger: 'blur' }],
-  'advisorInfo.phone': [{ required: true, message: '请输入手机号', trigger: 'blur' }],
-  'advisorInfo.email': [{ required: true, message: '请输入邮箱', trigger: 'blur' }],
+ 'leader.phone': [
+    { required: true, message: '请输入手机号', trigger: 'blur' },
+    phoneRule, // 使用验证工具
+  ],
+  'leader.email': [
+    { required: true, message: '请输入邮箱', trigger: 'blur' },
+    emailRule, // 使用验证工具
+  ],
+   'advisorInfo.phone': [
+    { required: true, message: '请输入手机号', trigger: 'blur' },
+    phoneRule,
+  ],
+  'advisorInfo.email': [
+    { required: true, message: '请输入邮箱', trigger: 'blur' },
+    emailRule,
+  ],
   track: [{ required: true, message: '请选择赛道', trigger: 'change' }],
 }
 
