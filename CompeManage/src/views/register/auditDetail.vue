@@ -287,9 +287,9 @@ onMounted(() => {
       </div>
 
       
-      <div class="info-section">
+      <div v-if="advisorInfo.id!=0" class="info-section">
         <h3 class="section-title">指导老师信息</h3>
-        <div v-if="advisorInfo" class="advisor-grid">
+        <div  class="advisor-grid">
           <div class="grid-item">
             <span class="label"><el-icon><User /></el-icon> 姓名</span>
             <span class="value">{{ advisorInfo.name || '' }}</span>
@@ -311,9 +311,9 @@ onMounted(() => {
             <span class="value">{{ advisorInfo.email || '' }}</span>
           </div>
         </div>
-        <div v-else class="empty-advisor">
+        <!-- <div v-else class="empty-advisor">
           <span>未填写指导老师信息</span>
-        </div>
+        </div> -->
       </div>
 
       <div class="info-section">
