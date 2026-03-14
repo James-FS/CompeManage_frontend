@@ -194,6 +194,7 @@ const routes = [
         meta: {
           title: '获奖详情',
           parent: 'AwardList',
+          activeMenu: '/award/list',
         },
       },
       {
@@ -203,6 +204,7 @@ const routes = [
         meta: {
           title: '导入获奖名单',
           parent: 'AwardDetail',
+          activeMenu: '/award/list',
         },
       },
       {
