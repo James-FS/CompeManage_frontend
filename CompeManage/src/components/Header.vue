@@ -19,7 +19,6 @@ const handleLogout = () => {
             学科竞赛管理系统
         </el-text>
         <div class="header-dashboard">
-            <el-icon :size="20"><Bell /></el-icon>
             <el-dropdown @command="handleLogout">
               <el-icon :size="20" style="cursor: pointer; color: black;"><User /></el-icon>
               <template #dropdown>

@@ -33,6 +33,10 @@ const handleLogin = async () => {
                 ElMessage.success(`你好，${userStore.userInfo.name}`)
                 router.push('/home')
             } catch (error) {
+                // 网络层错误已在请求拦截器中提示，避免登录页重复弹窗
+                if (error?.message === 'Network Error' || (!error?.response && error?.request)) {
+                    return
+                }
                 ElMessage.error(error.message || '登录失败')
             } finally {
                 loading.value = false

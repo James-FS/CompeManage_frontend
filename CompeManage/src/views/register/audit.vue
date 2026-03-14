@@ -143,6 +143,17 @@ function NavigateToDetail(row) {
   router.push(`/register/audit/detail/${row.id}`)
 }
 
+function getAdvisorName(row) {
+  if (!row?.advisor_info) return '-'
+
+  try {
+    const advisor = typeof row.advisor_info === 'string' ? JSON.parse(row.advisor_info) : row.advisor_info
+    return advisor?.name?.trim() || '-'
+  } catch (e) {
+    return '-'
+  }
+}
+
 async function fetchRegList() {
   loading.value = true
   try {
@@ -250,13 +261,13 @@ onMounted(() => {
         <el-table-column type="selection" width="50" align="center" />
         <!-- <el-table-column prop="id" label="ID" width="60" align="center" /> -->
 
-        <el-table-column label="赛事名称" min-width="180" show-overflow-tooltip>
+        <el-table-column label="赛事名称" min-width="180" show-overflow-tooltip align="center">
           <template #default="{ row }">
             <span class="comp-text">{{ row.comp_name }}</span>
           </template>
         </el-table-column>
 
-        <el-table-column label="负责人" width="160">
+        <el-table-column label="负责人" width="160" align="center">
           <template #default="{ row }">
             <div class="leader-cell">
               <span class="name">{{ row.leader_name }}</span>
@@ -265,11 +276,17 @@ onMounted(() => {
           </template>
         </el-table-column>
 
-        <el-table-column prop="phone" label="电话" width="130" show-overflow-tooltip />
+        <el-table-column prop="phone" label="电话" width="130" show-overflow-tooltip align="center" />
 
-        <el-table-column prop="email" label="邮箱" width="180" show-overflow-tooltip />
+        <el-table-column prop="email" label="邮箱" width="180" show-overflow-tooltip align="center" />
 
-        <el-table-column prop="create_time" label="报名时间" width="150" sortable />
+        <el-table-column label="指导老师" width="140" show-overflow-tooltip align="center">
+          <template #default="{ row }">
+            <span>{{ getAdvisorName(row) }}</span>
+          </template>
+        </el-table-column>
+
+        <el-table-column prop="create_time" label="报名时间" width="150" sortable align="center" />
 
         <el-table-column label="状态" width="100" align="center">
           <template #default="{ row }">

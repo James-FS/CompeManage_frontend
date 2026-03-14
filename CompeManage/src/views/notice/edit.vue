@@ -198,7 +198,7 @@ onMounted(() => {
           </div>
           <div class="header-divider"></div>
           <div class="header-text">
-            <h1 class="main-title">{{ isEditMode ? '通知公告编辑' : '发布新通知' }}</h1>
+            <h1 class="main-title">{{ isEditMode ? '通知公告编辑' : '发布赛事通知' }}</h1>
           </div>
         </div>
 

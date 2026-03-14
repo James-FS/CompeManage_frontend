@@ -257,7 +257,7 @@ onMounted(() => {
       >
         <el-table-column type="index" label="序号" width="60" align="center" />
         
-        <el-table-column prop="level" label="奖项" width="120" align="center">
+        <el-table-column prop="level" label="奖项" width="140" align="center">
           <template #default="{ row }">
             <el-tag 
               :color="getLevelStyle(row.level).bg" 
@@ -268,20 +268,19 @@ onMounted(() => {
           </template>
         </el-table-column>
 
-        <el-table-column prop="projectName" label="获奖项目名称" min-width="240" show-overflow-tooltip align="center">
+        <el-table-column prop="projectName" label="获奖项目名称" min-width="220" show-overflow-tooltip align="center">
           <template #default="{ row }">
              <span class="project-name">{{ row.projectName && row.projectName !== '-' ? row.projectName : '-' }}</span>
           </template>
         </el-table-column>
 
-        <el-table-column label="获奖者信息" min-width="240" align="center">
+        <el-table-column label="获奖者信息" min-width="200" align="center">
           <template #default="{ row }">
             <div class="winner-cell">
               <div class="winner-info">
                 <div class="main-row">
                   <span class="name">{{ row.studentName }}</span>
                   <span class="sid">{{ row.studentID }}</span>
-                  <!-- ✅ 修改：点击团队标签打开成员详情 -->
                   <el-tag 
                     v-if="row.isTeam" 
                     size="small" 
@@ -291,7 +290,7 @@ onMounted(() => {
                     style="cursor: pointer;"
                     @click="handleViewTeam(row)"
                   >
-                    团队
+                    团队成员
                   </el-tag>
                 </div>
               </div>
@@ -299,7 +298,7 @@ onMounted(() => {
           </template>
         </el-table-column>
 
-        <el-table-column prop="college" label="所属学院" width="180" show-overflow-tooltip align="center"/>
+        <el-table-column prop="college" label="所属学院" width="220" show-overflow-tooltip align="center"/>
         <el-table-column prop="advisor" label="指导老师" width="120" align="center" />
 
         <el-table-column label="操作" width="150" fixed="right" align="center">
