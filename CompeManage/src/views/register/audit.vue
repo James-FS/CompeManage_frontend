@@ -159,8 +159,8 @@ async function fetchRegList() {
   try {
     const response = await api.getRegList(queryForm)
     if (response.code === 200) {
-      regList.value = response.data
-      total.value = response.total
+      regList.value = response.data.list
+      total.value = response.data.total
       console.log('API Response:', response.data) // 看看控制台里它到底是不是包含 total
     } else {
       ElMessage.error('获取报名列表失败: ' + response.message)
