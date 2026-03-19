@@ -287,28 +287,28 @@ onMounted(() => {
       </div>
 
       
-      <div v-if="advisorInfo.id!=0" class="info-section">
+      <div  class="info-section">
         <h3 class="section-title">指导老师信息</h3>
         <div  class="advisor-grid">
           <div class="grid-item">
             <span class="label"><el-icon><User /></el-icon> 姓名</span>
-            <span class="value">{{ advisorInfo.name || '' }}</span>
+            <span class="value">{{ advisorInfo?.name || '' }}</span>
           </div>
           <div class="grid-item">
             <span class="label"><el-icon><Postcard /></el-icon> 工号</span>
-            <span class="value">{{ advisorInfo.username }}</span>
+            <span class="value">{{ advisorInfo?.username }}</span>
           </div>
           <div class="grid-item">
             <span class="label"><el-icon><Postcard /></el-icon> 所属学院</span>
-            <span class="value">{{ advisorInfo.college || '' }}</span>
+            <span class="value">{{ advisorInfo?.college || '' }}</span>
           </div>
           <div class="grid-item">
             <span class="label"><el-icon><Iphone /></el-icon> 联系电话</span>
-            <span class="value">{{ advisorInfo.phone || '' }}</span>
+            <span class="value">{{ advisorInfo?.phone || '' }}</span>
           </div>
           <div class="grid-item">
             <span class="label"><el-icon><Message /></el-icon> 邮箱</span>
-            <span class="value">{{ advisorInfo.email || '' }}</span>
+            <span class="value">{{ advisorInfo?.email || '' }}</span>
           </div>
         </div>
         <!-- <div v-else class="empty-advisor">
