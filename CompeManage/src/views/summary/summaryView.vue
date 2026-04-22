@@ -75,8 +75,9 @@ const loadData = async () => {
         detailData.files = normalizeAttachmentList(data.attachments || []);
 
         stats.participantCount = data.participant_count || 0;
-        stats.awardTotal = detailData.award_list.reduce((acc, cur) => acc + Number(cur.count || 0), 0);
-        stats.expenseTotal = detailData.expense_list.reduce((acc, cur) => acc + Number(cur.amount || 0), 0);
+// 优化后的赋值（可选）
+        stats.awardTotal = data.award_total || 0;
+        stats.expenseTotal = data.expense_total || 0;
         stats.fileCount = detailData.files.length;
     } catch (error) {
         console.error(error);
@@ -285,6 +286,7 @@ onMounted(() => {
         
         pre {
             white-space: pre-wrap; /* 保持换行 */
+            word-wrap: break-word;
             font-family: inherit;
             color: #606266;
             line-height: 1.6;
