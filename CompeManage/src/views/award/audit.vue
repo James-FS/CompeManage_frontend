@@ -30,141 +30,6 @@ const levelMap = {
   校级二等奖: { label: '校级二等奖', color: '#409eff' },
 }
 
-// --- 模拟数据 ---
-const mockAwardData = [
-  {
-    id: 1,
-    student_name: '张三',
-    student_id: '20220001',
-    comp_name: '2026年全国大学生计算机设计大赛',
-    award_level: '国家级一等奖',
-    award_date: '2026-05-15',
-    phone: '13800138000',
-    submit_time: '2026-02-02 10:30',
-    status: 0,
-  },
-  {
-    id: 1,
-    student_name: '张三',
-    student_id: '20220001',
-    comp_name: '2026年全国大学生计算机设计大赛',
-    award_level: '国家级一等奖',
-    award_date: '2026-05-15',
-    phone: '13800138000',
-    submit_time: '2026-02-02 10:30',
-    status: 0,
-  },
-  {
-    id: 1,
-    student_name: '张三',
-    student_id: '20220001',
-    comp_name: '2026年全国大学生计算机设计大赛',
-    award_level: '国家级一等奖',
-    award_date: '2026-05-15',
-    phone: '13800138000',
-    submit_time: '2026-02-02 10:30',
-    status: 0,
-  },
-  {
-    id: 1,
-    student_name: '张三',
-    student_id: '20220001',
-    comp_name: '2026年全国大学生计算机设计大赛',
-    award_level: '国家级一等奖',
-    award_date: '2026-05-15',
-    phone: '13800138000',
-    submit_time: '2026-02-02 10:30',
-    status: 0,
-  },
-  {
-    id: 1,
-    student_name: '张三',
-    student_id: '20220001',
-    comp_name: '2026年全国大学生计算机设计大赛',
-    award_level: '国家级一等奖',
-    award_date: '2026-05-15',
-    phone: '13800138000',
-    submit_time: '2026-02-02 10:30',
-    status: 0,
-  },
-  {
-    id: 2,
-    student_name: '李四',
-    student_id: '20220002',
-    comp_name: '第十七届蓝桥杯全国软件和信息技术专业人才大赛',
-    award_level: '省级二等奖',
-    award_date: '2026-04-20',
-    phone: '13800138001',
-    submit_time: '2026-02-01 14:20',
-    status: 1,
-  },
-  {
-    id: 3,
-    student_name: '王五',
-    student_id: '20220003',
-    comp_name: '2026年美国大学生数学建模竞赛(MCM/ICM)',
-    award_level: '国家级二等奖',
-    award_date: '2026-03-10',
-    phone: '13800138002',
-    submit_time: '2026-01-28 09:15',
-    status: 1,
-  },
-  {
-    id: 4,
-    student_name: '赵六',
-    student_id: '20220004',
-    comp_name: '2026年全国大学生机器人大赛RoboMaster',
-    award_level: '校级一等奖',
-    award_date: '2026-06-05',
-    phone: '13800138003',
-    submit_time: '2026-02-02 15:45',
-    status: 0,
-  },
-  {
-    id: 5,
-    student_name: '孙七',
-    student_id: '20220005',
-    comp_name: '2026年ACM-ICPC亚洲区域赛选拔',
-    award_level: '国家级三等奖',
-    award_date: '2026-05-30',
-    phone: '13800138004',
-    submit_time: '2026-01-30 11:22',
-    status: 2,
-  },
-  {
-    id: 6,
-    student_name: '周八',
-    student_id: '20220006',
-    comp_name: '第十七届蓝桥杯全国软件和信息技术专业人才大赛',
-    award_level: '省级一等奖',
-    award_date: '2026-04-15',
-    phone: '13800138005',
-    submit_time: '2026-02-02 08:50',
-    status: 0,
-  },
-  {
-    id: 7,
-    student_name: '吴九',
-    student_id: '20220007',
-    comp_name: '2026年全国大学生计算机设计大赛',
-    award_level: '省级二等奖',
-    award_date: '2026-05-20',
-    phone: '13800138006',
-    submit_time: '2026-01-29 16:30',
-    status: 1,
-  },
-  {
-    id: 8,
-    student_name: '郑十',
-    student_id: '20220008',
-    comp_name: '2026年美国大学生数学建模竞赛(MCM/ICM)',
-    award_level: '校级二等奖',
-    award_date: '2026-03-25',
-    phone: '13800138007',
-    submit_time: '2026-02-02 13:10',
-    status: 0,
-  },
-]
 
 // --- 筛选与搜索 ---
 const queryForm = reactive({
@@ -206,16 +71,13 @@ const handleBatchPass = async () => {
   }).then(async () => {
     loading.value = true
     try {
-      // 模拟 API 调用
-      await new Promise((resolve) => setTimeout(resolve, 500))
-
-      pendingItems.forEach((item) => {
-        item.status = 1
-      })
-
-      ElMessage.success(`成功通过 ${pendingItems.length} 条记录`)
-      selectedRows.value = []
-      fetchAwardList()
+      const ids = pendingItems.map((item) => item.id)
+      const res = await api.batchPassAwardAudit(ids)
+      if (res.code === 200) {
+        ElMessage.success(`成功通过 ${pendingItems.length} 条记录`)
+        selectedRows.value = []
+        fetchAwardList()
+      }
     } catch (error) {
       console.error(error)
       ElMessage.error('批量操作部分或全部失败，请刷新后重试')
@@ -245,17 +107,14 @@ const handleBatchReject = async () => {
   loading.value = true
 
   try {
-    // 模拟 API 调用
-    await new Promise((resolve) => setTimeout(resolve, 500))
-
-    pendingItems.forEach((item) => {
-      item.status = 2
-    })
-
-    ElMessage.success(`成功驳回 ${pendingItems.length} 条记录`)
-    batchRejectDialogVisible.value = false
-    selectedRows.value = []
-    fetchAwardList()
+    const ids = pendingItems.map((item) => item.id)
+    const res = await api.batchRejectAwardAudit(ids, batchRejectReason.value)
+    if (res.code === 200) {
+      ElMessage.success(`成功驳回 ${pendingItems.length} 条记录`)
+      batchRejectDialogVisible.value = false
+      selectedRows.value = []
+      fetchAwardList()
+    }
   } catch (error) {
     console.error(error)
     ElMessage.error('批量操作部分或全部失败，请刷新后重试')
@@ -273,10 +132,11 @@ const handleQuickPass = (row) => {
     type: 'success',
   }).then(async () => {
     try {
-      // 模拟 API 调用
-      await new Promise((resolve) => setTimeout(resolve, 300))
-      row.status = 1
-      ElMessage.success('审核已通过')
+      const res = await api.passAwardAudit(row.id)
+      if (res.code === 200) {
+        row.status = 1
+        ElMessage.success('审核已通过')
+      }
     } catch (e) {
       ElMessage.warning('' + e.message)
     }
@@ -292,38 +152,19 @@ function navigateToDetail(row) {
 async function fetchAwardList() {
   loading.value = true
   try {
-    // 模拟 API 调用
-    await new Promise((resolve) => setTimeout(resolve, 300))
-
-    // 过滤数据
-    let filtered = mockAwardData
-
-    if (queryForm.comp_name) {
-      filtered = filtered.filter((item) => item.comp_name.includes(queryForm.comp_name))
+    const params = {
+      page: queryForm.page,
+      page_size: queryForm.pageSize,
+      keyword: queryForm.keyword,
+      status: queryForm.status,
+      award_level: queryForm.award_level,
+      comp_name: queryForm.comp_name,
     }
-
-    if (queryForm.keyword) {
-      filtered = filtered.filter(
-        (item) =>
-          item.student_name.includes(queryForm.keyword) ||
-          item.student_id.includes(queryForm.keyword),
-      )
+    const res = await api.getAwardAuditList(params)
+    if (res.code === 200) {
+      awardList.value = res.data.list || []
+      total.value = res.data.total || 0
     }
-
-    if (queryForm.award_level) {
-      filtered = filtered.filter((item) => item.award_level === queryForm.award_level)
-    }
-
-    if (queryForm.status !== '') {
-      filtered = filtered.filter((item) => item.status === Number(queryForm.status))
-    }
-
-    total.value = filtered.length
-
-    // 分页
-    const start = (queryForm.page - 1) * queryForm.pageSize
-    const end = start + queryForm.pageSize
-    awardList.value = filtered.slice(start, end)
   } catch (err) {
     ElMessage.info('无相关数据')
   } finally {
@@ -340,34 +181,19 @@ onMounted(() => {
   <div class="list-container">
     <!-- 筛选卡片 -->
     <div class="filter-card">
-      <el-form :inline="true" :model="queryForm" class="filter-form">
+      <el-form :inline="true" :model="queryForm" class="filter-form" label-width="70px" label-position="right">
         <el-form-item label="赛事名称">
-          <el-input
-            v-model="queryForm.comp_name"
-            placeholder="输入赛事名称"
-            style="width: 220px"
-            clearable
-            @keyup.enter="fetchAwardList"
-          />
+          <el-input v-model="queryForm.comp_name" placeholder="请输入赛事名称" style="width: 200px" clearable
+            @keyup.enter="fetchAwardList" />
         </el-form-item>
 
         <el-form-item label="学生姓名">
-          <el-input
-            v-model="queryForm.keyword"
-            placeholder="输入姓名或学号"
-            style="width: 180px"
-            :prefix-icon="Search"
-            @keyup.enter="fetchAwardList"
-          />
+          <el-input v-model="queryForm.keyword" placeholder="请输入姓名或学号" style="width: 180px"
+            @keyup.enter="fetchAwardList" />
         </el-form-item>
 
         <el-form-item label="获奖等级">
-          <el-select
-            v-model="queryForm.award_level"
-            placeholder="全部"
-            style="width: 160px"
-            clearable
-          >
+          <el-select v-model="queryForm.award_level" placeholder="全部" style="width: 140px" clearable>
             <el-option label="国家级一等奖" value="国家级一等奖" />
             <el-option label="国家级二等奖" value="国家级二等奖" />
             <el-option label="国家级三等奖" value="国家级三等奖" />
@@ -386,14 +212,14 @@ onMounted(() => {
             <el-option label="已驳回" :value="2" />
           </el-select>
         </el-form-item>
-      </el-form>
 
-      <div class="filter-actions">
-        <el-button type="primary" class="search-btn" :icon="Search" @click="fetchAwardList">
-          查询
-        </el-button>
-        <el-button :icon="Refresh" @click="handleReset">重置</el-button>
-      </div>
+        <el-form-item class="filter-actions">
+          <el-button type="primary" class="search-btn" :icon="Search" @click="fetchAwardList">
+            查询
+          </el-button>
+          <el-button :icon="Refresh" @click="handleReset">重置</el-button>
+        </el-form-item>
+      </el-form>
     </div>
 
     <!-- 表格容器 -->
@@ -416,12 +242,12 @@ onMounted(() => {
         :data="awardList"
         v-loading="loading"
         stripe
-        style="width: 100%; flex: 1; overflow: hidden"
+        style="width: 100%;flex: 1;"
         @selection-change="handleSelectionChange"
       >
-        <el-table-column type="selection" width="50" align="center" />
+        <el-table-column type="selection" width="40" />
 
-        <el-table-column label="学生信息" min-width="180" show-overflow-tooltip>
+        <el-table-column label="学生信息" min-width="100" align="center" show-overflow-tooltip>
           <template #default="{ row }">
             <div class="student-cell">
               <span class="name">{{ row.student_name }}</span>
@@ -430,34 +256,30 @@ onMounted(() => {
           </template>
         </el-table-column>
 
-        <el-table-column label="赛事名称" min-width="220" show-overflow-tooltip>
+        <el-table-column label="赛事名称" min-width="240" align="center" show-overflow-tooltip>
           <template #default="{ row }">
             <span class="comp-text">{{ row.comp_name }}</span>
           </template>
         </el-table-column>
 
-        <el-table-column label="获奖等级" width="130" align="center">
+        <el-table-column label="获奖等级" width="140" align="center">
           <template #default="{ row }">
-            <el-tag
-              :style="{
-                borderColor: levelMap[row.award_level]?.color,
-                color: levelMap[row.award_level]?.color,
-              }"
-              effect="plain"
-              size="small"
-            >
+            <el-tag :style="{
+              borderColor: levelMap[row.award_level]?.color,
+              color: levelMap[row.award_level]?.color,
+            }" effect="plain" size="small">
               {{ row.award_level }}
             </el-tag>
           </template>
         </el-table-column>
 
-        <el-table-column label="获奖日期" width="130" align="center">
+        <el-table-column label="获奖日期" width="140" align="center">
           <template #default="{ row }">
             {{ row.award_date }}
           </template>
         </el-table-column>
 
-        <el-table-column prop="submit_time" label="申报时间" width="150" sortable />
+        <el-table-column prop="submit_time" label="申报时间" width="150" sortable align="center" />
 
         <el-table-column label="状态" width="100" align="center">
           <template #default="{ row }">
@@ -476,43 +298,31 @@ onMounted(() => {
             </el-button>
           </template>
         </el-table-column>
+
+        <template #empty>
+          <el-empty description="暂无数据" />
+        </template>
       </el-table>
 
       <!-- 分页 -->
       <div class="pagination-bar">
-        <el-pagination
-          background
-          layout="total, sizes, prev, pager, next, jumper"
-          :total="total"
-          v-model:current-page="queryForm.page"
-          v-model:page-size="queryForm.pageSize"
-          @current-change="fetchAwardList"
-          @size-change="fetchAwardList"
-        />
+        <el-pagination background layout="total, sizes, prev, pager, next, jumper" :total="total"
+          v-model:current-page="queryForm.page" v-model:page-size="queryForm.pageSize" @current-change="fetchAwardList"
+          @size-change="fetchAwardList" />
       </div>
     </div>
 
     <!-- 批量驳回弹窗 -->
-    <el-dialog
-      v-model="batchRejectDialogVisible"
-      title="批量驳回获奖申报"
-      width="400px"
-      align-center
-    >
+    <el-dialog v-model="batchRejectDialogVisible" title="批量驳回获奖申报" width="400px" align-center>
       <div style="margin-bottom: 12px; color: #606266; font-size: 14px">
         即将驳回
         <span style="color: #f56c6c; font-weight: bold">
-          {{ selectedRows.filter((i) => i.status === 0).length }}
+          {{selectedRows.filter((i) => i.status === 0).length}}
         </span>
         条待审核记录
       </div>
 
-      <el-input
-        v-model="batchRejectReason"
-        type="textarea"
-        :rows="4"
-        placeholder="请输入驳回原因（必填）"
-      />
+      <el-input v-model="batchRejectReason" type="textarea" :rows="4" placeholder="请输入驳回原因（必填）" />
 
       <template #footer>
         <el-button @click="batchRejectDialogVisible = false">取消</el-button>
@@ -542,37 +352,16 @@ onMounted(() => {
 .filter-card {
   box-sizing: border-box;
   background: #fff;
-  padding: 24px 24px 20px;
+  padding: 20px 20px 10px 20px;
   border-radius: 4px;
+  box-shadow: var(--card-shadow);
 
   .filter-form {
     :deep(.el-form-item) {
       margin-bottom: 12px;
       margin-right: 24px;
     }
-  }
 
-  .filter-actions {
-    display: flex;
-    justify-content: center;
-    gap: 20px;
-    margin-top: 10px;
-    padding-top: 20px;
-    border-top: 1px dashed #eee;
-
-    .el-button {
-      width: 100px;
-    }
-
-    .search-btn {
-      background-color: var(--primary-color);
-      border-color: var(--primary-color);
-
-      &:hover {
-        background-color: #36cfc9;
-        border-color: #36cfc9;
-      }
-    }
   }
 }
 
@@ -602,7 +391,7 @@ onMounted(() => {
   border-radius: 4px;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  box-shadow: var(--card-shadow);
 }
 
 .student-cell {

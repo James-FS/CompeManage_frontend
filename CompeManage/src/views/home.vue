@@ -1,438 +1,651 @@
 <script setup>
-import { ref,onMounted } from 'vue'
-import api from '@/api'
-import { ElCard, ElTag, ElIcon, ElMessage } from 'element-plus'
-import { Trophy, DataAnalysis, ArrowRight, CircleCheck, Clock, Edit } from '@element-plus/icons-vue'
-import 'element-plus/dist/index.css'
+import { ref, computed, onMounted, reactive, nextTick, watch, onBeforeUnmount } from 'vue'
+import { useUserStore } from '@/stores/user'
 import { useRouter } from 'vue-router'
+import api from '@/api'
+import {
+  Trophy, Bell, ArrowRight, Promotion,
+  Checked, Histogram, Document, UserFilled
+} from '@element-plus/icons-vue'
+
+const userStore = useUserStore()
 const router = useRouter()
-const loading=ref(false)
-const noticeList = ref([
-  {
-    date: '2026.1.16',
-    title: '关于开展2026年大学生创新创业大赛的通知',
-    link: '',
-  },
-  {
-    date: '2026.2.10',
-    title: '关于举办2026年全国大学生数学竞赛的通知',
-  },
-])
-const myStatusList = [
-  {
-    id: 1,
-    title: '第十五届蓝桥杯软件赛',
-    deadline: '报名截止: 2026-11-20',
-    month: '10月',
-    day: '15',
-    status: '已通过',
-    type: 'success', // 对应 el-tag 的 type
-    bgClass: '', // 日期背景色类名（默认绿）
-  },
-  {
-    id: 2,
-    title: '2026互联网+创新创业大赛',
-    deadline: '校赛初审中',
-    month: '11月',
-    day: '02',
-    status: '审核中',
-    type: 'warning',
-    bgClass: 'warning-bg',
-  },
-  {
-    id: 3,
-    title: '大学生广告艺术大赛',
-    deadline: '未提交报名表',
-    month: '12月',
-    day: '10',
-    status: '草稿',
-    type: 'info',
-    bgClass: 'info-bg',
-  },
-]
-function NavigateToNotice() {
-  router.push('/notice/0')
+const role = computed(() => userStore.role || 'student')
+
+const notices = ref([])
+
+const upcomingEvents = ref([])
+const visibleEventCount = ref(5)
+const eventStackRef = ref(null)
+
+const bannerCounts = reactive({
+  regOpen: 0,
+  ongoing: 0,
+  todo: 0
+})
+
+const quickFunctions = computed(() => {
+  const map = {
+    school_admin: [
+      { label: '赛事目录', path: '/competition/list', icon: Trophy, color: '#F56C6C' },
+      { label: '目录审核', path: '/competition/audit', icon: Checked, color: '#409EFF' },
+      { label: '权限管理', path: '/permission', icon: UserFilled, color: '#909399' },
+      { label: '数据看板', path: '/statistics/dashboard', icon: Histogram, color: '#F56C6C' },
+    ],
+    student: [
+      { label: '赛事报名', path: '/competition/list', icon: Trophy, color: '#F56C6C' },
+      { label: '作品提交', path: '/register/work', icon: Document, color: '#409EFF' },
+      { label: '我的获奖', path: '/award/student', icon: Checked, color: '#67C23A' },
+      { label: '个人中心', path: '/profile', icon: UserFilled, color: '#909399' },
+    ],
+  }
+  return map[role.value] || map['student']
+})
+
+const bannerStats = computed(() => {
+  return [
+    { label: '报名中赛事', value: String(bannerCounts.regOpen), icon: Promotion },
+    { label: '进行中赛事', value: String(bannerCounts.ongoing), icon: Trophy },
+    { label: '我的待办', value: String(bannerCounts.todo), icon: Bell },
+  ]
+})
+
+const displayedUpcomingEvents = computed(() => {
+  return upcomingEvents.value.slice(0, visibleEventCount.value)
+})
+
+const formatNoticeDate = (dateStr) => {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  if (Number.isNaN(date.getTime())) return ''
+  const month = `${date.getMonth() + 1}`.padStart(2, '0')
+  const day = `${date.getDate()}`.padStart(2, '0')
+  return `${month}-${day}`
 }
 
-function NavigateToMoreNotice() {
-  router.push('/notice/list')
+const calcDaysLeft = (dateStr) => {
+  if (!dateStr) return null
+  const date = new Date(dateStr)
+  if (Number.isNaN(date.getTime())) return null
+  const now = new Date()
+  const diff = date.getTime() - now.getTime()
+  return Math.ceil(diff / (24 * 60 * 60 * 1000))
 }
 
-async function fetchNotices() {
-  loading.value = true
-  try {
-    const response = await api.getNoticeList({ page: 1, pageSize: 5 })
-    if (response && response.data) {
-      noticeList.value = response.data.notices
+const loadNotices = async () => {
+  const res = await api.getNoticeList({
+    page: 1,
+    page_size: 5,
+    status: 1,
+    is_latest: true
+  })
+  const list = res?.data?.list || []
+  notices.value = list.map((item, index) => {
+    const tag = index === 0 ? '最新' : '通知'
+    const type = index === 0 ? 'primary' : 'info'
+    return {
+      id: item.id ?? item.ID,
+      title: item.title || '未命名通知',
+      date: formatNoticeDate(item.publish_time),
+      tag,
+      type
     }
-  } catch (error) {
-   ElMessage.error('Failed to fetch notices:', error)
-  } finally {
-    loading.value = false
+  })
+}
+
+const goNoticeDetail = (item) => {
+  if (!item?.id) return
+  router.push({
+    name: 'Notice',
+    params: { id: item.id }
+  })
+}
+
+const loadBannerCounts = async () => {
+  const [regRes, allRes] = await Promise.all([
+    api.getCompetitionList({ page: 1, page_size: 1, status: 'ongoing' }),
+    api.getCompetitionList({ page: 1, page_size: 100 })
+  ])
+
+  bannerCounts.regOpen = regRes?.data?.total || 0
+
+  const list = allRes?.data?.list || []
+  const now = new Date().getTime()
+  let ongoingCount = 0
+  list.forEach((item) => {
+    const start = item?.detail?.comp_start_time ? new Date(item.detail.comp_start_time).getTime() : null
+    const end = item?.detail?.comp_end_time ? new Date(item.detail.comp_end_time).getTime() : null
+    if (start && end && now >= start && now <= end) {
+      ongoingCount += 1
+    }
+  })
+  bannerCounts.ongoing = ongoingCount
+
+  if (role.value === 'school_admin') {
+    const pendingRes = await api.getPendingDeclares({ page: 1, page_size: 1 })
+    bannerCounts.todo = pendingRes?.data?.total || 0
+  } else {
+    try {
+      const pendingRes = await api.getMyPendingDeclares({ page: 1, page_size: 1 })
+      bannerCounts.todo = pendingRes?.data?.total || 0
+    } catch {
+      bannerCounts.todo = 0
+    }
   }
 }
 
-onMounted(() => {
-  fetchNotices()
+const loadUpcomingEvents = async () => {
+  const res = await api.getCompetitionList({ page: 1, page_size: 100 })
+  const list = res?.data?.list || []
+  const now = new Date().getTime()
+  const events = list.map((item) => {
+    const endTime = item?.detail?.reg_end_time || item?.detail?.submit_end_time || ''
+    const daysLeft = calcDaysLeft(endTime)
+    return {
+      id: item.id,
+      title: `${item.comp_name} - 报名截止`,
+      date: endTime ? endTime.split('T')[0] : '',
+      daysLeft,
+      color: '#E6A23C'
+    }
+  }).filter(ev => ev.daysLeft !== null && ev.daysLeft >= 0)
+    .sort((a, b) => a.daysLeft - b.daysLeft)
+    .slice(0, 5)
+
+  upcomingEvents.value = events
+}
+
+const updateEventVisibleCount = async () => {
+  await nextTick()
+  const el = eventStackRef.value
+  if (!el) return
+  const total = Math.min(5, upcomingEvents.value.length)
+  if (total <= 3) {
+    visibleEventCount.value = total
+    return
+  }
+  const firstItem = el.querySelector('.event-mini-item')
+  if (!firstItem) {
+    visibleEventCount.value = total
+    return
+  }
+  const itemHeight = firstItem.getBoundingClientRect().height
+  const styles = window.getComputedStyle(el)
+  const gap = parseFloat(styles.rowGap || styles.gap || '0') || 0
+  const availableHeight = el.clientHeight
+  const heightFor5 = itemHeight * 5 + gap * 4
+  const heightFor4 = itemHeight * 4 + gap * 3
+  if (heightFor5 <= availableHeight) {
+    visibleEventCount.value = Math.min(5, total)
+  } else if (heightFor4 <= availableHeight) {
+    visibleEventCount.value = 4
+  } else {
+    visibleEventCount.value = 3
+  }
+}
+
+const initHomeData = async () => {
+  await Promise.all([
+    loadNotices(),
+    loadBannerCounts(),
+    loadUpcomingEvents()
+  ])
+}
+
+let eventResizeObserver = null
+
+watch(upcomingEvents, () => {
+  updateEventVisibleCount()
+}, { deep: true })
+
+onMounted(async () => {
+  await initHomeData()
+  await nextTick()
+  if (eventStackRef.value) {
+    eventResizeObserver = new ResizeObserver(() => {
+      updateEventVisibleCount()
+    })
+    eventResizeObserver.observe(eventStackRef.value)
+  }
+  updateEventVisibleCount()
+})
+
+onBeforeUnmount(() => {
+  if (eventResizeObserver && eventStackRef.value) {
+    eventResizeObserver.unobserve(eventStackRef.value)
+    eventResizeObserver.disconnect()
+  }
+  eventResizeObserver = null
 })
 </script>
 
 <template>
-  <div class="home-container">
-    <div class="card-container">
-      <el-card class="notice-card">
-        <template #header>
-          <div class="notice-title">
-            <span class="second-title">赛事通知</span>
-            <div class="notice-more" @click="NavigateToMoreNotice">
-              <span>更多</span>
-              <el-icon class="arrow-icon"><ArrowRight /></el-icon>
+  <div class="portal-home">
+
+    <div class="welcome-banner">
+      <div class="banner-left">
+        <h1 class="greeting">下午好，{{ userStore.userInfo?.name }}</h1>
+        <p class="sub-greeting">欢迎使用学科竞赛管理系统</p>
+      </div>
+      <div class="banner-right">
+        <div class="stat-group">
+          <div class="stat-item" v-for="stat in bannerStats" :key="stat.label">
+            <div class="stat-icon-bg"><el-icon>
+                <component :is="stat.icon" />
+              </el-icon></div>
+            <div class="stat-text">
+              <span class="stat-val">{{ stat.value }}</span>
+              <span class="stat-label">{{ stat.label }}</span>
             </div>
           </div>
-        </template>
-        <div
-          class="notice-content"
-          v-for="notice in noticeList"
-          :key="notice.date"
-          @click="NavigateToNotice"
-          style="cursor: pointer"
-        >
-          <el-tag class="notice-tag" effect="dark">{{ notice.date }}</el-tag>
-          <span>{{ notice.title }}</span>
         </div>
-      </el-card>
+      </div>
+    </div>
 
-      <div class="service-area">
-        <el-card class="main-card">
+    <div class="main-grid">
+
+      <div class="grid-left">
+        <el-card class="portal-card notice-card">
           <template #header>
-            <span class="second-title">欢迎使用学科竞赛管理系统</span>
-          </template>
-          <div class="index-content">
-            <div class="index-card">
-              <div class="icon-box">
-                <el-icon :size="32"><Trophy /></el-icon>
-              </div>
-              <div class="text-box">
-                <span class="card-title">竞赛目录</span>
-                <span class="card-desc">查看白名单赛事</span>
-              </div>
+            <div class="card-header">
+              <span class="header-title"><span class="deco-line"></span> 通知公告</span>
+              <span class="more-link" @click="router.push('/notice/list')">更多 <el-icon>
+                  <ArrowRight />
+                </el-icon></span>
             </div>
-            <div class="index-card">
-              <div class="icon-box">
-                <el-icon :size="32"><DataAnalysis /></el-icon>
+          </template>
+          <div v-if="notices.length === 0" class="notice-empty">
+            <el-empty description="暂无数据" />
+          </div>
+          <ul v-else class="notice-list">
+            <li v-for="item in notices" :key="item.id" class="notice-item" @click="goNoticeDetail(item)">
+              <div class="notice-meta">
+                <el-tag :type="item.type" size="small" effect="plain">{{ item.tag }}</el-tag>
+                <span class="title">{{ item.title }}</span>
               </div>
-              <div class="text-box">
-                <span class="card-title">省级竞赛</span>
-                <span class="card-desc">查看教育部白名单赛事</span>
+              <span class="date">{{ item.date }}</span>
+            </li>
+          </ul>
+        </el-card>
+
+
+      </div>
+
+      <div class="grid-right">
+        <el-card class="portal-card quick-card">
+          <template #header>
+            <div class="card-header"><span class="header-title"><span class="deco-line"
+                  style="background:#409EFF"></span>功能模块</span></div>
+          </template>
+          <div class="quick-grid-compact">
+            <div v-for="(item, index) in quickFunctions" :key="index" class="quick-item-compact"
+              @click="router.push(item.path)">
+              <div class="icon-circle" :style="{ color: item.color }">
+                <el-icon :size="20">
+                  <component :is="item.icon" />
+                </el-icon>
+              </div>
+              <span class="label">{{ item.label }}</span>
+            </div>
+          </div>
+        </el-card>
+
+        <el-card class="portal-card event-card">
+          <template #header>
+            <div class="card-header">
+              <span class="header-title"><span class="deco-line" style="background:#E6A23C"></span> 近期截止</span>
+            </div>
+          </template>
+          <div class="event-stack" ref="eventStackRef">
+            <div v-for="ev in displayedUpcomingEvents" :key="ev.id" class="event-mini-item">
+              <div class="date-box">
+                <span class="d-num">{{ ev.daysLeft }}</span>
+                <span class="d-txt">天</span>
+              </div>
+              <div class="ev-content">
+                <div class="ev-title">{{ ev.title }}</div>
+                <div class="ev-sub">{{ ev.date }}</div>
               </div>
             </div>
           </div>
         </el-card>
 
-        <el-card class="status-card">
-          <template #header>
-            <div class="status-header">
-              <span class="second-title">我的参赛</span>
-            </div>
-          </template>
-          <div class="status-list">
-            <div class="status-item" v-for="item in myStatusList" :key="item.id">
-              
-              <div class="icon-anchor" :class="'bg-' + item.type">
-                 <el-icon v-if="item.type === 'success'"><CircleCheck /></el-icon>
-                 <el-icon v-else-if="item.type === 'warning'"><Clock /></el-icon>
-                 <el-icon v-else><Edit /></el-icon>
-              </div>
-
-              <div class="item-info">
-                <div class="title-row">
-                    <span class="item-title">{{ item.title }}</span>
-                </div>
-                <div class="meta-row">
-                    <span class="deadline">截止: {{ item.deadline }}</span>
-                </div>
-              </div>
-
-              <el-tag :type="item.type" effect="plain" round size="small" class="status-tag">
-                {{ item.status }}
-              </el-tag>
-            </div>
-          </div>
-        </el-card>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped lang="scss">
-.home-container {
-  box-sizing: border-box;
-  display: flex;
-  padding: 24px;
-  flex-direction: column;
-  width: 100%;
-  height: 100%;
+.portal-home {
   background-color: var(--background-color);
+  padding: 20px;
+  box-sizing: border-box;
 }
 
-.card-container {
-  padding: 0 10px;
-  gap: 20px;
+.welcome-banner {
+  background-color: #ffffff;
+  padding: 20px 20px;
+  margin-bottom: 20px;
   display: flex;
-  height: 100%;
-  align-items: stretch;
-  justify-content: space-around;
-  .service-area {
-    flex: 0.8;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    .main-card {
-      flex: 0 0 auto;
-      box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
-      .index-content {
-        display: flex;
-        flex-direction: column;
-        gap: 15px;
-        justify-content: space-between;
-        align-items: center;
-        width: 100%;
-        .index-card {
-          background-color: #f8fafc;
-          border: 1px solid #eaeff5;
-          height: 72px;
-          width: 100%;
-          display: flex;
-          flex-direction: row;
-          align-items: center;
-          // justify-content: center;
-          padding: 0 25px;
-          box-sizing: border-box;
-          gap: 15px;
-          border-radius: 4px;
-          cursor: pointer;
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          &:hover {
-            background-color: #ffffff;
-            border-color: #ffffff;
-            transform: translateY(-5px);
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+  border-left: 3px solid var(--primary-color);
 
-            .icon-box {
-              width: 40px;
-              height: 40px;
-              color: #13c2c2; /* 你的主题绿 */
-              transform: scale(1.1);
-            }
 
-            /* 4. 箭头变色 + 向右移动 */
-            .arrow-icon {
-              color: #13c2c2;
-              transform: translateX(5px);
-            }
-          }
-
-          .icon-box {
-            width: 50px;
-            height: 50px;
-            background-color: #ffffff;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 15px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); /* 图标微阴影 */
-            transition: transform 0.3s ease; /* 图标单独的缩放动画 */
-            color: #606266;
-          }
-          .text-box {
-            display: flex;
-            flex-direction: column;
-            flex: 1; /* 占满中间剩余空间 */
-            .card-title {
-              font-size: 16px;
-              font-weight: 600;
-              color: #303133;
-              margin-bottom: 4px;
-            }
-            .card-desc {
-              font-size: 12px;
-              color: #909399;
-            }
-          }
-          &:hover {
-            background-color: #e6e8eb; // 加个悬停效果
-          }
-        }
-      }
+  .banner-left {
+    .greeting {
+      margin: 0;
+      font-size: 20px;
+      color: #303133;
     }
-    .status-card {
-      flex: 1;
+
+    .sub-greeting {
+      margin: 6px 0 0;
+      color: #909399;
+      font-size: 14px;
+    }
+  }
+
+  .banner-right {
+    .stat-group {
       display: flex;
-      flex-direction: column;
-      min-height: 0;
-      box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
-      :deep(.el-card__body) {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        padding-top: 10px;
-      }
-      .status-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
+      gap: 30px;
+      margin-right: 40px;
 
-      .status-list {
-        display: flex;
-        flex-direction: column;
-        flex: 1;
-        padding: 0 10px; /* 两侧留白 */
-      }
-
-      .status-item {
+      .stat-item {
         display: flex;
         align-items: center;
-        padding: 15px 5px; /* 上下间距加大，更透气 */
-        border-bottom: 1px solid #f5f7fa; /* 极细的分割线 */
-        transition: all 0.2s;
-        cursor: pointer;
+        gap: 10px;
 
-        &:last-child {
-          border-bottom: none;
-        }
-
-        &:hover {
-          background-color: #fcfcfc; /* 极其微弱的悬停色，不抢眼 */
-          
-          /* 悬停时，标题变色 */
-          .item-info .title-row .item-title {
-              color: #13c2c2;
-          }
-        }
-
-        .icon-anchor {
-          width: 36px;
-          height: 36px;
-          border-radius: 50%; /* 圆形 */
+        .stat-icon-bg {
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          background: #f0fdfa;
+          color: #13C2C2;
           display: flex;
           align-items: center;
           justify-content: center;
-          margin-right: 14px;
-          flex-shrink: 0;
-          font-size: 18px; /* 图标大小 */
-
-          /* 颜色的变体：背景淡色，图标深色 */
-          &.bg-success { background-color: #f0fdfa; color: #13c2c2; }
-          &.bg-warning { background-color: #fdf6ec; color: #e6a23c; }
-          &.bg-info    { background-color: #f4f4f5; color: #909399; }
+          font-size: 18px;
         }
 
-        /* 中间文字区 */
-        .item-info {
-          flex: 1;
+        .stat-text {
           display: flex;
           flex-direction: column;
-          gap: 4px;
-          overflow: hidden;
 
-          .title-row {
-             display: flex; 
-             align-items: center;
-             .item-title {
-                font-size: 14px;
-                color: #303133;
-                font-weight: 500;
-                /* 文字超长省略 */
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                transition: color 0.2s;
-             }
+          .stat-val {
+            font-size: 18px;
+            font-weight: bold;
+            color: #303133;
+            line-height: 1.2;
           }
 
-          .meta-row {
-             display: flex;
-             align-items: center;
-             .deadline {
-                font-size: 12px;
-                color: #999;
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-             }
+          .stat-label {
+            font-size: 12px;
+            color: #909399;
           }
-        }
-
-        /* 右侧标签微调 */
-        .status-tag {
-           margin-left: 10px;
-           background-color: transparent; 
-           border: none;
-           font-weight: bold;
-           
-           &.el-tag--success { color: #13c2c2; background: #f0fdfa; }
-           &.el-tag--warning { color: #e6a23c; background: #fdf6ec; }
-           &.el-tag--info    { color: #909399; background: #f4f4f5; }
         }
       }
     }
   }
+}
 
-  .notice-card {
+.main-grid {
+  display: flex;
+  gap: 20px;
+
+  .grid-left {
     flex: 1;
-    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
 
-    .notice-title {
-      display: flex;
-      justify-content: space-between;
-      .notice-more {
-        display: flex;
-        align-items: center;
-        gap: 3px;
-        cursor: pointer;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        &:hover {
-          .arrow-icon {
-            color: #13c2c2;
-          }
-          color: #13c2c2;
-          transform: scale(1.05);
-        }
-      }
-    }
-    .notice-content {
+  .grid-right {
+    width: 320px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    flex-shrink: 0;
+    height: calc(100vh - 260px);
+  }
+}
+
+.portal-card {
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    .header-title {
+      font-weight: 600;
+      font-size: 15px;
+      color: #303133;
       display: flex;
       align-items: center;
-      padding: 15px 10px;
-      border-bottom: 1px solid #f0f0f0;
-      margin-bottom: 10px;
-      &:last-child {
-        margin-bottom: 0;
-      }
+    }
+
+    .deco-line {
+      width: 3px;
+      height: 14px;
+      background: #13C2C2;
+      margin-right: 8px;
+      border-radius: 2px;
+    }
+
+    .more-link {
+      font-size: 12px;
+      color: #909399;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+
       &:hover {
-        background-color: #f0fdfa;
-        color: #13c2c2;
-        transform: scale(1.02);
-        cursor: pointer;
-        box-shadow: 0 4px 12px rgba(19, 194, 194, 0.1);
-        border-radius: 6px;
-        border-bottom-color: transparent;
-      }
-      .notice-tag {
-        margin-right: 10px;
+        color: #13C2C2;
       }
     }
   }
 }
 
-.arrow-icon {
-  color: #dcdfe6; /* 平时是浅灰 */
-  font-size: 20px;
-  transition: color 0.3s ease;
+.notice-card {
+  height: calc(100vh - 260px);
+  min-height: 320px;
+  display: flex;
+  flex-direction: column;
+
+  :deep(.el-card__body) {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
 }
 
-.second-title {
-  font-size: var(--card-title);
-  font-weight: var(--card-weight);
+.event-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+
+  :deep(.el-card__body) {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+/* 通知列表 */
+.notice-list {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  flex: 1;
+  overflow: auto;
+
+  .notice-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px dashed #ebeef5;
+    cursor: pointer;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &:first-child {
+      padding-top: 0;
+    }
+
+    &:hover .title {
+      color: #13C2C2;
+    }
+
+    .notice-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      overflow: hidden;
+    }
+
+    .title {
+      font-size: 14px;
+      color: #606266;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 450px;
+    }
+
+    .date {
+      font-size: 12px;
+      color: #999;
+      flex-shrink: 0;
+    }
+  }
+}
+
+.notice-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+
+
+/* 右侧：近期截止 (针对窄栏优化的紧凑样式) */
+.event-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 10px 0;
+  flex: 1;
+  overflow: auto;
+
+  &:first-child {
+    margin-top: 0;
+  }
+
+  .event-mini-item {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    background: #fcfcfc;
+    border: 1px solid #f0f2f5;
+    border-radius: 6px;
+    transition: 0.2s;
+
+
+
+    &:hover {
+      border-color: #E6A23C;
+      background: #fff;
+    }
+
+    .date-box {
+      width: 40px;
+      text-align: center;
+      margin-right: 12px;
+      color: #E6A23C;
+
+      .d-num {
+        display: block;
+        font-size: 18px;
+        font-weight: bold;
+        line-height: 1;
+      }
+
+      .d-txt {
+        font-size: 10px;
+      }
+    }
+
+    .ev-content {
+      flex: 1;
+      overflow: hidden;
+
+      .ev-title {
+        font-size: 13px;
+        color: #303133;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .ev-sub {
+        font-size: 12px;
+        color: #909399;
+        margin-top: 2px;
+      }
+    }
+  }
+}
+
+/* 右侧：功能模块 */
+.quick-grid-compact {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  padding: 15px 0;
+
+  .quick-item-compact {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+
+    .icon-circle {
+      width: 40px;
+      height: 40px;
+      background: #f5f7fa;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 6px;
+      transition: 0.3s;
+    }
+
+    .label {
+      font-size: 12px;
+      color: #606266;
+      text-align: center;
+    }
+
+    &:hover {
+      .icon-circle {
+        background: #f0fdfa;
+        color: #13C2C2;
+      }
+
+      .label {
+        color: #13C2C2;
+      }
+    }
+  }
 }
 </style>

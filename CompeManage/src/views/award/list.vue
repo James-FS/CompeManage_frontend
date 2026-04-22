@@ -10,7 +10,7 @@ const compList = ref([])
 const loading = ref(false)
 const queryParams = ref({
   page: 1,
-  page_size: 10,
+  size: 10,
 })
 const total = ref(0)
 // 获取 Token 用于上传鉴权
@@ -21,10 +21,10 @@ const uploadHeaders = { Authorization: `Bearer ${token}` }
 const fetchList = async () => {
   loading.value = true
   try {
-    const res = await api.getAwardCompList()
+    const res = await api.getAwardCompList(queryParams.value)
     if (res.code === 200) {
       compList.value = res.data.list || []
-      total.value=res.data.total || 0
+      total.value = res.data.total || 0
     }
   } catch (error) {
     ElMessage.error('加载列表失败: ' + error.message)
@@ -37,11 +37,11 @@ const fetchList = async () => {
 async function downloadTemplate(id) {
   try {
     loading.value = true
-    
+
     // 1. 请求时必须声明 responseType: 'blob'
     // 注意：api.exportTemplate 需要配置 { responseType: 'blob' }
-    const res = await api.getAwardTemplate(id) 
-    
+    const res = await api.getAwardTemplate(id)
+
     // 2. 🛡️ 智能判断：这是文件流还是 JSON 报错？
     // 如果返回的 Blob 类型是 application/json，说明后端报错了
     if (res.type === 'application/json') {
@@ -56,7 +56,9 @@ async function downloadTemplate(id) {
     }
 
     // 3. 正常下载流程 (如果是 Excel 流)
-    const blob = new Blob([res], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const blob = new Blob([res], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    })
     const link = document.createElement('a')
     link.href = window.URL.createObjectURL(blob)
     link.download = `Award_Template_${id}.xlsx`
@@ -65,9 +67,8 @@ async function downloadTemplate(id) {
     link.click()
     window.URL.revokeObjectURL(link.href)
     document.body.removeChild(link)
-    
-    ElMessage.success('模板下载成功')
 
+    ElMessage.success('模板下载成功')
   } catch (error) {
     console.error(error)
     ElMessage.error('网络请求失败')
@@ -110,7 +111,7 @@ onMounted(fetchList)
         <div class="comp-info">
           <div class="name-row">
             <el-tag
-              v-if="item.status === 1"
+              v-if="item.status !== 2"
               type="success"
               effect="dark"
               size="small"
@@ -125,14 +126,20 @@ onMounted(fetchList)
           </div>
 
           <div class="meta-row">
-            <span class="meta-item">
-              <el-icon><Calendar /></el-icon>
-              年份：{{ item.year }}
-            </span>
+            <el-tag effect="plain" type="primary" size="small" class="level-tag">
+              {{ item.comp_level }}
+            </el-tag>
+
             <span class="divider"></span>
-            <span class="meta-item">
-              <el-icon><User /></el-icon>
-              主办方：{{ item.organizer || '未知' }}
+
+            <span class="meta-text">
+              <el-icon><User /></el-icon> {{ item.organizer }}
+            </span>
+
+            <span class="divider"></span>
+
+            <span class="meta-text time">
+              <el-icon><Calendar /></el-icon> {{ item.year }}
             </span>
           </div>
         </div>
@@ -178,12 +185,12 @@ onMounted(fetchList)
     <div class="pagination-container">
       <el-pagination
         v-model:current-page="queryParams.page"
-        v-model:page-size="queryParams.page_size"
+        v-model:page-size="queryParams.size"
         :total="total"
         layout="total, sizes, prev, pager, next, jumper"
         :page-sizes="[10, 20, 50]"
-        @current-change="fetchCompList"
-        @size-change="fetchCompList"
+        @current-change="fetchList"
+        @size-change="fetchList"
       />
     </div>
   </div>
@@ -197,21 +204,20 @@ onMounted(fetchList)
   flex-direction: column;
   background-color: var(--background-color);
   padding: 20px;
-  
 }
 
 .comp-list {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  margin-bottom:20px;
+  margin-bottom: 20px;
 }
 
 .comp-card {
   background-color: #fff;
   padding: 24px;
   border-radius: 8px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--card-shadow);
   border: 1px solid transparent;
   display: flex;
   justify-content: space-between;

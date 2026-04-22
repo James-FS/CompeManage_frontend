@@ -21,7 +21,6 @@ const rules = {
     //blur: 输入框失去焦点时触发验证  change: 选择框值变化时触发验证
     comp_name: [{ required: true, message: '请输入赛事名称', trigger: 'blur' }],
     comp_level: [{ required: true, message: '请选择赛事级别', trigger: 'change' }],
-    college: [{ required: true, message: '请选择所属学院', trigger: 'change' }],
     manager: [{ required: true, message: '请输入赛事负责人', trigger: 'change' }],
 };
 const handleSubmit = async (formEl) => {
@@ -618,7 +617,7 @@ const queryManagerByWorkId = async (row) => {
                                 </el-form-item>
                             </div>
                             <el-table :data="historyTableData" border v-loading="historyLoading"
-                                @selection-change="handleSelectionChange" height="400">
+                                @selection-change="handleSelectionChange" height="calc(100vh - 400px)">
                                 <el-table-column type="selection" width="40" align="center" />
                                 <el-table-column prop="comp_name" label="赛事名称" min-width="280" align="center" />
                                 <el-table-column prop="comp_level" label="赛事级别" width="100" align="center" />
@@ -881,7 +880,7 @@ const queryManagerByWorkId = async (row) => {
 }
 
 .content-box {
-    overflow: hidden;
+    overflow: auto;
 }
 
 .form-wrapper {
@@ -896,7 +895,7 @@ const queryManagerByWorkId = async (row) => {
 }
 
 .custom-steps {
-    margin-bottom: 10px;
+    margin-bottom: 8px;
 }
 
 .step-content {

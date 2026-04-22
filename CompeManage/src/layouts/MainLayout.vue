@@ -4,7 +4,7 @@ import Header from '@/components/Header.vue'
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-import { House, Trophy, ArrowRight, EditPen, Key,Document } from '@element-plus/icons-vue'
+import { House, Trophy, ArrowRight, EditPen, Key, Document, Medal, DataAnalysis } from '@element-plus/icons-vue'
 
 const userStore = useUserStore()
 const route = useRoute()
@@ -35,11 +35,6 @@ const allMenus = [
         title: userStore.role === 'school_admin' ? '赛事审核' : '赛事申报',
         roles: ['school_admin', 'college_admin'],
       },
-      {
-        path: '/competition/declare',
-        title: '新增申报',
-        roles: ['college_admin'],
-      },
     ],
   },
   {
@@ -51,7 +46,7 @@ const allMenus = [
       {
         path: '/register',
         title: '赛事报名',
-        roles: ['school_admin', 'college_admin', 'student', 'competition_manager'],
+        roles: ['school_admin', 'college_admin', 'student'],
       },
       {
         path: '/register/edit',
@@ -74,7 +69,7 @@ const allMenus = [
     path: '/award',
     title: '获奖填报',
     roles: ['school_admin', 'college_admin', 'competition_manager', 'student'],
-    icon: Trophy,
+    icon: Medal,
     children: [
       {
         path: '/award/list',
@@ -93,6 +88,32 @@ const allMenus = [
     title: '我的竞赛',
     roles: ['student'],
     icon: Document,
+  },
+  {
+    path: '/summary',
+    title: '赛事总结',
+    roles: ['school_admin', 'college_admin', 'competition_manager'],
+    icon: Document,
+    children: [
+      {
+        path: '/summary/summary-list',
+        title:'赛事总结',
+        roles: ['school_admin', 'college_admin', 'competition_manager'],
+      }
+    ]
+  },
+  {
+    path: '/statistics',
+    title: '数据统计',
+    icon: DataAnalysis,
+    roles: ['school_admin', 'college_admin', 'competition_manager'],
+    children: [
+      {
+        path: '/statistics/dashboard',
+        title: '数据看板',
+        roles: ['school_admin', 'college_admin', 'competition_manager'],
+      }
+    ]
   },
   {
     path: '/permission',

@@ -174,9 +174,9 @@ onMounted(() => {
         </div>
         <div class="comp-action">
           <div class="btn-group">
-            <el-button link type="info" class="sub-btn" @click.stop="handleNotice(item.id)">
+            <!-- <el-button link type="info" class="sub-btn" @click.stop="handleNotice(item.id)">
               <el-icon><Bell /></el-icon> 通知
-            </el-button>
+            </el-button> -->
 
             <el-button
               :type="item.timeState.type"

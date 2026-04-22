@@ -27,13 +27,29 @@ const rejectDialogVisible = ref(false)
 const rejectReason = ref('')
 
 // --- 计算属性 ---
-const teamMembers = computed(() => {
+// 获取所有团队成员（包括队长）
+const allMembers = computed(() => {
   if (!detail.value.members) return []
-  return detail.value.members.filter((m) => !m.is_leader)
+  // 队长优先显示，然后是队员
+  const leader = detail.value.members.filter(m => m.is_leader)
+  const teammates = detail.value.members.filter(m => !m.is_leader)
+  return [...leader, ...teammates]
 })
 
-const showMemberSection = computed(() => {
-  return teamMembers.value.length > 1
+// 获取指导老师信息
+const advisorInfo = computed(() => {
+  if (!detail.value.advisor_info) return null
+  
+  try {
+    // 如果是字符串，解析为对象
+    if (typeof detail.value.advisor_info === 'string') {
+      return JSON.parse(detail.value.advisor_info)
+    }
+    return detail.value.advisor_info
+  } catch (e) {
+    console.warn('指导老师信息解析失败:', e)
+    return null
+  }
 })
 
 const statusMap = {
@@ -122,6 +138,33 @@ const attachmentList = computed(() => {
     .filter((item) => item !== null)
 })
 
+const workList = computed(() => {
+  const urlStr = detail.value.work_url
+  if (!urlStr) return []
+  //  多个附件用逗号分隔
+  const urls = urlStr.split(',')
+  return urls
+    .map((url) => {
+      url = url.trim()
+      if (!url) return null
+
+      //  获取文件名 (去掉路径)
+      // 例如: /static/202601/123456_需求.docx -> 123456_需求.docx
+      let fileName = url.substring(url.lastIndexOf('/') + 1)
+      //  去掉时间戳/ID前缀 (去掉第一个下划线前的内容)
+      // 例如: 123456_需求.docx -> 需求.docx
+      if (fileName.indexOf('_') > -1) {
+        fileName = fileName.substring(fileName.indexOf('_') + 1)
+      }
+
+      return {
+        name: fileName,
+        url: url,
+      }
+    })
+    .filter((item) => item !== null)
+})
+
 // 修改打开附件的方法，支持传入具体的 URL
 const openAttachment = (url) => {
   if (!url) return
@@ -169,7 +212,7 @@ onMounted(() => {
       <div class="info-section">
         <h3 class="section-title">基础信息</h3>
         <el-descriptions :column="2" border>
-          <el-descriptions-item label="参赛赛事" :span="2">
+          <el-descriptions-item label="参赛赛事" >
             <span class="comp-name">{{ detail.comp_name }}</span>
           </el-descriptions-item>
           <el-descriptions-item label="团队名称">
@@ -178,10 +221,13 @@ onMounted(() => {
           <el-descriptions-item label="提交时间">
             {{ detail.update_time }}
           </el-descriptions-item>
+          <el-descriptions-item label="参赛赛道" >
+            <span class="comp-name">{{ detail.track || '未选择' }}</span>
+          </el-descriptions-item>
         </el-descriptions>
       </div>
 
-      <div class="info-section">
+      <!-- <div class="info-section">
         <h3 class="section-title">负责人信息</h3>
         <div class="leader-grid">
           <div class="grid-item">
@@ -215,22 +261,63 @@ onMounted(() => {
             <span class="value">{{ detail.email || '未填写' }}</span>
           </div>
         </div>
-      </div>
+      </div> -->
 
-      <div v-if="showMemberSection" class="info-section">
-        <h3 class="section-title">团队成员 ({{ teamMembers.length }}人)</h3>
-        <el-table :data="teamMembers" border stripe style="width: 100%">
+      
+      <div v-if="allMembers.length > 0" class="info-section">
+        <h3 class="section-title">团队成员 ({{ allMembers.length }}人)</h3>
+        <el-table :data="allMembers" border stripe style="width: 100%">
           <el-table-column type="index" label="序号" width="60" align="center" />
           <el-table-column prop="name" label="姓名" width="120" />
-          <el-table-column prop="stu_id" label="学号" width="150" />
+          <el-table-column prop="student_id" label="学号" width="150">
+            <template #default="scope">
+              {{ scope.row.stu_id || scope.row.username || '—' }}
+            </template>
+          </el-table-column>
           <el-table-column prop="college" label="学院" width="150" />
           <el-table-column prop="phone" label="联系电话" width="150" />
           <el-table-column prop="email" label="联系邮箱" />
+          <el-table-column label="身份" width="100" align="center">
+            <template #default="scope">
+              <el-tag v-if="scope.row.is_leader" type="primary" size="small">队长</el-tag>
+              <el-tag v-else type="info" size="small">队员</el-tag>
+            </template>
+          </el-table-column>
         </el-table>
       </div>
 
+      
+      <div  class="info-section">
+        <h3 class="section-title">指导老师信息</h3>
+        <div  class="advisor-grid">
+          <div class="grid-item">
+            <span class="label"><el-icon><User /></el-icon> 姓名</span>
+            <span class="value">{{ advisorInfo?.name || '' }}</span>
+          </div>
+          <div class="grid-item">
+            <span class="label"><el-icon><Postcard /></el-icon> 工号</span>
+            <span class="value">{{ advisorInfo?.username }}</span>
+          </div>
+          <div class="grid-item">
+            <span class="label"><el-icon><Postcard /></el-icon> 所属学院</span>
+            <span class="value">{{ advisorInfo?.college || '' }}</span>
+          </div>
+          <div class="grid-item">
+            <span class="label"><el-icon><Iphone /></el-icon> 联系电话</span>
+            <span class="value">{{ advisorInfo?.phone || '' }}</span>
+          </div>
+          <div class="grid-item">
+            <span class="label"><el-icon><Message /></el-icon> 邮箱</span>
+            <span class="value">{{ advisorInfo?.email || '' }}</span>
+          </div>
+        </div>
+        <!-- <div v-else class="empty-advisor">
+          <span>未填写指导老师信息</span>
+        </div> -->
+      </div>
+
       <div class="info-section">
-        <h3 class="section-title">附件材料</h3>
+        <h3 class="section-title">报名材料</h3>
 
         <div v-if="attachmentList.length > 0" class="attachment-list">
           <div
@@ -251,6 +338,30 @@ onMounted(() => {
         </div>
 
         <div v-else class="empty-attachment">未上传附件</div>
+      </div>
+
+      <div class="info-section">
+        <h3 class="section-title">作品资料</h3>
+
+        <div v-if="workList.length > 0" class="attachment-list">
+          <div
+            v-for="(file, index) in workList"
+            :key="index"
+            class="attachment-box"
+            @click="openAttachment(file.url)"
+          >
+            <div class="file-icon-area">
+              <el-icon><Document /></el-icon>
+            </div>
+            <div class="file-content">
+              <div class="file-name">{{ file.name }}</div>
+              <div class="file-desc">点击预览或下载</div>
+            </div>
+            <el-icon class="download-icon"><Download /></el-icon>
+          </div>
+        </div>
+
+        <div v-else class="empty-attachment">未上传作品资料</div>
       </div>
 
       <div class="info-section" v-if="detail.status == 2">
@@ -382,7 +493,8 @@ onMounted(() => {
       color: var(--text-primary);
     }
 
-    .leader-grid {
+    .leader-grid,
+    .advisor-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 20px;
@@ -415,6 +527,16 @@ onMounted(() => {
           }
         }
       }
+    }
+
+    .empty-advisor {
+      text-align: center;
+      padding: 30px;
+      background: #fafafa;
+      color: var(--text-secondary);
+      border-radius: var(--card-radius);
+      border: var(--card-border);
+      font-style: italic;
     }
 
     .attachment-box {

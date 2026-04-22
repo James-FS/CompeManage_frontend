@@ -41,14 +41,23 @@ const form = reactive({
   grades: [], 
   advisorRequired: 0, 
   allowAdvisor: false,
-  attachmentType: 1,
-  
+  attachmentType: null,
+  enableTrack: false,  // 新增：是否启用赛道配置
+  tracks: [],  // 新增：赛道列表
   awards: ['一等奖', '二等奖', '三等奖'], 
 })
 
 const rules = {
   timeRange: [{ required: true, message: '请设置报名起止时间', trigger: 'change' }],
+  attachmentType: [{ required: true, message: '请选择附件上传要求', trigger: 'change' }],
 }
+
+
+
+// --- 赛道操作逻辑 ---
+const addTrack = () => form.tracks.push('')
+
+const removeTrack = (index) => form.tracks.splice(index, 1)
 
 // --- 奖项操作逻辑 (朴素版) ---
 const addAward = () => form.awards.push('')
@@ -86,7 +95,7 @@ async function handleSave() {
   await formRef.value.validate(async (valid) => {
     if (valid) {
       isSaving.value = true
-      
+      const workRange = Array.isArray(form.workTimeRange) ? form.workTimeRange : []
       const submitData = {
         comp_id: Number(route.params.id),
         participant_type: form.type,
@@ -98,11 +107,13 @@ async function handleSave() {
         
         // 过滤空行提交
         award_hierarchy: form.awards.filter(item => item && item.trim() !== ''),
+        // 赛道配置
+        track: form.enableTrack ? form.tracks.filter(item => item && item.trim() !== '') : [],
 
         reg_start_time: formatToGoTime(form.timeRange[0]),
         reg_end_time: formatToGoTime(form.timeRange[1]),
-        submit_start_time: form.workTimeRange.length === 2 ? formatToGoTime(form.workTimeRange[0]) : null,
-        submit_end_time: form.workTimeRange.length === 2 ? formatToGoTime(form.workTimeRange[1]) : null,
+        submit_start_time: workRange.length === 2 ? formatToGoTime(workRange[0]) : null,
+        submit_end_time: workRange.length === 2 ? formatToGoTime(workRange[1]) : null,
       }
 
       try {
@@ -133,7 +144,7 @@ async function fetchConfig() {
       form.minMember = data.min_team_member || 1
       form.maxMember = data.max_team_member || 1
       form.grades = data.grade_requirement || []
-      form.attachmentType = data.need_attachment
+      form.attachmentType = data.need_attachment ?? null
       comp_name.value = data.comp_name || ''
       
       if (data.need_advisor === 0) {
@@ -149,6 +160,15 @@ async function fetchConfig() {
       }
       if(data.submit_start_time && data.submit_end_time) {
         form.workTimeRange = [new Date(data.submit_start_time), new Date(data.submit_end_time)]
+      }
+
+      // 赛道回显
+      if (data.track && data.track.length > 0) {
+        form.enableTrack = true
+        form.tracks = data.track
+      } else {
+        form.enableTrack = false
+        form.tracks = []
       }
 
       // 奖项回显
@@ -305,12 +325,63 @@ onMounted(() => {
         </el-form-item>
 
         <el-divider border-style="dashed" />
-        
+
+        <!-- 新增：赛道配置区域 -->
+        <div class="form-section-title">赛道配置</div>
+
+        <el-form-item label="启用赛道">
+          <el-switch
+            v-model="form.enableTrack"
+            active-text="启用赛道"
+            inactive-text="无赛道"
+          />
+        </el-form-item>
+
+        <transition name="el-fade-in">
+          <el-form-item v-if="form.enableTrack" label="">
+            <div class="track-list-container">
+              <div v-if="form.tracks.length === 0" class="empty-state">
+                <span>暂无赛道，请添加</span>
+              </div>
+              
+              <div v-for="(item, index) in form.tracks" :key="index" class="track-row">
+                <span class="track-label">赛道 {{ index + 1 }}</span>
+                
+                <el-input 
+                  v-model="form.tracks[index]" 
+                  placeholder="请输入赛道名称" 
+                  style="width: 240px"
+                  clearable
+                />
+                
+                <el-button 
+                  link 
+                  type="danger" 
+                  @click="removeTrack(index)"
+                  :icon="Delete"
+                  title="删除"
+                />
+              </div>
+
+              <el-button 
+                type="primary" 
+                link 
+                :icon="Plus" 
+                @click="addTrack" 
+                style="margin-top: 8px;"
+              >
+                添加赛道
+              </el-button>
+            </div>
+          </el-form-item>
+        </transition>
+
+        <el-divider border-style="dashed" />
+
         <div class="form-section-title">奖项排名规则</div>
-        <el-form-item >
+
+        <el-form-item>
           <div class="award-list-simple">
-
-
             <div v-for="(item, index) in form.awards" :key="index" class="award-row-simple">
               <span class="rank-label">第 {{ index + 1 }} 级</span>
               
@@ -357,7 +428,7 @@ onMounted(() => {
 
         <div class="form-section-title">材料提交</div>
 
-        <el-form-item label="附件上传要求">
+        <el-form-item label="附件上传要求" prop="attachmentType">
           <el-radio-group v-model="form.attachmentType">
             <el-radio :value="0" border>无需附件</el-radio>
             <el-radio :value="1" border>选填 (可选上传)</el-radio>
@@ -451,6 +522,37 @@ onMounted(() => {
 
 .ml-2 { margin-left: 8px; }
 .mr-1 { margin-right: 4px; }
+
+/* === 赛道配置样式 === */
+.track-list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 500px;
+}
+
+.empty-state {
+  font-size: 13px;
+  color: #909399;
+  padding: 20px;
+  text-align: center;
+  background-color: #f5f7fa;
+  border-radius: 4px;
+}
+
+.track-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  
+  .track-label {
+    width: 70px;
+    font-size: 13px;
+    color: #606266;
+  }
+}
 
 /* === 简约奖项样式 === */
 .award-list-simple {

@@ -10,19 +10,19 @@ export const api = {
 
   // ==================== 权限相关 ====================
   // 获取所有权限列表
-  getPermissionList: () => get('/api/permission/list'),
+  getPermissionList: () => get('/api/perm/permission/list'),
 
   // ==================== 角色相关 ====================
   // 获取所有角色列表
-  getRoleList: () => get('/api/role/list'),
+  getRoleList: () => get('/api/perm/role/list'),
   // 分配权限给角色
-  assignPermissions: (data) => post('/api/role/assign_perm', data),
+  assignPermissions: (data) => post('/api/perm/role/assign_perm', data),
 
   // ==================== 学院相关 ====================
   getCollegeList: () => get('/api/college/list'),
 
   // ==================== 竞赛相关 ====================
-  getCompetitionList: (params) => get('/api/comp/list',params),
+  getCompetitionList: (params) => get('/api/comp/list', params),
   createCompetition: (data) => post('/api/comp/create', data),
   batchImportCompetition: (data) => post('/api/comp/batch-import', data),
   deleteCompetition: (id) => del(`/api/comp/${id}`),
@@ -30,16 +30,20 @@ export const api = {
   restoreCompetition: (id) => put(`/api/comp/${id}/restore`),
   getManagerList: (params) => get('/api/comp/manager/list', params),
   getCompetitionYears: () => get('/api/comp/years'),
+  getCompetitionDetail: (id) => get(`/api/comp/${id}`),
+  updateCompetition: (id, data) => put(`/api/comp/${id}`, data),
 
   // ==================== 报名相关 ====================
   saveRegConfig: (data) => post('/api/reg/config', data),
   getRegConfig: (compID) => get(`/api/reg/config/get?comp_id=${compID}`),
   getRegStatus: (comp_id) => get(`/api/reg/status?comp_id=${comp_id}`),
-  submitReg:(data) => post('/api/reg/submit', data),
-  reSubmitReg:(data) => put('/api/reg/resubmit', data),
-  getRegList:(params) => get('/api/reg/list', params),
-  getRegDetail:(id) => get(`/api/reg/detail?id=${id}`),
-  auditReg:(data) => put('/api/reg/audit', data),
+  submitReg: (data) => post('/api/reg/submit', data),
+  resubmitReg: (data) => put('/api/reg/resubmit', data),
+  reSubmitReg: (data) => put('/api/reg/resubmit', data),
+  getRegList: (params) => get('/api/reg/list', params),
+  getRegDetail: (id) => get(`/api/reg/detail?id=${id}`),
+  auditReg: (data) => put('/api/reg/audit', data),
+  getStudentList: (params) => get('/api/reg/user/list', params),
 
   // ==================== 赛事申报相关 ====================
   // 院级申报
@@ -59,16 +63,44 @@ export const api = {
   getAllDeclares: (params) => get('/api/declare/all', params),
 
   //==================== 报名相关 ====================
-  getMyReg:(id) => get(`/api/reg/my-reg`,id),
-  submitWork:(data) => put('/api/reg/work-submit', data),
+  getMyReg: (id) => get(`/api/reg/my-reg`, id),
+  submitWork: (data) => put('/api/reg/work-submit', data),
+ 
   // ==================== 通知相关 ====================
-  getNoticeList:(params) => get('/api/notice/list', params),
-  getNoticeDetail:(id) => get(`/api/notice/detail/${id}`),
-  createNotice:(data) => post('/api/notice/create', data,{headers: { 'Content-Type': 'multipart/form-data' } }),
+  getNoticeList: (params) => get('/api/notice/list', params),
+  getNoticeDetail: (id) => get(`/api/notice/${id}`),
+  createNotice: (data) => post('/api/notice/comp/create', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  publishNotice: (id) => put(`/api/notice/${id}/publish`),
+  deleteNotice: (id) => del(`/api/notice/${id}`),
   // ==================== 获奖相关 ====================
+  getAwardCompList: (params) => get('/api/award/list', params),
+  getCompAwards: (comp_id) => get(`/api/award/comp-awards?comp_id=${comp_id}`),
+  getAwardTemplate: (comp_id) => get(`/api/award/export-template?comp_id=${comp_id}`, {}, { responseType: 'blob' }),
   getAwardCompList:(params) => get('/api/award/list', params),
   getCompAwards:(comp_id) => get(`/api/award/comp-awards?comp_id=${comp_id}`),
   getAwardTemplate:(comp_id) => get(`/api/award/export-template?comp_id=${comp_id}`, {},{ responseType: 'blob' }),
+  getMyAwardList:(params) => get('/api/award/student/my-awards', params),
+  getAwardAuditList: (params) => get('/api/award/audit/list', params),
+  getAwardAuditDetail: (id) => get(`/api/award/audit/detail/${id}`),
+  passAwardAudit: (id) => put(`/api/award/audit/${id}/pass`),
+  rejectAwardAudit: (id, reason) => put(`/api/award/audit/${id}/reject`, { reason }),
+  batchPassAwardAudit: (ids) => put('/api/award/audit/batch/pass', { ids }),
+  batchRejectAwardAudit: (ids, reason) => put('/api/award/audit/batch/reject', { ids, reason }),
+  searchCompList: (params) => get('/api/award/comp/list', params),
+  submitAward: (data) => post('/api/award/student/supplement', data),
+
+  // ==================== 赛事总结相关 ====================
+  getSummaryList: (params) => get('/api/summary/list', params),
+  getSummaryDetail: (id) => get(`/api/summary/${id}`),
+  saveSummary: (id, data) => post(`/api/summary/${id}`, data),
+
+  // ==================== 数据看板相关 ====================
+  getStatisticsDashboard: (params) => get('/api/statistics/dashboard', params),
+
+  // ==================== 通用上传 ====================
+  uploadFile: (data) => post('/api/upload', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
+
+  
 }
 
 export default api

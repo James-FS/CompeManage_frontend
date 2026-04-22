@@ -63,10 +63,6 @@ onMounted(() => {
 
 <template>
   <div class="page-container">
-    
-    <div class="page-header">
-      <h2>赛事通知与报名设置</h2>
-    </div>
 
     <div class="comp-list">
       <div class="comp-item" v-for="item in compList" :key="item.id">

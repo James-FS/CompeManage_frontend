@@ -1,94 +1,96 @@
 <script setup>
-import { ElTable, ElTableColumn, ElPagination,ElTag, ElInput, ElDatePicker, ElButton, ElIcon } from 'element-plus'
+import { ElTable, ElTableColumn, ElPagination, ElInput, ElDatePicker, ElButton, ElMessage } from 'element-plus'
 import { Search, Refresh } from '@element-plus/icons-vue';
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
+import api from '@/api'
+import { useRouter } from 'vue-router'
+const router = useRouter()
 let currentPage = ref(1)
 let pageSize = ref(10)
-let total = ref(5000)
+let total = ref(0)
+let loading = ref(false)
 const searchForm = reactive({
     keyword: '',
     dateRange: [] // 这是一个数组 [开始日期, 结束日期]
 });
-let noticeList = ref([
-  {
-    id: 1,
-    title: '关于举办广州大学第二十届ACM大学生程序设计竞赛的通知',
-    date: '2026-01-16',
-    dept: '教务处',
-    tag: '置顶',
-    tagType: 'danger',
-  },
-  {
-    id: 6,
-    title: '关于举办广州大学第二十届ACM大学生程序设计竞赛的通知',
-    date: '2026-01-16',
-    dept: '教务处',
-    tag: '置顶',
-    tagType: 'danger',
-  },
-  {
-    id: 7,
-    title: '关于举办广州大学第二十届ACM大学生程序设计竞赛的通知',
-    date: '2026-01-16',
-    dept: '教务处',
-    tag: '置顶',
-    tagType: 'danger',
-  },
-  {
-    id: 8,
-    title: '关于举办广州大学第二十届ACM大学生程序设计竞赛的通知',
-    date: '2026-01-16',
-    dept: '教务处',
-    tag: '置顶',
-    tagType: 'danger',
-  },
-  {
-    id: 9,
-    title: '关于举办广州大学第二十届ACM大学生程序设计竞赛的通知',
-    date: '2026-01-16',
-    dept: '教务处',
-    tag: '置顶',
-    tagType: 'danger',
-  },
-  {
-    id: 2,
-    title: '第十五届“蓝桥杯”全国软件和信息技术专业人才大赛报名通知',
-    date: '2026-02-10',
-    dept: '计算机学院',
-    tag: '热点',
-    tagType: 'warning',
-  },
-  {
-    id: 3,
-    title: '2026年大学生创新创业训练计划项目申报指南',
-    date: '2026-03-05',
-    dept: '创新创业学院',
-    tag: '通知',
-    tagType: 'info',
-  },
-  {
-    id: 4,
-    title: '关于开展2026年度学科竞赛获奖统计工作的通知',
-    date: '2026-03-12',
-    dept: '教务处',
-    tag: '',
-    tagType: '',
-  },
-  {
-    id: 5,
-    title: '2026年全国大学生英语竞赛(NECCS)报名通知',
-    date: '2026-04-01',
-    dept: '外国语学院',
-    tag: '',
-    tagType: '',
-  },
-])
+let noticeList = ref([])
+
+function formatDateTime(dateTime) {
+    if (!dateTime) return '--';
+    return String(dateTime).slice(0, 10);
+}
+
+async function fetchNoticeList() {
+    loading.value = true;
+    try {
+        const [startTime, endTime] = searchForm.dateRange || [];
+        const params = {
+            page: currentPage.value,
+            page_size: pageSize.value,
+            start_time: startTime || undefined,
+            end_time: endTime || undefined,
+            is_latest: true,
+            keyword: searchForm.keyword || undefined,
+        };
+
+        const res = await api.getNoticeList(params);
+        const data = res?.data || {};
+        const list = Array.isArray(data.list) ? data.list : [];
+
+        noticeList.value = list.map((item) => ({
+            ...item,
+            id: item.id ?? item.ID,
+            title: item.title || '--',
+            dept: item.dept || '--',
+            date: formatDateTime(item.publish_time || item.updated_at || item.created_at),
+        }));
+        total.value = Number(data.total) || 0;
+    } catch (error) {
+        noticeList.value = [];
+        total.value = 0;
+        ElMessage.error(error?.message || '获取通知列表失败');
+    } finally {
+        loading.value = false;
+    }
+}
+
+function handleSearch() {
+    currentPage.value = 1;
+    fetchNoticeList();
+}
+
+function handleSizeChange(size) {
+    pageSize.value = size;
+    currentPage.value = 1;
+    fetchNoticeList();
+}
+
+function handleCurrentChange(page) {
+    currentPage.value = page;
+    fetchNoticeList();
+}
 
 function ResetFilter(){
     searchForm.keyword = '';
     searchForm.dateRange = [];
-    
+    currentPage.value = 1;
+    pageSize.value = 10;
+    fetchNoticeList();
 }
+
+function goToDetail(row) {
+    if (row && row.id) {
+        router.push({
+    name: 'Notice',
+    params: { id: row.id }
+  });
+    } else {
+        ElMessage.error('无法获取通知ID');
+    }
+}
+onMounted(() => {
+    fetchNoticeList();
+});
 </script>
 
 <template>
@@ -115,13 +117,14 @@ function ResetFilter(){
                         class="date-input"
             />
 
-            <el-button type="primary" :icon="Search" >查询</el-button>
+            <el-button type="primary" :icon="Search" @click="handleSearch">查询</el-button>
             <el-button :icon="Refresh" @click="ResetFilter">重置</el-button>
         </div>
       </div>
       <div class="list-body">
         <el-table
           :data="noticeList"
+          v-loading="loading"
           :header-cell-style="{ 
               background: '#f8fafc', 
               color: '#64748b', 
@@ -129,6 +132,7 @@ function ResetFilter(){
               fontSize: '14px',
               fontWeight: '600' 
           }"
+          @row-click="goToDetail"
           class="list-table"
         >
           <el-table-column label="通知标题" min-width="400">
@@ -148,6 +152,10 @@ function ResetFilter(){
                 <span class="table-date">{{ scope.row.date }}</span>
              </template>
           </el-table-column>
+
+          <template #empty>
+            <el-empty description="暂无数据" />
+          </template>
         </el-table>
         <div class="pagination-container">
           <el-pagination
@@ -240,6 +248,10 @@ function ResetFilter(){
   width: 100%;
   max-height: 600px;
   margin-bottom: 15px;
+
+  :deep(.el-table__inner-wrapper::before) {
+    display: none;
+  }
   
   :deep(.el-table__row) {
     height: 60px; 

@@ -50,6 +50,18 @@ const routes = [
         },
       },
       {
+        path: 'edit/:id',
+        name: 'CompetitionEdit',
+        component: () => import('@/views/competition/edit.vue'),
+        props: true,
+        meta: {
+          title: '编辑赛事',
+          roles: ['school_admin'],
+          parent: 'CompetitionList',
+          activeMenu: '/competition/list',
+        }
+      },
+      {
         path: 'audit',
         name: 'CompetitionAudit',
         component: () => import('@/views/competition/audit.vue'),
@@ -68,7 +80,7 @@ const routes = [
         component: () => import('@/views/competition/declare.vue'),
         meta: {
           title: '新增申报',
-          roles: ['college_admin'],
+          roles: ['college_admin', 'school_admin'],
           parent: 'CompetitionAudit',
           activeMenu: '/competition/audit',
         },
@@ -131,7 +143,7 @@ const routes = [
       {
         path: '/register/audit/detail/:id',
         name: 'audit-detail',
-        meta:{
+        meta: {
           title: '审核详情',
           roles: ['school_admin', 'college_admin', 'competition_manager'],
           parent: 'register-audit',
@@ -143,11 +155,21 @@ const routes = [
         path: '/register/work',
         name: 'register-work',
         component: () => import('@/views/register/work.vue'),
+        meta: {
+          title: '作品提交',
+          roles: ['student'],
+        },
       },
       {
         path: '/register/work/detail/:id',
         name: 'work-detail',
         component: () => import('@/views/register/workDetail.vue'),
+        meta: {
+          title: '作品详情',
+          roles: ['student'],
+          parent: 'register-work',
+          activeMenu: '/register/work',
+        },
         props: true,
       },
     ],
@@ -166,17 +188,32 @@ const routes = [
         },
       },
       {
-        path:'detail/:id',
-        name:'AwardDetail',
+        path: 'detail/:id',
+        name: 'AwardDetail',
         component: () => import('@/views/award/detail.vue'),
+        meta: {
+          title: '获奖详情',
+          parent: 'AwardList',
+          activeMenu: '/award/list',
+        },
+      },
+      {
+        path: 'import/:id',
+        name: 'AwardImport',
+        component: () => import('@/views/award/import.vue'),
+        meta: {
+          title: '导入获奖名单',
+          parent: 'AwardDetail',
+          activeMenu: '/award/list',
+        },
       },
       {
         path: 'student',
         name: 'AwardStudent',
         component: () => import('@/views/award/student.vue'),
         meta: {
-          title: '我的竞赛', 
-          roles: ['school_admin', 'college_admin', 'competition_manager', 'student'], 
+          title: '我的竞赛',
+          roles: ['school_admin', 'college_admin', 'competition_manager', 'student'],
         },
       },
       {
@@ -189,16 +226,80 @@ const routes = [
         },
       },
       {
-        path:'audit',
-        name:'AwardAudit',
+        path: 'audit',
+        name: 'AwardAudit',
         component: () => import('@/views/award/audit.vue'),
+        meta: {
+          title: '填报审核',
+          roles: ['school_admin', 'college_admin', 'competition_manager'],
+        },
       },
       {
-        path:'audit/detail/:id',
-        name:'AwardAuditDetail',
+        path: 'audit/detail/:id',
+        name: 'AwardAuditDetail',
         component: () => import('@/views/award/auditDetail.vue'),
         props: true,
+        meta: {
+          title: '审核详情',
+          parent: 'AwardAudit',
+        },
+      },
+    ],
+  },
+  {
+    path: '/summary',
+    component: MainLayout,
+    children: [
+      {
+        path: 'summary-list',
+        name: 'SummaryList',
+        component: () => import('@/views/summary/summaryList.vue'),
+        meta: {
+          title: '赛事总结', // 这会在侧边栏显示
+          roles: ['school_admin', 'college_admin', 'competition_manager'],
+        },
+      },
+      {
+        path: 'summary/edit/:id',
+        name: 'SummaryEdit',
+        component: () => import('@/views/summary/summaryEdit.vue'),
+        props: true,
+        meta: {
+          title: '填写总结',
+          roles: ['school_admin', 'college_admin', 'competition_manager'],
+          parent: 'SummaryList', // 面包屑导航用
+          activeMenu: '/summary', // 保持侧边栏高亮
+          hidden: true // 不在侧边栏显示，只作为详情页
+        }
+      },
+      {
+        path: 'summary/view/:id',
+        name: 'SummaryView',
+        component: () => import('@/views/summary/summaryView.vue'),
+        props: true,
+        meta: {
+          title: '查看总结',
+          roles: ['school_admin', 'college_admin', 'competition_manager'],
+          parent: 'SummaryList', // 面包屑导航用
+          activeMenu: '/summary', // 保持侧边栏高亮
+          hidden: true // 不在侧边栏显示，只作为详情页
+        }
       }
+    ]
+  },
+  {
+    path: '/statistics',
+    component: MainLayout,
+    children: [
+      {
+        path: 'dashboard',
+        name: 'StatisticsDashboard',
+        component: () => import('@/views/statistics/dashboard.vue'),
+        meta: {
+          title: '数据汇总',
+          roles: ['school_admin', 'college_admin'], // 仅限管理员查看
+        },
+      },
     ],
   },
   {
@@ -210,6 +311,32 @@ const routes = [
         name: 'permission',
         component: () => import('@/views/permission/permission.vue'),
         meta: { title: '权限管理' },
+      },
+    ],
+  },
+  {
+    path: '/notice',
+    component: MainLayout,
+    children: [
+      {
+        path: 'notice/:id',
+        name: 'Notice',
+        component: () => import('@/views/notice/notice.vue'),
+        meta: {
+          title: '通知',
+          roles: ['school_admin', 'college_admin', 'competition_manager', 'student'],
+        },
+      },
+       {
+        path: 'detail/:id',
+        name: 'NoticeDetail',
+        component: () => import('@/views/notice/detail.vue'),
+        props: true,
+        meta: {
+          title: '通知详情',
+          roles: ['school_admin', 'college_admin', 'competition_manager', 'student'],
+          parent:"register-Edit",
+        },
       },
     ],
   },
@@ -227,15 +354,7 @@ const routes = [
           roles: ['school_admin', 'college_admin', 'competition_manager', 'student'],
         },
       },
-      {
-        path: 'notice/:id',
-        name: 'Notice',
-        component: () => import('@/views/notice/notice.vue'),
-        meta: {
-          title: '通知',
-          roles: ['school_admin', 'college_admin', 'competition_manager', 'student'],
-        },
-      },
+
       {
         path: 'notice/list',
         name: 'NoticeList',
@@ -245,16 +364,7 @@ const routes = [
           roles: ['school_admin', 'college_admin', 'competition_manager', 'student'],
         },
       },
-      {
-        path: 'notice/detail/:id',
-        name: 'NoticeDetail',
-        component: () => import('@/views/notice/detail.vue'),
-        props: true,
-        meta: {
-          title: '通知详情',
-          roles: ['school_admin', 'college_admin', 'competition_manager', 'student'],
-        },
-      },
+     
       {
         path: 'notice/edit/:id',
         name: 'NoticeEdit',

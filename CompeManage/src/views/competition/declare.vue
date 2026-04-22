@@ -28,7 +28,7 @@ const form = reactive({
     manager_id: '',
     college: '',
     description: '',
-    attachment: '',
+    attachments: [],
     undertaker: ''
 });
 
@@ -117,7 +117,7 @@ const loadDeclareDetail = async (id) => {
             // 将年份转换为 Date 对象给日期选择器使用
             form.comp_date = new Date(data.year, 0, 1);
             form.description = data.desc;
-            form.attachment = data.attachment_path || '';
+            form.attachments = parseAttachmentUrls(data.attachment_path);
             
             // 只有草稿(0)和被驳回(3)的申报才允许编辑，其他状态禁用
             // 状态：0-草稿, 1-已提交, 2-已通过, 3-已驳回
@@ -164,6 +164,11 @@ const handleSave = async (formEl) => {
         if (valid) {
             loading.value = true;
             try {
+                const attachmentUrls = await uploadAttachmentsIfNeeded();
+                if (!attachmentUrls) {
+                    loading.value = false;
+                    return;
+                }
                 // 从 Date 对象中提取年份
                 let year = new Date().getFullYear();
                 if (form.comp_date instanceof Date) {
@@ -181,7 +186,8 @@ const handleSave = async (formEl) => {
                     college_id: form.college,
                     manager_id: form.manager_id,
                     year: year,
-                    desc: form.description
+                    desc: form.description,
+                    attachment_path: attachmentUrls.join(',')
                 };
 
                 let res;
@@ -213,14 +219,66 @@ const handleSave = async (formEl) => {
     });
 };
 
-const handleUpload = (file) => {
-    // 简单的文件名存储，实际项目中应该上传到服务器
-    form.attachment = file.name;
-    ElMessage.success(`文件 ${file.name} 准备就绪`);
+const getDisplayFileName = (url) => {
+    if (!url) return '';
+    const fileName = url.split('/').pop() || '';
+    if (fileName.includes('_')) {
+        return fileName.substring(fileName.indexOf('_') + 1) || fileName;
+    }
+    return fileName;
 };
 
-const handleRemoveFile = () => {
-    form.attachment = '';
+const parseAttachmentUrls = (urlStr) => {
+    if (!urlStr) return [];
+    return urlStr.split(',').filter(Boolean).map((url) => ({
+        name: getDisplayFileName(url),
+        url
+    }));
+};
+
+const uploadAttachmentsIfNeeded = async () => {
+    const urls = [];
+    for (const item of form.attachments) {
+        if (item.url) {
+            urls.push(item.url);
+            continue;
+        }
+        if (item.file) {
+            const formData = new FormData();
+            formData.append('file', item.file);
+            formData.append('type', 'temp');
+            try {
+                const uploadRes = await api.uploadFile(formData);
+                const uploadData = uploadRes?.data || {};
+                if (uploadData.url) {
+                    urls.push(uploadData.url);
+                    item.url = uploadData.url;
+                    item.name = uploadData.name || item.name || getDisplayFileName(uploadData.url);
+                } else {
+                    ElMessage.error('附件上传失败');
+                    return null;
+                }
+            } catch (error) {
+                ElMessage.error('附件上传失败，请重试');
+                return null;
+            }
+        }
+    }
+    return urls;
+};
+
+const handleUpload = (uploadFile) => {
+    const file = uploadFile?.raw || uploadFile;
+    if (!file) {
+        ElMessage.error('文件选择失败');
+        return;
+    }
+    form.attachments.push({ name: file.name, file });
+    ElMessage.success(`附件已选择：${file.name}`);
+};
+
+const handleRemoveFile = (index) => {
+    form.attachments.splice(index, 1);
 };
 
 // 打开负责人选择弹窗
@@ -363,8 +421,8 @@ const selectTeacher = (row) => {
                         <el-col :span="20">
                             <el-form-item label="附件材料" prop="attachment">
                                 <div class="upload-wrapper">
-                                    <el-upload class="upload-area" drag action="#" :auto-upload="false"
-                                        @change="handleUpload">
+                                    <el-upload v-if="!isReadOnly" class="upload-area" drag action="#" multiple :auto-upload="false"
+                                        @change="handleUpload" :show-file-list="false" :disabled="isReadOnly">
                                         <el-icon class="el-icon--upload"><upload-filled /></el-icon>
                                         <div class="el-upload__text">
                                             将文件拖到此处，或 <em>点击上传</em>
@@ -375,9 +433,16 @@ const selectTeacher = (row) => {
                                             </div>
                                         </template>
                                     </el-upload>
-                                    <div v-if="form.attachment" class="file-info">
-                                        <span>已选择: {{ form.attachment }}</span>
-                                        <el-button link type="danger" @click="handleRemoveFile">移除</el-button>
+                                    <div v-if="form.attachments.length" class="file-info">
+                                        <div v-for="(fileItem, index) in form.attachments" :key="index" class="file-item">
+                                            <span>已选择: {{ fileItem.name || getDisplayFileName(fileItem.url) }}</span>
+                                            <div class="file-actions">
+                                                <el-link v-if="fileItem.url" :href="fileItem.url" target="_blank" download>
+                                                    下载
+                                                </el-link>
+                                                <el-button v-if="!isReadOnly" link type="danger" @click="handleRemoveFile(index)">移除</el-button>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </el-form-item>
@@ -482,12 +547,28 @@ const selectTeacher = (row) => {
         background-color: #f5f7fa;
         border-radius: 4px;
         display: flex;
-        justify-content: space-between;
-        align-items: center;
+        flex-direction: column;
+        gap: 6px;
         
-        span {
-            font-size: 14px;
-            color: #666;
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+
+            span {
+                font-size: 14px;
+                color: #666;
+                word-break: break-all;
+                margin-right: 10px;
+            }
+
+            .file-actions {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                flex-shrink: 0;
+            }
         }
     }
 }

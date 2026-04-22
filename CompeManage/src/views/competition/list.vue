@@ -225,6 +225,20 @@ const handleManageClose = () => {
     // 这里可以再次确保 yearList 和 yearTableData 同步，或者做一些清理
 };
 
+// 跳转编辑页
+const handleEdit = (row) => {
+    if (!['school_admin', 'competition_manager'].includes(userStore.role)) {
+        ElMessage.warning('当前账号无编辑权限');
+        return;
+    }
+    const targetId = row?.id || row?.comp_id;
+    if (!targetId) {
+        ElMessage.error('未获取到赛事ID，无法进入编辑页');
+        return;
+    }
+    router.push({ name: 'CompetitionEdit', params: { id: targetId } });
+};
+
 // 删除操作
 const handleDelete = async (row) => {
     ElMessageBox.confirm(
@@ -238,7 +252,7 @@ const handleDelete = async (row) => {
             // 重新加载列表
             handleSearch();
         } catch (error) {
-            ElMessage.error(error.message || '删除失败');
+            console.error('删除失败:', error);
         }
     }).catch(() => { });
 };
@@ -269,7 +283,7 @@ const handleBatchDelete = async () => {
             // 重新加载列表
             handleSearch();
         } catch (error) {
-            ElMessage.error(error.message || '批量删除失败');
+            console.error('批量删除失败:', error);
         }
     }).catch(() => { });
 };
@@ -290,7 +304,7 @@ const handleExport = async () => {
         // 1. 构造查询参数，但将 page_size 设置得很大，或者后端支持 page_size=-1 代表全部
         const params = {
             page: 1,
-            page_size: 2000, // 强行获取所有数据
+            page_size: 2000, // 获取所有数据
             year: currentYear.value,
             comp_name: searchForm.comp_name,
             comp_level: searchForm.comp_level,
@@ -487,7 +501,7 @@ onMounted(() => {
                     </el-select>
                 </el-form-item>
                 <el-form-item class="search-actions">
-                    <el-button type="primary" :icon="Search" plain @click="handleSearch">搜索</el-button>
+                    <el-button type="primary" :icon="Search"  @click="handleSearch">搜索</el-button>
                     <el-button type="default" :icon="Refresh" plain @click="handleReset">重置</el-button>
                 </el-form-item>
             </el-form>
@@ -569,14 +583,14 @@ onMounted(() => {
                 </el-table>
             </el-dialog>
 
-            <el-table v-loading="loading" ref="tableRef" :data="tableData" stripe max-height="400" style="width: 100%"
+            <el-table v-loading="loading" ref="tableRef" :data="tableData" stripe height="calc(100vh - 400px)" style="width: 100%"
                 @selection-change="handleSelectionChange">
                 <el-table-column type="selection" width="40" />
-                <el-table-column label="赛事编号" min-width="100" align="center">
+                <!-- <el-table-column label="赛事编号" min-width="100" align="center" show-overflow-tooltip>
                     <template #default="scope">
                         {{ scope.row.comp_code || '-' }}
                     </template>
-                </el-table-column>
+                </el-table-column> -->
                 <el-table-column label="赛事名称" min-width="200" show-overflow-tooltip align="center">
                     <template #default="scope">
                         {{ scope.row.comp_name || '-' }}
@@ -620,9 +634,9 @@ onMounted(() => {
                 </el-table-column>
                 <el-table-column label="操作" width="150" align="center" fixed="right">
                     <template #default="scope">
-                        <el-button link type="primary" size="small" :icon="Edit"
+                        <el-button v-if="['school_admin'].includes(userStore.role)" link type="primary" size="small" :icon="Edit"
                             @click="handleEdit(scope.row)">编辑</el-button>
-                        <el-button link type="danger" size="small" :icon="Delete"
+                        <el-button v-if="['school_admin'].includes(userStore.role)" link type="danger" size="small" :icon="Delete"
                             @click="handleDelete(scope.row)">删除</el-button>
                     </template>
                 </el-table-column>
@@ -653,7 +667,7 @@ onMounted(() => {
     margin-bottom: 15px;
     padding: 20px 20px 10px 20px;
     background-color: #ffffff;
-    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--card-shadow);
     border-radius: 4px;
 
     .search-form {
@@ -676,7 +690,7 @@ onMounted(() => {
     box-sizing: border-box;
     padding: 20px 20px 10px 20px;
     background-color: #ffffff;
-    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--card-shadow);
     border-radius: 4px;
 
     .table-toolbar {
@@ -730,8 +744,7 @@ onMounted(() => {
 
 .pagination-wrapper {
     margin-top: 10px;
-    margin-left: 20px;
-
-
+    display: flex;
+    justify-content: center;
 }
 </style>

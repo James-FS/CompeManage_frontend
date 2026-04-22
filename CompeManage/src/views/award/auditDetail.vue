@@ -15,6 +15,7 @@ import {
   Timer,
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import api from '@/api'
 
 const route = useRoute()
 const router = useRouter()
@@ -25,41 +26,7 @@ const detail = ref({})
 const rejectDialogVisible = ref(false)
 const rejectReason = ref('')
 
-// --- 模拟数据 ---
-const mockAwardDetail = {
-  id: 1,
-  student_name: '张三',
-  student_id: '20220001',
-  college: '计算机科学与网络工程学院',
-  phone: '13800138000',
-  email: 'zhangsan@example.com',
-  comp_name: '2026年全国大学生计算机设计大赛',
-  award_level: '国家级一等奖',
-  award_specific: '特等奖',
-  award_date: '2026-05-15',
-  team_name: '智能识别小分队',
-  teammates: [
-    {
-      name: '张三',
-      student_id: '20220001',
-      college: '计算机科学与网络工程学院',
-    },
-    {
-      name: '李四',
-      student_id: '20220002',
-      college: '计算机科学与网络工程学院',
-    },
-    {
-      name: '王五',
-      student_id: '20220003',
-      college: '人工智能学院',
-    },
-  ],
-  cert_image: 'https://via.placeholder.com/400x300?text=Award+Certificate',
-  submit_time: '2026-02-02 10:30:00',
-  status: 0,
-  reject_reason: '',
-}
+const awardID = route.params.id
 
 // --- 计算属性 ---
 const statusMap = {
@@ -102,9 +69,10 @@ const hasMultipleTeammates = computed(() => {
 async function fetchDetail() {
   loading.value = true
   try {
-    // 模拟 API 调用
-    await new Promise(resolve => setTimeout(resolve, 500))
-    detail.value = mockAwardDetail
+    const res = await api.getAwardAuditDetail(awardID)
+    if (res.code === 200) {
+      detail.value = res.data
+    }
   } catch (error) {
     ElMessage.error('获取详情失败')
     console.error(error)
@@ -116,8 +84,6 @@ async function fetchDetail() {
 // --- 审核操作 ---
 async function auditAward() {
   try {
-    // 模拟 API 调用
-    await new Promise(resolve => setTimeout(resolve, 300))
     return { code: 200 }
   } catch (error) {
     ElMessage.error('审核操作失败')
@@ -135,9 +101,12 @@ const handlePass = () => {
       type: 'success',
     }
   ).then(async () => {
-    detail.value.status = 1
-    await auditAward()
-    ElMessage.success('审核已通过')
+    const res = await api.passAwardAudit(awardID)
+    if (res.code === 200) {
+      detail.value.status = 1
+      await auditAward()
+      ElMessage.success('审核已通过')
+    }
   })
 }
 
@@ -145,11 +114,14 @@ const handleReject = async () => {
   if (!rejectReason.value.trim()) {
     return ElMessage.warning('请输入驳回原因')
   }
-  detail.value.status = 2
-  detail.value.reject_reason = rejectReason.value
-  await auditAward()
-  ElMessage.success('已驳回申请')
-  rejectDialogVisible.value = false
+  const res = await api.rejectAwardAudit(awardID, rejectReason.value)
+  if (res.code === 200) {
+    detail.value.status = 2
+    detail.value.reject_reason = rejectReason.value
+    await auditAward()
+    ElMessage.success('已驳回申请')
+    rejectDialogVisible.value = false
+  }
 }
 
 // --- 证书预览 ---

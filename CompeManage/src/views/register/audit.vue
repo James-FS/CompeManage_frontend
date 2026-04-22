@@ -143,13 +143,24 @@ function NavigateToDetail(row) {
   router.push(`/register/audit/detail/${row.id}`)
 }
 
+function getAdvisorName(row) {
+  if (!row?.advisor_info) return '-'
+
+  try {
+    const advisor = typeof row.advisor_info === 'string' ? JSON.parse(row.advisor_info) : row.advisor_info
+    return advisor?.name?.trim() || '-'
+  } catch (e) {
+    return '-'
+  }
+}
+
 async function fetchRegList() {
   loading.value = true
   try {
     const response = await api.getRegList(queryForm)
     if (response.code === 200) {
-      regList.value = response.data
-      total.value = response.total
+      regList.value = response.data.list
+      total.value = response.data.total
       console.log('API Response:', response.data) // 看看控制台里它到底是不是包含 total
     } else {
       ElMessage.error('获取报名列表失败: ' + response.message)
@@ -169,31 +180,30 @@ onMounted(() => {
 <template>
   <div class="list-container">
     <div class="filter-card">
-      <el-form :inline="true" :model="queryForm" class="filter-form">
+      <el-form :inline="true" :model="queryForm" class="filter-form"  label-width="100px" label-position="right">
         <el-form-item label="赛事名称">
           <el-input
             v-model="queryForm.comp_name"
-            placeholder="输入赛事名称"
-            style="width: 260px"
+            placeholder="请输入赛事名称"
+            style="width: 220px"
             clearable
             @keyup.enter="fetchRegList"
           />
         </el-form-item>
 
         <el-form-item label="审核状态">
-          <el-select v-model="queryForm.status" placeholder="全部" style="width: 120px" clearable>
+          <el-select v-model="queryForm.status" placeholder="全部" style="width: 180px" clearable>
             <el-option label="待审核" :value="0" />
             <el-option label="已通过" :value="1" />
             <el-option label="已驳回" :value="2" />
           </el-select>
         </el-form-item>
 
-        <el-form-item label="负责人">
+        <el-form-item label="赛事负责人">
           <el-input
             v-model="queryForm.keyword"
-            placeholder="姓名"
-            style="width: 160px"
-            :prefix-icon="Search"
+            placeholder="请输入赛事负责人"
+            style="width: 200px"
             @keyup.enter="fetchRegList"
           />
         </el-form-item>
@@ -201,9 +211,8 @@ onMounted(() => {
         <el-form-item label="联系电话">
           <el-input
             v-model="queryForm.phone"
-            placeholder="手机号"
-            style="width: 150px"
-            :prefix-icon="Iphone"
+            placeholder="请输入联系电话"
+            style="width: 200px"
             @keyup.enter="fetchRegList"
           />
         </el-form-item>
@@ -217,16 +226,14 @@ onMounted(() => {
             @keyup.enter="fetchRegList"
           />
         </el-form-item> -->
+
+        <el-form-item class="filter-actions">
+          <el-button type="primary" :icon="Search" @click="fetchRegList">
+            搜索
+          </el-button>
+          <el-button :icon="Refresh" @click="handleReset"> 重置 </el-button>
+        </el-form-item>
       </el-form>
-
-      <el-form :inline="true" :model="queryForm" class="filter-form"> </el-form>
-
-      <div class="filter-actions">
-        <el-button type="primary" class="search-btn" :icon="Search" @click="fetchRegList">
-          查询
-        </el-button>
-        <el-button :icon="Refresh" @click="handleReset"> 重置 </el-button>
-      </div>
     </div>
 
     <div class="table-container">
@@ -248,19 +255,19 @@ onMounted(() => {
         :data="regList"
         v-loading="loading"
         stripe
-        style="width: 100%; flex: 1; overflow: hidden"
+        style="width: 100%; flex: 1; overflow: auto"
         @selection-change="handleSelectionChange"
       >
         <el-table-column type="selection" width="50" align="center" />
         <!-- <el-table-column prop="id" label="ID" width="60" align="center" /> -->
 
-        <el-table-column label="赛事名称" min-width="180" show-overflow-tooltip>
+        <el-table-column label="赛事名称" min-width="180" show-overflow-tooltip align="center">
           <template #default="{ row }">
             <span class="comp-text">{{ row.comp_name }}</span>
           </template>
         </el-table-column>
 
-        <el-table-column label="负责人" width="160">
+        <el-table-column label="负责人" width="160" align="center">
           <template #default="{ row }">
             <div class="leader-cell">
               <span class="name">{{ row.leader_name }}</span>
@@ -269,11 +276,17 @@ onMounted(() => {
           </template>
         </el-table-column>
 
-        <el-table-column prop="phone" label="电话" width="130" show-overflow-tooltip />
+        <el-table-column prop="phone" label="电话" width="130" show-overflow-tooltip align="center" />
 
-        <el-table-column prop="email" label="邮箱" width="180" show-overflow-tooltip />
+        <el-table-column prop="email" label="邮箱" width="180" show-overflow-tooltip align="center" />
 
-        <el-table-column prop="create_time" label="报名时间" width="150" sortable />
+        <el-table-column label="指导老师" width="140" show-overflow-tooltip align="center">
+          <template #default="{ row }">
+            <span>{{ getAdvisorName(row) }}</span>
+          </template>
+        </el-table-column>
+
+        <el-table-column prop="create_time" label="报名时间" width="150" sortable align="center" />
 
         <el-table-column label="状态" width="100" align="center">
           <template #default="{ row }">
@@ -292,6 +305,9 @@ onMounted(() => {
             </el-button>
           </template>
         </el-table-column>
+        <template #empty>
+          <el-empty description="暂无数据" />
+        </template>
       </el-table>
 
       <div class="pagination-bar">
@@ -344,44 +360,21 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   background-color: #f0f2f5;
-  padding: 16px;
+  padding: 20px;
   gap: 12px;
 }
 
 .filter-card {
   box-sizing: border-box;
   background: #fff;
-  padding: 24px 24px 20px; /* 调整内边距 */
+  padding: 20px 20px 10px 20px; 
   border-radius: 4px;
+  box-shadow: var(--card-shadow);
 
   .filter-form {
-    /* 让表单项稍微整齐一些 */
-    :deep(.el-form-item) {
-      margin-bottom: 12px;
-      margin-right: 24px;
-    }
-  }
 
-  /* 6. 按钮组居中样式 */
-  .filter-actions {
-    display: flex;
-    justify-content: center;
-    gap: 20px;
-    margin-top: 10px;
-    padding-top: 20px;
-    border-top: 1px dashed #eee; /* 可选：加个虚线分割显得更清晰 */
-
-    .el-button {
-      width: 100px; /* 按钮稍微宽一点 */
-    }
-
-    .search-btn {
-      background-color: var(--primary-color);
-      border-color: var(--primary-color);
-      &:hover {
-        background-color: #36cfc9;
-        border-color: #36cfc9;
-      }
+    :deep(.el-form-item.filter-actions) {
+      margin-left: 30px;
     }
   }
 }
@@ -411,8 +404,9 @@ onMounted(() => {
   border-radius: 4px;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  // overflow: hidden;
+  max-height: calc(75vh - 10px);
+  box-shadow: var(--card-shadow);
+  margin-top: 10px;
 }
 
 .comp-text {
@@ -472,7 +466,7 @@ onMounted(() => {
 
 .pagination-bar {
   flex-shrink: 0;
-  margin-top: 16px;
+  margin-top: 15px;
   display: flex;
   justify-content: center;
 }

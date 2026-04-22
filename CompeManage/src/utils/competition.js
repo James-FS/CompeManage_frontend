@@ -68,8 +68,20 @@ export const FILTER_STATUS_OPTIONS = {
  */
 export const getTimeState = (startTime, endTime) => {
   const now = new Date().getTime()
+
   const start = new Date(startTime).getTime()
   const end = new Date(endTime).getTime()
+
+  // 缺失/非法时间（含 null、空串、0001-...）统一视为待定，避免误判为已结束。
+  if (!Number.isFinite(start) || !Number.isFinite(end) || start <= 0 || end <= 0) {
+    return {
+      label: '筹备中',
+      type: 'info',
+      disabled: true,
+      tagText: '筹备中',
+      tagType: 'info'
+    }
+  }
 
   // 1. 等待开始 (当前时间 < 开始时间)
   if (now < start) {
