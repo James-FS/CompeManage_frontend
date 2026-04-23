@@ -26,6 +26,7 @@ const stats = reactive({
 })
 
 const todoList = ref([])
+const competitionStats = ref([]) // 新增：用于存储单个比赛的统计列表
 
 const pieChartRef = ref(null)
 const barChartRef = ref(null)
@@ -162,6 +163,7 @@ const normalizeDashboardPayload = (payload) => {
   stats.summaryArchiveRate = safeNumber(summary.summary_archive_rate)
 
   todoList.value = safeArray(payload?.todos)
+  competitionStats.value = safeArray(payload?.competition_stats)
 
   const pieData = levelData.length
     ? levelData.map((item) => ({ name: item.name || '未分类', value: safeNumber(item.value) }))
@@ -440,68 +442,22 @@ onBeforeUnmount(() => {
 <template>
   <div class="stats-container" v-loading="loading">
     <el-row :gutter="16" class="stat-cards">
-      <el-col :span="4">
+      <el-col :span="4" v-for="(val, key) in {
+        totalCompetitions: ['赛事总数', 'comp', Histogram],
+        totalRegistrations: ['报名总数', 'reg', User],
+        pendingAudits: ['待审核项', 'audit', Timer],
+        totalAwards: ['已通过获奖', 'award', Trophy],
+        registrationPassRate: ['报名通过率', 'rate', CircleCheckFilled],
+        summaryArchiveRate: ['总结归档率', 'archive', DataLine]
+      }" :key="key">
         <el-card shadow="hover" class="stat-card">
           <div class="card-content">
-            <el-icon class="icon comp"><Histogram /></el-icon>
+            <el-icon class="icon" :class="val[1]"><component :is="val[2]" /></el-icon>
             <div class="text">
-              <div class="label">赛事总数</div>
-              <div class="value">{{ stats.totalCompetitions }}</div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :span="4">
-        <el-card shadow="hover" class="stat-card">
-          <div class="card-content">
-            <el-icon class="icon reg"><User /></el-icon>
-            <div class="text">
-              <div class="label">报名总数</div>
-              <div class="value">{{ stats.totalRegistrations }}</div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :span="4">
-        <el-card shadow="hover" class="stat-card">
-          <div class="card-content">
-            <el-icon class="icon audit"><Timer /></el-icon>
-            <div class="text">
-              <div class="label">待审核项</div>
-              <div class="value danger">{{ stats.pendingAudits }}</div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :span="4">
-        <el-card shadow="hover" class="stat-card">
-          <div class="card-content">
-            <el-icon class="icon award"><Trophy /></el-icon>
-            <div class="text">
-              <div class="label">已通过获奖</div>
-              <div class="value">{{ stats.totalAwards }}</div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :span="4">
-        <el-card shadow="hover" class="stat-card">
-          <div class="card-content">
-            <el-icon class="icon rate"><CircleCheckFilled /></el-icon>
-            <div class="text">
-              <div class="label">报名通过率</div>
-              <div class="value">{{ stats.registrationPassRate }}%</div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :span="4">
-        <el-card shadow="hover" class="stat-card">
-          <div class="card-content">
-            <el-icon class="icon archive"><DataLine /></el-icon>
-            <div class="text">
-              <div class="label">总结归档率</div>
-              <div class="value">{{ stats.summaryArchiveRate }}%</div>
+              <div class="label">{{ val[0] }}</div>
+              <div class="value" :class="{ danger: key === 'pendingAudits' && stats[key] > 0 }">
+                {{ key.includes('Rate') ? stats[key] + '%' : stats[key] }}
+              </div>
             </div>
           </div>
         </el-card>
@@ -543,6 +499,40 @@ onBeforeUnmount(() => {
               <el-button link type="primary" @click="goPage(item.path)">去处理</el-button>
             </div>
           </div>
+        </el-card>
+      </el-col>
+    </el-row>
+
+    <el-row :gutter="16" class="chart-row">
+      <el-col :span="24">
+        <el-card header="各赛事详细统计" shadow="never">
+          <el-table :data="competitionStats" border stripe style="width: 100%">
+            <el-table-column prop="comp_name" label="赛事名称" min-width="200" show-overflow-tooltip />
+            <el-table-column prop="comp_level" label="级别" width="100" align="center">
+              <template #default="scope">
+                <el-tag size="small" effect="plain">{{ scope.row.comp_level || '未分类' }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="reg_count" label="报名人数" width="120" align="center" sortable />
+            <el-table-column prop="award_count" label="获奖人数" width="120" align="center" sortable />
+            <el-table-column label="获奖转化率" width="120" align="center">
+              <template #default="scope">
+                {{ ratioToPercent(scope.row.award_count, scope.row.reg_count) }}%
+              </template>
+            </el-table-column>
+            <el-table-column label="总结归档" width="120" align="center">
+              <template #default="scope">
+                <el-tag :type="scope.row.summary_status === 1 ? 'success' : 'info'">
+                  {{ scope.row.summary_status === 1 ? '已归档' : '未完成' }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="100" align="center">
+              <template #default="scope">
+                <el-button link type="primary" @click="goPage(`/summary/summary/view/${scope.row.id}`)">查看</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
         </el-card>
       </el-col>
     </el-row>
