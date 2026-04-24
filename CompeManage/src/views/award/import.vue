@@ -5,7 +5,8 @@ import { Download, UploadFilled, Delete, CircleCheck, View, Plus } from '@elemen
 import { ElMessage } from 'element-plus'
 import * as XLSX from 'xlsx'
 import { post } from '@/utils/request'
-
+// import ExcelJS from 'exceljs'
+// import { saveAs } from 'file-saver'
 const route = useRoute()
 const router = useRouter()
 const compID = route.params.id
@@ -21,27 +22,79 @@ const currentRow = ref(null)
 const editMembers = ref([])
 
 const templateHeaders = [
-  '奖项等级', '获奖项目名称', '负责人', '学号', '所属学院', '指导老师',
+  '序号','获奖项目名称','奖项等级','负责人', '学号', '所属学院', '指导老师',
   '成员1', '学号1', '成员2', '学号2', '成员3', '学号3',
   '成员4', '学号4', '成员5', '学号5',
 ]
 
-const downloadTemplate = () => {
-  const worksheet = XLSX.utils.aoa_to_sheet([templateHeaders])
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, worksheet, '获奖录入')
-  XLSX.writeFile(workbook, `Award_Template_${compID}.xlsx`)
+import ExcelJS from 'exceljs'
+import { saveAs } from 'file-saver'
+
+const downloadTemplate = async () => {
+  try {
+    const workbook = new ExcelJS.Workbook()
+    const worksheet = workbook.addWorksheet('获奖录入')
+
+    // 1. 重新定义表头顺序（包含5个成员列）
+    const headers = [
+      '获奖项目', '奖项等级', '负责人', '学号', 
+      '成员1', '成员2', '成员3', '成员4', '成员5', 
+      '所属学院', '指导老师'
+    ]
+    
+    // 2. 设置列宽映射
+    worksheet.columns = headers.map(header => ({
+      header: header,
+      key: header,
+      width: header === '获奖项目' ? 35 : (header.includes('成员') ? 12 : 15)
+    }))
+
+    // 3. 美化表头样式 (第1行)
+    const headerRow = worksheet.getRow(1)
+    headerRow.height = 25
+    headerRow.eachCell((cell) => {
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF4F81BD' } // 商务蓝
+      }
+      cell.font = { name: '微软雅黑', bold: true, color: { argb: 'FFFFFFFF' }, size: 11 }
+      cell.alignment = { vertical: 'middle', horizontal: 'center' }
+      cell.border = {
+        top: { style: 'thin' }, left: { style: 'thin' },
+        bottom: { style: 'thin' }, right: { style: 'thin' }
+      }
+    })
+
+    // 4. 添加示例数据（让用户知道怎么填）
+    worksheet.addRow(['示例：蓝桥杯全国软件大赛', '一等奖', '示例负责人', '20210001', '成员A', '成员B', '', '', '', '计算机学院', '王老师'])
+    
+    // 设置示例行样式（灰色斜体）
+    const exampleRow = worksheet.getRow(2)
+    exampleRow.font = { color: { argb: 'FF999999' }, italic: true }
+    exampleRow.eachCell(cell => {
+      cell.alignment = { vertical: 'middle', horizontal: 'center' }
+    })
+
+    // 5. 导出文件
+    const buffer = await workbook.xlsx.writeBuffer()
+    saveAs(new Blob([buffer]), `Award_Template_${compID}.xlsx`)
+    ElMessage.success('模板下载成功')
+  } catch (error) {
+    console.error(error)
+    ElMessage.error('导出失败')
+  }
 }
 
 const handleFileChange = async (uploadFile, uploadFiles) => {
   fileList.value = uploadFiles
   if (!uploadFile?.raw) return
+  
   try {
     loading.value = true
     const buffer = await uploadFile.raw.arrayBuffer()
     const workbook = XLSX.read(buffer, { type: 'array' })
-    const sheetName = workbook.SheetNames[0]
-    const worksheet = workbook.Sheets[sheetName]
+    const worksheet = workbook.Sheets[workbook.SheetNames[0]]
     const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' })
 
     if (!rows || rows.length <= 1) {
@@ -50,25 +103,39 @@ const handleFileChange = async (uploadFile, uploadFiles) => {
       return
     }
 
+    // 从第2行开始解析
     tableData.value = rows.slice(1)
-      .filter((row) => row.length > 0)
-      .map((row, index) => ({
-        id: index + 1,
-        award_level: row[0] || '',
-        project_name: row[1] || '',
-        leader_name: row[2] || '',
-        leader_id: row[3] || '',
-        college: row[4] || '',
-        advisor: row[5] || '',
-        member1: row[6] || '',  member1_id: row[7] || '',
-        member2: row[8] || '',  member2_id: row[9] || '',
-        member3: row[10] || '', member3_id: row[11] || '',
-        member4: row[12] || '', member4_id: row[13] || '',
-        member5: row[14] || '', member5_id: row[15] || '',
-      }))
+      .filter(row => row[0]) // 确保项目名称不为空
+      .map((row, index) => {
+        // 提取成员并清洗
+        const m1 = String(row[4] || '').trim()
+        const m2 = String(row[5] || '').trim()
+        const m3 = String(row[6] || '').trim()
+        const m4 = String(row[7] || '').trim()
+        const m5 = String(row[8] || '').trim()
+        
+        const memberList = [m1, m2, m3, m4, m5].filter(v => v !== '')
+
+        return {
+          id: index + 1,
+          project_name: row[0] || '',
+          award_level:  row[1] || '',
+          leader_name:  row[2] || '',
+          leader_id:    row[3] || '',
+          // 封装为对象数组，适配预览列表显示
+          members:      memberList.map(name => ({ name })),
+          college:      row[9] || '', // 索引移动到了10
+          advisor:      row[10] || '', // 索引移动到了11
+          
+          // 如果弹窗编辑需要散列字段：
+          member1: m1, member2: m2, member3: m3, member4: m4, member5: m5
+        }
+      })
+
+    ElMessage.success(`成功读取 ${tableData.value.length} 条数据`)
   } catch (error) {
     console.error(error)
-    ElMessage.error('解析 Excel 失败，请检查文件格式')
+    ElMessage.error('解析 Excel 失败')
   } finally {
     loading.value = false
   }
