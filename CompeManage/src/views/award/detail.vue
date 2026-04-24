@@ -8,7 +8,8 @@ import {
 import { ElMessage, ElMessageBox } from 'element-plus'
 import * as XLSX from 'xlsx'
 import api from '@/api'
-
+import ExcelJS from 'exceljs'
+import { saveAs } from 'file-saver'
 const route = useRoute()
 const router = useRouter()
 const compID = route.params.id
@@ -18,7 +19,6 @@ const loading = ref(false)
 const tableData = ref([])
 const awardHierarchy = ref([])  // 保存赛事的奖项级别列表
 
-// ✅ 新增：团队成员弹窗相关
 const memberDialogVisible = ref(false)
 const currentTeamMembers = ref([])
 const currentTeamName = ref('')
@@ -121,31 +121,76 @@ const handleExport = async () => {
       return
     }
 
-    const dataToExport = data.map((item) => ({
-      '奖项等级': item.level || '-',
-      '获奖项目': item.projectName || '-',
-      '获奖者': item.studentName || '-',
-      '学号': item.studentID || '-',
-      '成员': item.members || '-',
-      '所属学院': item.college || '-',
-      '指导老师': item.advisor || '-',
-    }))
+    const workbook = new ExcelJS.Workbook()
+    const worksheet = workbook.addWorksheet('获奖名单')
 
-    const worksheet = XLSX.utils.json_to_sheet(dataToExport)
-    const workbook = XLSX.utils.book_new()
-
-    worksheet['!cols'] = [
-      { wch: 12 },
-      { wch: 30 },
-      { wch: 12 },
-      { wch: 16 },
-      { wch: 30 },
-      { wch: 20 },
-      { wch: 12 },
+    worksheet.columns = [
+      { header: '序号', key: 'index', width: 8 },
+      { header: '获奖项目', key: 'projectName', width: 30 },
+      { header: '奖项等级', key: 'level', width: 15 },
+      { header: '负责人', key: 'studentName', width: 12 },
+      { header: '学号', key: 'studentID', width: 18 },
+      { header: '团队成员', key: 'members', width: 40 },
+      { header: '所属学院', key: 'college', width: 25 },
+      { header: '指导老师', key: 'advisor', width: 15 }
     ]
 
-    XLSX.utils.book_append_sheet(workbook, worksheet, '获奖名单')
-    XLSX.writeFile(workbook, `获奖名单_${compID}.xlsx`)
+    // 3. 添加数据并处理成员拼接
+    data.forEach((item, index) => {
+      const memberNames = Array.isArray(item.members) 
+        ? item.members.map(m => m.name).join('、') 
+        : (item.members || '-')
+
+      worksheet.addRow({
+        index: index + 1,
+        projectName: item.projectName || '-',
+        level: item.level || '-',
+        studentName: item.studentName || '-',
+        studentID: item.studentID || '-',
+        members: memberNames,
+        college: item.college || '-',
+        advisor: item.advisor || '-'
+      })
+    })
+
+    // 4. 美化表头样式 (第一行)
+    const headerRow = worksheet.getRow(1)
+    headerRow.height = 25 // 增加表头行高
+    headerRow.eachCell((cell) => {
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF4F81BD' } // 商务蓝背景
+      }
+      cell.font = {
+        name: '微软雅黑',
+        size: 11,
+        bold: true,
+        color: { argb: 'FFFFFFFF' } // 白色字体
+      }
+      cell.alignment = { vertical: 'middle', horizontal: 'center' }
+      cell.border = {
+        top: { style: 'thin' },
+        left: { style: 'thin' },
+        bottom: { style: 'thin' },
+        right: { style: 'thin' }
+      }
+    })
+
+    // 5. 设置数据行样式 (居中对齐)
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber > 1) {
+        row.eachCell((cell) => {
+          cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true }
+        })
+      }
+    })
+
+    // 6. 导出并下载
+    const buffer = await workbook.xlsx.writeBuffer()
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    saveAs(blob, `获奖名单_${compID}_${new Date().getTime()}.xlsx`)
+    
     ElMessage.success('导出成功')
   } catch (error) {
     console.error('导出失败：', error)
