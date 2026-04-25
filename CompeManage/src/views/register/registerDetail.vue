@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { api } from '@/api'
 import {
@@ -26,7 +26,7 @@ let maxMembers = ref()
 let minMembers = ref()
 let need_advisor = ref()
 let need_attachment = ref()
-let tracks = ref([]) // 新增：赛道列表
+let trackOptions = ref([]) // 赛道配置（含子赛道）
 let compType = 'team' // team / individual
 const uploadedUrls = ref([])
 const uploadRef = ref(null)
@@ -61,7 +61,9 @@ const formData = reactive({
     email: '',
     college: '',
   },
-  track: '', // 新增：选择的赛道
+  trackName: '', // 选择的赛道
+  subTrackTitle: '', // 选择的赛题（子赛道）
+  track: '', // 提交给后端的赛道字符串
 })
 
 /* --- 校验规则 --- */
@@ -84,8 +86,119 @@ const rules = {
     { required: true, message: '请输入邮箱', trigger: 'blur' },
     emailRule,
   ],
-  track: [{ required: true, message: '请选择赛道', trigger: 'change' }],
+  trackName: [{ required: true, message: '请选择赛道', trigger: 'change' }],
+  subTrackTitle: [],
 }
+
+const subTrackOptions = computed(() => {
+  const current = trackOptions.value.find((item) => item.trackName === formData.trackName)
+  return current?.subTrack || []
+})
+
+const hasTrackConfig = computed(() => trackOptions.value.length > 0)
+
+const hasSubTrackForCurrentTrack = computed(() => subTrackOptions.value.length > 0)
+
+const updateSubTrackRule = () => {
+  rules.subTrackTitle = hasSubTrackForCurrentTrack.value
+    ? [{ required: true, message: '请选择赛题', trigger: 'change' }]
+    : []
+}
+
+const buildTrackValue = (trackName, subTrackTitle) => {
+  if (!trackName) return ''
+  if (!subTrackTitle) return trackName
+  return `${trackName} / ${subTrackTitle}`
+}
+
+const syncTrackValue = () => {
+  if (!formData.trackName) {
+    formData.track = ''
+    formData.subTrackTitle = ''
+    return
+  }
+
+  if (!hasSubTrackForCurrentTrack.value) {
+    formData.subTrackTitle = ''
+    formData.track = formData.trackName
+    return
+  }
+
+  if (!formData.subTrackTitle) {
+    formData.track = ''
+    return
+  }
+
+  formData.track = buildTrackValue(formData.trackName, formData.subTrackTitle)
+}
+
+const parseSavedTrackValue = (savedTrack) => {
+  if (!savedTrack) {
+    formData.trackName = ''
+    formData.subTrackTitle = ''
+    formData.track = ''
+    return
+  }
+
+  const pureTrackMatch = trackOptions.value.find((item) => item.trackName === savedTrack)
+  if (pureTrackMatch) {
+    formData.trackName = pureTrackMatch.trackName
+    formData.subTrackTitle = ''
+    syncTrackValue()
+    return
+  }
+
+  for (const item of trackOptions.value) {
+    for (const sub of item.subTrack) {
+      if (buildTrackValue(item.trackName, sub.title) === savedTrack) {
+        formData.trackName = item.trackName
+        formData.subTrackTitle = sub.title
+        syncTrackValue()
+        return
+      }
+    }
+  }
+
+  const separators = [' / ', '/', '｜', '|', ' - ', '-']
+  for (const sep of separators) {
+    if (savedTrack.includes(sep)) {
+      const [left, ...rest] = savedTrack.split(sep)
+      const right = rest.join(sep)
+      const trackName = left?.trim() || ''
+      const subTrackTitle = right?.trim() || ''
+      const trackMatch = trackOptions.value.find((item) => item.trackName === trackName)
+      if (trackMatch) {
+        formData.trackName = trackName
+        const subMatch = trackMatch.subTrack.find((sub) => sub.title === subTrackTitle)
+        formData.subTrackTitle = subMatch ? subMatch.title : ''
+        syncTrackValue()
+        return
+      }
+    }
+  }
+
+  formData.trackName = ''
+  formData.subTrackTitle = ''
+  formData.track = savedTrack
+}
+
+watch(
+  () => formData.trackName,
+  (newTrackName, oldTrackName) => {
+    if (newTrackName !== oldTrackName) {
+      formData.subTrackTitle = ''
+    }
+    updateSubTrackRule()
+    syncTrackValue()
+  }
+)
+
+watch(
+  () => formData.subTrackTitle,
+  () => {
+    syncTrackValue()
+  }
+)
 
 // ==================== 学生选择相关变量 ====================
 const studentDialogVisible = ref(false)
@@ -262,7 +375,7 @@ async function checkRegStatus() {
         pageStatus.value = 1
       }
       formData.teamName = data.team_name
-      formData.track = data.track || '' // 新增：回显赛道
+      parseSavedTrackValue(data.track || '')
 
       if (data.attachment_url) {
         const urls = data.attachment_url.split(',')
@@ -336,17 +449,29 @@ async function fetchRegSettings() {
     need_advisor.value = config.need_advisor
     need_attachment.value = config.need_attachment
     
-    // 新增：获取赛道配置
+    // 获取赛道配置（含子赛道）
     if (config.track && config.track.length > 0) {
-      tracks.value = config.track
-        .map((item) => item?.trackName || '')
-        .filter((name) => name)
-      // 如果有赛道，则赛道字段为必填，更新校验规则
-      rules.track = [{ required: true, message: '请选择赛道', trigger: 'change' }]
+      trackOptions.value = config.track
+        .map((item) => {
+          const trackName = (item?.trackName || '').trim()
+          const subTrack = Array.isArray(item?.subTrack)
+            ? item.subTrack
+                .map((sub) => ({ title: (sub?.title || '').trim() }))
+                .filter((sub) => sub.title)
+            : []
+          return { trackName, subTrack }
+        })
+        .filter((item) => item.trackName)
+
+      rules.trackName = [{ required: true, message: '请选择赛道', trigger: 'change' }]
+      updateSubTrackRule()
     } else {
-      tracks.value = []
-      // 如果没有赛道，则赛道字段不必填
-      rules.track = []
+      trackOptions.value = []
+      rules.trackName = []
+      rules.subTrackTitle = []
+      formData.trackName = ''
+      formData.subTrackTitle = ''
+      formData.track = ''
     }
 
     if (maxMembers.value > 1) {
@@ -386,8 +511,13 @@ async function submitVerify() {
   if (!formRef.value) return
   
   // 检查赛道是否必填
-  if (tracks.value.length > 0 && !formData.track) {
+  if (hasTrackConfig.value && !formData.trackName) {
     ElMessage.error('请选择赛道')
+    return
+  }
+
+  if (hasSubTrackForCurrentTrack.value && !formData.subTrackTitle) {
+    ElMessage.error('请选择赛题')
     return
   }
   
@@ -442,8 +572,10 @@ async function submitForm(attachmentURL) {
 }
 
 onMounted(() => {
-  checkRegStatus()
-  fetchRegSettings()
+  ;(async () => {
+    await fetchRegSettings()
+    await checkRegStatus()
+  })()
 })
 </script>
 
@@ -513,31 +645,56 @@ onMounted(() => {
           </div>
 
           <!-- 新增：赛道选择区域 -->
-          <div class="form-section" v-if="tracks.length > 0">
+          <div class="form-section" v-if="hasTrackConfig">
             <h3 class="section-title">
               选择赛道
               <span class="required-mark">*</span>
             </h3>
-            <el-row>
-              <el-col :span="24">
-                <el-form-item prop="track" :disabled="isReadOnly">
+            <el-row :gutter="16" class="track-select-row">
+              <el-col :span="hasSubTrackForCurrentTrack ? 12 : 24" :xs="24">
+                <el-form-item label="赛道" prop="trackName" :disabled="isReadOnly">
                   <el-select
-                    v-model="formData.track"
+                    v-model="formData.trackName"
                     placeholder="请选择参赛赛道"
                     clearable
                     :disabled="isReadOnly"
                     style="width: 100%"
                   >
                     <el-option
-                      v-for="item in tracks"
-                      :key="item"
-                      :label="item"
-                      :value="item"
+                      v-for="item in trackOptions"
+                      :key="item.trackName"
+                      :label="item.trackName"
+                      :value="item.trackName"
+                    />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+
+              <el-col :span="12" :xs="24" v-if="hasSubTrackForCurrentTrack">
+                <el-form-item label="赛题" prop="subTrackTitle" :disabled="isReadOnly">
+                  <el-select
+                    v-model="formData.subTrackTitle"
+                    placeholder="请选择赛题"
+                    clearable
+                    :disabled="isReadOnly || !formData.trackName"
+                    style="width: 100%"
+                  >
+                    <el-option
+                      v-for="item in subTrackOptions"
+                      :key="item.title"
+                      :label="item.title"
+                      :value="item.title"
                     />
                   </el-select>
                 </el-form-item>
               </el-col>
             </el-row>
+            <div
+              v-if="formData.trackName && !hasSubTrackForCurrentTrack"
+              class="track-single-tip"
+            >
+              当前赛道无需选择赛题，可直接填写下方报名信息。
+            </div>
           </div>
 
           <div class="form-section">
@@ -1108,6 +1265,20 @@ onMounted(() => {
           }
         }
       }
+    }
+
+    .track-select-row {
+      margin-bottom: 4px;
+    }
+
+    .track-single-tip {
+      margin-top: 4px;
+      padding: 8px 12px;
+      border-radius: 6px;
+      background: #f4f8ff;
+      color: #5a6b8c;
+      font-size: 13px;
+      line-height: 1.5;
     }
   }
 

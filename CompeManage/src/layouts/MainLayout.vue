@@ -59,6 +59,11 @@ const allMenus = [
         roles: ['school_admin', 'college_admin', 'competition_manager'],
       },
       {
+        path: '/register/work-audit',
+        title: '作品审核',
+        roles: ['school_admin', 'college_admin', 'competition_manager'],
+      },
+      {
         path: '/register/work',
         title: '作品提交',
         roles: ['student'],
@@ -160,14 +165,27 @@ const breadcrumbs = computed(() => {
   // 1. 获取当前路由匹配到的所有嵌套路径（过滤掉没有 title 的）
   let matched = route.matched.filter((item) => item.meta && item.meta.title)
 
-  // 2. 处理父级插入逻辑
+  // 2. 处理父级链插入逻辑（支持多级 parent）
   const currentRouteMeta = route.meta
-  if (currentRouteMeta && currentRouteMeta.parent) {
-    const parentRoute = router.getRoutes().find((r) => r.name === currentRouteMeta.parent)
-    if (parentRoute) {
-      const last = matched.pop()
-      matched.push(parentRoute) // 插入父级路由
-      matched.push(last) // 放回当前路由
+  if (currentRouteMeta && currentRouteMeta.parent && matched.length > 0) {
+    const routeMap = new Map(router.getRoutes().map((r) => [r.name, r]))
+    const parentChain = []
+    const visited = new Set()
+    let parentName = currentRouteMeta.parent
+
+    while (parentName && !visited.has(parentName)) {
+      visited.add(parentName)
+      const parentRoute = routeMap.get(parentName)
+      if (!parentRoute || !parentRoute.meta?.title) {
+        break
+      }
+      parentChain.unshift(parentRoute)
+      parentName = parentRoute.meta?.parent
+    }
+
+    if (parentChain.length > 0) {
+      const current = matched[matched.length - 1]
+      matched = [...parentChain, current]
     }
   }
   return matched
@@ -180,6 +198,24 @@ const handleLink = (item) => {
   if (redirect === 'noRedirect' || item.meta?.redirect === 'noRedirect') {
     return
   }
+
+  if (item.name === 'work-audit-comp-detail') {
+    const compId = route.query.comp_id
+    if (compId) {
+      router.push({
+        name: 'work-audit-comp-detail',
+        params: { id: compId },
+        query: {
+          comp_name: route.query.comp_name || '',
+        },
+      })
+      return
+    }
+
+    router.push(item.meta?.activeMenu || '/register/work-audit')
+    return
+  }
+
   router.push(path)
 }
 

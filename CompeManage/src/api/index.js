@@ -41,6 +41,8 @@ export const api = {
   resubmitReg: (data) => put('/api/reg/resubmit', data),
   reSubmitReg: (data) => put('/api/reg/resubmit', data),
   getRegList: (params) => get('/api/reg/list', params),
+  getWorkAuditCompList: (params) => get('/api/reg/work/audit/comp/list', params),
+  getWorkAuditStudentList: (params) => get('/api/reg/work/audit/student/list', params),
   getRegDetail: (id) => get(`/api/reg/detail?id=${id}`),
   auditReg: (data) => put('/api/reg/audit', data),
   getStudentList: (params) => get('/api/reg/user/list', params),
