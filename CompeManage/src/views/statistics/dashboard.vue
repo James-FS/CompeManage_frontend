@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import * as echarts from 'echarts'
 import {
@@ -27,6 +27,12 @@ const stats = reactive({
 
 const todoList = ref([])
 const competitionStats = ref([]) // 新增：用于存储单个比赛的统计列表
+const collegeList = ref([])
+const detailFilters = reactive({
+  name: '',
+  level: '',
+  college: ''
+})
 
 const pieChartRef = ref(null)
 const barChartRef = ref(null)
@@ -89,7 +95,7 @@ const buildLevelPieData = (competitionList) => {
 const buildCollegeBarData = (registerList) => {
   const map = {}
   registerList.forEach((item) => {
-    const collegeName = item?.college_name || item?.leader?.college?.name || '未知学院'
+    const collegeName = normalizeCollegeText(item?.college_name || item?.leader?.college?.name)
     map[collegeName] = (map[collegeName] || 0) + 1
   })
 
@@ -125,6 +131,67 @@ const normalizeMonth = (timeString) => {
   const date = new Date(timeString)
   if (Number.isNaN(date.getTime())) return ''
   return `${date.getFullYear()}-${`${date.getMonth() + 1}`.padStart(2, '0')}`
+}
+
+const normalizeText = (value) => String(value || '').trim()
+const normalizeCollegeText = (value) => {
+  const text = normalizeText(value)
+  if (!text || text === '未知学院') return '-'
+  return text
+}
+
+const getCompetitionName = (item) => normalizeText(item?.comp_name || item?.name)
+
+const getCompetitionLevel = (item) => normalizeText(item?.comp_level || item?.detail?.comp_level || '未分类')
+
+const getCompetitionCollege = (item) => normalizeCollegeText(
+  item?.college_info?.name || item?.college_name || item?.college?.name || item?.organizer_college || item?.leader?.college?.name
+)
+
+const levelFilterOptions = computed(() => {
+  const set = new Set()
+  competitionStats.value.forEach((item) => {
+    set.add(getCompetitionLevel(item))
+  })
+  return Array.from(set).filter(Boolean)
+})
+
+const competitionCollegeOptions = computed(() => {
+  const set = new Set()
+  competitionStats.value.forEach((item) => {
+    set.add(getCompetitionCollege(item))
+  })
+  return Array.from(set).filter(Boolean)
+})
+
+const collegeFilterOptions = computed(() => {
+  if (collegeList.value.length) {
+    return collegeList.value.map((item) => normalizeCollegeText(item?.name)).filter(Boolean)
+  }
+  return competitionCollegeOptions.value
+})
+
+const filteredCompetitionStats = computed(() => {
+  const nameKeyword = normalizeText(detailFilters.name).toLowerCase()
+  const levelKeyword = normalizeText(detailFilters.level)
+  const collegeKeyword = normalizeText(detailFilters.college)
+
+  return competitionStats.value.filter((item) => {
+    const name = getCompetitionName(item).toLowerCase()
+    const level = getCompetitionLevel(item)
+    const college = getCompetitionCollege(item)
+
+    const matchName = !nameKeyword || name.includes(nameKeyword)
+    const matchLevel = !levelKeyword || level === levelKeyword
+    const matchCollege = !collegeKeyword || college === collegeKeyword
+    return matchName && matchLevel && matchCollege
+  })
+})
+
+const resetDetailFilters = () => {
+  detailFilters.name = ''
+  detailFilters.level = ''
+  detailFilters.college = ''
 }
 
 const buildTrendData = (registerList, awardList) => {
@@ -173,7 +240,7 @@ const normalizeDashboardPayload = (payload) => {
       { name: '国家级', value: 0 }
     ]
 
-  const barLabels = collegeData.length ? collegeData.map((item) => item.name || '未知学院') : ['暂无数据']
+  const barLabels = collegeData.length ? collegeData.map((item) => normalizeCollegeText(item.name)) : ['暂无数据']
   const barValues = collegeData.length ? collegeData.map((item) => safeNumber(item.value)) : [0]
 
   const trendMonths = safeArray(trend.months)
@@ -414,6 +481,17 @@ const fetchStatistics = async () => {
   }
 }
 
+const loadCollegeList = async () => {
+  try {
+    const response = await api.getCollegeList()
+    if (response?.code === 0 || response?.code === 200) {
+      collegeList.value = safeArray(response.data)
+    }
+  } catch (error) {
+    console.error('加载学院列表失败', error)
+  }
+}
+
 const handleResize = () => {
   Object.values(chartInstances).forEach((chart) => chart?.resize())
 }
@@ -424,6 +502,7 @@ const goPage = (path) => {
 }
 
 onMounted(() => {
+  loadCollegeList()
   fetchStatistics()
   window.addEventListener('resize', handleResize)
 })
@@ -506,11 +585,51 @@ onBeforeUnmount(() => {
     <el-row :gutter="16" class="chart-row">
       <el-col :span="24">
         <el-card header="各赛事详细统计" shadow="never">
-          <el-table :data="competitionStats" border stripe style="width: 100%">
+          <div class="detail-filter-bar">
+            <el-input
+              v-model="detailFilters.name"
+              placeholder="按赛事名称筛选"
+              clearable
+              class="filter-item name"
+            />
+            <el-select
+              v-model="detailFilters.level"
+              placeholder="按级别筛选"
+              clearable
+              class="filter-item"
+            >
+              <el-option
+                v-for="item in levelFilterOptions"
+                :key="item"
+                :label="item"
+                :value="item"
+              />
+            </el-select>
+            <el-select
+              v-model="detailFilters.college"
+              placeholder="按所属学院筛选"
+              clearable
+              class="filter-item"
+            >
+              <el-option
+                v-for="item in collegeFilterOptions"
+                :key="item"
+                :label="item"
+                :value="item"
+              />
+            </el-select>
+            <el-button @click="resetDetailFilters">重置</el-button>
+          </div>
+          <el-table :data="filteredCompetitionStats" border stripe style="width: 100%">
             <el-table-column prop="comp_name" label="赛事名称" min-width="200" show-overflow-tooltip />
             <el-table-column prop="comp_level" label="级别" width="100" align="center">
               <template #default="scope">
                 <el-tag size="small" effect="plain">{{ scope.row.comp_level || '未分类' }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="所属学院" min-width="160" show-overflow-tooltip>
+              <template #default="scope">
+                {{ getCompetitionCollege(scope.row) }}
               </template>
             </el-table-column>
             <el-table-column prop="reg_count" label="报名人数" width="120" align="center" sortable />
@@ -587,6 +706,22 @@ onBeforeUnmount(() => {
 
   .chart-row {
     margin-top: 16px;
+  }
+
+  .detail-filter-bar {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+
+    .filter-item {
+      width: 180px;
+
+      &.name {
+        width: 260px;
+      }
+    }
   }
 
   .chart-box {

@@ -36,6 +36,7 @@ const form = reactive({
   type: 1, 
   minMember: 1,
   maxMember: 3,
+  needRegAudit: true,
   timeRange: [], 
   workTimeRange: [], 
   grades: [], 
@@ -58,7 +59,7 @@ const rules = {
 const addTrack = () => {
   form.tracks.push({
     trackName: '', // 赛道名称
-    questions: [{ title: '', score: '' }] // 赛题列表（默认1个赛题）
+    subTrack: [{ title: '' }] // 赛题列表（默认1个赛题）
   })
 }
 
@@ -66,12 +67,12 @@ const removeTrack = (index) => form.tracks.splice(index, 1)
 
 // 3. 新增：给指定赛道添加赛题
 const addQuestion = (trackIndex) => {
-  form.tracks[trackIndex].questions.push({ title: '', score: '' })
+  form.tracks[trackIndex].subTrack.push({ title: '' })
 }
 
 // 4. 新增：删除指定赛道下的指定赛题
 const removeQuestion = (trackIndex, qIndex) => {
-  form.tracks[trackIndex].questions.splice(qIndex, 1)
+  form.tracks[trackIndex].subTrack.splice(qIndex, 1)
 }
 
 // --- 奖项操作逻辑 (朴素版) ---
@@ -119,13 +120,25 @@ async function handleSave() {
         grade_requirement: form.grades,
         need_advisor: form.allowAdvisor ? (form.advisorRequired ? 2 : 1) : 0,
         need_attachment: form.attachmentType,
+        need_reg_audit: form.needRegAudit ? 1 : 0,
         
         // 过滤空行提交
         award_hierarchy: form.awards.filter(item => item && item.trim() !== ''),
-        // 赛道配置
+        // 提交完整赛道+赛题结构
         track: form.enableTrack
-        ? form.tracks.filter(track => track.trackName && track.trackName.trim() !== '')
-        : [],
+          ? form.tracks
+              .map((track) => ({
+                trackName: (track.trackName || '').trim(),
+                subTrack: Array.isArray(track.subTrack)
+                  ? track.subTrack
+                      .map((q) => ({
+                        title: (q.title || '').trim(),
+                      }))
+                      .filter((q) => q.title !== '')
+                  : [],
+              }))
+              .filter((track) => track.trackName !== '')
+          : [],
 
         reg_start_time: formatToGoTime(form.timeRange[0]),
         reg_end_time: formatToGoTime(form.timeRange[1]),
@@ -162,6 +175,8 @@ async function fetchConfig() {
       form.maxMember = data.max_team_member || 1
       form.grades = data.grade_requirement || []
       form.attachmentType = data.need_attachment ?? null
+      const needRegAuditValue = Number(data.need_reg_audit ?? 1)
+      form.needRegAudit = needRegAuditValue !== 0
       comp_name.value = data.comp_name || ''
       
       if (data.need_advisor === 0) {
@@ -179,16 +194,16 @@ async function fetchConfig() {
         form.workTimeRange = [new Date(data.submit_start_time), new Date(data.submit_end_time)]
       }
 
-      // 赛道回显
+      // 赛道回显：仅使用新格式对象数组
       if (data.track && data.track.length > 0) {
         form.enableTrack = true
-        form.tracks = data.track.map(t => ({
-      trackName: t.trackName || '',
-      // 如果后端有赛题就用后端的，没有则初始化一个空数组
-      questions: t.questions && t.questions.length > 0
-                 ? t.questions
-                 : [{ title: '', score: '' }]
-        }))
+        form.tracks = data.track.map((t) => {
+          const trackName = t.trackName || ''
+          const subTrackList = Array.isArray(t.subTrack) && t.subTrack.length > 0
+            ? t.subTrack
+            : [{ title: '' }]
+          return { trackName, subTrack: subTrackList }
+        })
       } else {
         form.enableTrack = false
         form.tracks = []
@@ -303,6 +318,15 @@ onMounted(() => {
           />
         </el-form-item>
 
+        
+        <el-form-item label="报名审核">
+          <el-switch
+            v-model="form.needRegAudit"
+            active-text="需要审核"
+            inactive-text="免审核"
+          />
+        </el-form-item>
+
         <el-divider border-style="dashed" />
 
         <div class="form-section-title">资格与限制</div>
@@ -383,7 +407,7 @@ onMounted(() => {
         </div>
 
         <div class="topic-section">
-          <div v-for="(topic, tIndex) in track.questions" :key="tIndex" class="topic-row">
+          <div v-for="(topic, tIndex) in track.subTrack" :key="tIndex" class="topic-row">
             <span class="topic-dot">●</span>
             <el-input
               v-model="topic.title"
@@ -396,7 +420,7 @@ onMounted(() => {
               type="danger"
               :icon="Delete"
               @click="removeQuestion(index, tIndex)"
-              v-if="track.questions.length > 1"
+              v-if="track.subTrack.length > 1"
             />
           </div>
           <el-button
