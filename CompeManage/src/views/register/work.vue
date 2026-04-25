@@ -52,7 +52,7 @@ const mockData = [
 
 // --- 2. 状态计算逻辑 ---
 const getActionState = (item) => {
-  if (item.status !== 1) {
+  if (item.status !== 1 && item.status !== 4) {
     return {
       disabled: true,
       btnText: '资格审核中',
@@ -146,7 +146,23 @@ onMounted(() => {
               >已报名</el-tag
             >
             <el-tag
+              v-else-if="item.status === 4"
+              type="success"
+              effect="dark"
+              size="small"
+              class="status-badge"
+              >已通过</el-tag
+            >
+            <el-tag
               v-else-if="item.status === 2"
+              type="danger"
+              effect="dark"
+              size="small"
+              class="status-badge"
+              >已驳回</el-tag
+            >
+            <el-tag
+              v-else-if="item.status === 5"
               type="danger"
               effect="dark"
               size="small"

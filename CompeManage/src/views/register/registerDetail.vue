@@ -339,6 +339,8 @@ async function fetchRegSettings() {
     // 新增：获取赛道配置
     if (config.track && config.track.length > 0) {
       tracks.value = config.track
+        .map((item) => item?.trackName || '')
+        .filter((name) => name)
       // 如果有赛道，则赛道字段为必填，更新校验规则
       rules.track = [{ required: true, message: '请选择赛道', trigger: 'change' }]
     } else {
