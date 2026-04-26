@@ -2,6 +2,7 @@
 import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { api } from '@/api'
+import { nextTick } from 'vue'
 import {
   User,
   Iphone,
@@ -19,6 +20,7 @@ import {
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { debounce } from '@/utils/debounce'
 import { isValidPhone, isValidEmail, phoneRule, emailRule } from '@/utils/validators'
+
 const router = useRouter()
 const route = useRoute()
 const formRef = ref(null)
@@ -70,7 +72,7 @@ const formData = reactive({
 const rules = {
   teamName: [{ required: true, message: '请输入团队名称', trigger: 'blur' }],
   'leader.name': [{ required: true, message: '请输入姓名', trigger: 'blur' }],
- 'leader.phone': [
+  'leader.phone': [
     { required: true, message: '请输入手机号', trigger: 'blur' },
     phoneRule, // 使用验证工具
   ],
@@ -78,7 +80,7 @@ const rules = {
     { required: true, message: '请输入邮箱', trigger: 'blur' },
     emailRule, // 使用验证工具
   ],
-   'advisorInfo.phone': [
+  'advisorInfo.phone': [
     { required: true, message: '请输入手机号', trigger: 'blur' },
     phoneRule,
   ],
@@ -86,7 +88,7 @@ const rules = {
     { required: true, message: '请输入邮箱', trigger: 'blur' },
     emailRule,
   ],
-  trackName: [{ required: true, message: '请选择赛道', trigger: 'change' }],
+  trackName: [],
   subTrackTitle: [],
 }
 
@@ -100,9 +102,16 @@ const hasTrackConfig = computed(() => trackOptions.value.length > 0)
 const hasSubTrackForCurrentTrack = computed(() => subTrackOptions.value.length > 0)
 
 const updateSubTrackRule = () => {
-  rules.subTrackTitle = hasSubTrackForCurrentTrack.value
-    ? [{ required: true, message: '请选择赛题', trigger: 'change' }]
-    : []
+  if (hasTrackConfig.value && hasSubTrackForCurrentTrack.value) {
+    rules.trackName = [{ required: true, message: '请选择赛道', trigger: 'change' }]
+    rules.subTrackTitle = [{ required: true, message: '请选择赛题', trigger: 'change' }]
+  } else if (hasTrackConfig.value) {
+    rules.trackName = [{ required: true, message: '请选择赛道', trigger: 'change' }]
+    rules.subTrackTitle = []
+  } else {
+    rules.trackName = []
+    rules.subTrackTitle = []
+  }
 }
 
 const buildTrackValue = (trackName, subTrackTitle) => {
@@ -132,7 +141,7 @@ const syncTrackValue = () => {
   formData.track = buildTrackValue(formData.trackName, formData.subTrackTitle)
 }
 
-const parseSavedTrackValue = (savedTrack) => {
+const parseSavedTrackValue = async (savedTrack) => {
   if (!savedTrack) {
     formData.trackName = ''
     formData.subTrackTitle = ''
@@ -140,54 +149,40 @@ const parseSavedTrackValue = (savedTrack) => {
     return
   }
 
-  const pureTrackMatch = trackOptions.value.find((item) => item.trackName === savedTrack)
-  if (pureTrackMatch) {
-    formData.trackName = pureTrackMatch.trackName
+  // 直接按 " / " 分割
+  const parts = savedTrack.split(' / ')
+  
+  if (parts.length === 2) {
+    formData.trackName = parts[0].trim()
+    formData.subTrackTitle = parts[1].trim()
+    console.log(formData.subTrackTitle)
+    console.log('formData 转普通对象:', JSON.parse(JSON.stringify(formData)))
+    formData.track = savedTrack
+  } else if (parts.length === 1) {
+    // 只有赛道，没有赛题
+    formData.trackName = parts[0].trim()
     formData.subTrackTitle = ''
-    syncTrackValue()
-    return
+    formData.track = parts[0].trim()
+  } else {
+    // 其他情况，保持原值
+    formData.track = savedTrack
   }
-
-  for (const item of trackOptions.value) {
-    for (const sub of item.subTrack) {
-      if (buildTrackValue(item.trackName, sub.title) === savedTrack) {
-        formData.trackName = item.trackName
-        formData.subTrackTitle = sub.title
-        syncTrackValue()
-        return
-      }
-    }
-  }
-
-  const separators = [' / ', '/', '｜', '|', ' - ', '-']
-  for (const sep of separators) {
-    if (savedTrack.includes(sep)) {
-      const [left, ...rest] = savedTrack.split(sep)
-      const right = rest.join(sep)
-      const trackName = left?.trim() || ''
-      const subTrackTitle = right?.trim() || ''
-      const trackMatch = trackOptions.value.find((item) => item.trackName === trackName)
-      if (trackMatch) {
-        formData.trackName = trackName
-        const subMatch = trackMatch.subTrack.find((sub) => sub.title === subTrackTitle)
-        formData.subTrackTitle = subMatch ? subMatch.title : ''
-        syncTrackValue()
-        return
-      }
-    }
-  }
-
-  formData.trackName = ''
-  formData.subTrackTitle = ''
-  formData.track = savedTrack
+  
 }
 
 watch(
   () => formData.trackName,
   (newTrackName, oldTrackName) => {
-    if (newTrackName !== oldTrackName) {
+    // 只有在手动切换（即 oldTrackName 有值且不是回显初始化）时才清空
+    // 或者在解析回显数据时，暂时禁用这个清空逻辑
+    if (oldTrackName && newTrackName !== oldTrackName) {
       formData.subTrackTitle = ''
     }
+    
+    // 更新子赛题的可选项列表 (subTrackOptions)
+    const currentTrack = trackOptions.value.find(t => t.trackName === newTrackName)
+    subTrackOptions.value = currentTrack ? currentTrack.subTrack : []
+    
     updateSubTrackRule()
     syncTrackValue()
   }
@@ -375,8 +370,9 @@ async function checkRegStatus() {
         pageStatus.value = 1
       }
       formData.teamName = data.team_name
-      parseSavedTrackValue(data.track || '')
-
+       console.log('data.track =', data.track)  // 加这一行看看后端返回的值
+      await parseSavedTrackValue(data.track || '')
+      console.log("formData",formData);
       if (data.attachment_url) {
         const urls = data.attachment_url.split(',')
         formData.fileList = urls.map((url) => ({
@@ -463,15 +459,10 @@ async function fetchRegSettings() {
         })
         .filter((item) => item.trackName)
 
-      rules.trackName = [{ required: true, message: '请选择赛道', trigger: 'change' }]
       updateSubTrackRule()
     } else {
       trackOptions.value = []
-      rules.trackName = []
-      rules.subTrackTitle = []
-      formData.trackName = ''
-      formData.subTrackTitle = ''
-      formData.track = ''
+      updateSubTrackRule()
     }
 
     if (maxMembers.value > 1) {
@@ -571,11 +562,13 @@ async function submitForm(attachmentURL) {
   }
 }
 
-onMounted(() => {
-  ;(async () => {
-    await fetchRegSettings()
-    await checkRegStatus()
-  })()
+onMounted(async () => {
+  // 先获取赛道配置
+  await fetchRegSettings()
+  // 再获取报名状态
+  await checkRegStatus()
+  // 等待 DOM 更新完成
+  await nextTick()
 })
 </script>
 
@@ -644,7 +637,7 @@ onMounted(() => {
             </el-row>
           </div>
 
-          <!-- 新增：赛道选择区域 -->
+          <!-- 赛道选择区域 -->
           <div class="form-section" v-if="hasTrackConfig">
             <h3 class="section-title">
               选择赛道
@@ -1045,6 +1038,7 @@ onMounted(() => {
       </el-form>
     </div>
 
+    
     <el-table
       :data="studentList"
       border
@@ -1066,6 +1060,7 @@ onMounted(() => {
       </template>
     </el-table>
 
+    
     <div class="pagination-wrapper">
       <el-pagination
         v-model:current-page="studentCurrentPage"
