@@ -75,7 +75,6 @@ onMounted(() => {
         <el-input
           v-model="queryParams.comp_name"
           placeholder="搜索赛事名称"
-          prefix-icon="Search"
           clearable
           @keyup.enter="fetchCompList"
         >
