@@ -75,7 +75,6 @@ onMounted(() => {
         <el-input
           v-model="queryParams.comp_name"
           placeholder="搜索赛事名称"
-          prefix-icon="Search"
           clearable
           @keyup.enter="fetchCompList"
         >
@@ -174,9 +173,9 @@ onMounted(() => {
         </div>
         <div class="comp-action">
           <div class="btn-group">
-            <el-button link type="info" class="sub-btn" @click.stop="handleNotice(item.id)">
+            <!-- <el-button link type="info" class="sub-btn" @click.stop="handleNotice(item.id)">
               <el-icon><Bell /></el-icon> 通知
-            </el-button>
+            </el-button> -->
 
             <el-button
               :type="item.timeState.type"

@@ -36,21 +36,45 @@ const form = reactive({
   type: 1, 
   minMember: 1,
   maxMember: 3,
+  needRegAudit: true,
   timeRange: [], 
   workTimeRange: [], 
   grades: [], 
   advisorRequired: 0, 
   allowAdvisor: false,
-  attachmentType: 1,
-  
+  attachmentType: null,
+  enableTrack: false,  // 新增：是否启用赛道配置
+  tracks: [],  // 新增：赛道列表
   awards: ['一等奖', '二等奖', '三等奖'], 
 })
 
 const rules = {
   timeRange: [{ required: true, message: '请设置报名起止时间', trigger: 'change' }],
+  attachmentType: [{ required: true, message: '请选择附件上传要求', trigger: 'change' }],
 }
 
-const workRange = Array.isArray(form.workTimeRange) ? form.workTimeRange : []
+
+
+// --- 赛道操作逻辑 ---
+const addTrack = () => {
+  form.tracks.push({
+    trackName: '', // 赛道名称
+    subTrack: [{ title: '' }] // 赛题列表（默认1个赛题）
+  })
+}
+
+const removeTrack = (index) => form.tracks.splice(index, 1)
+
+// 3. 新增：给指定赛道添加赛题
+const addQuestion = (trackIndex) => {
+  form.tracks[trackIndex].subTrack.push({ title: '' })
+}
+
+// 4. 新增：删除指定赛道下的指定赛题
+const removeQuestion = (trackIndex, qIndex) => {
+  form.tracks[trackIndex].subTrack.splice(qIndex, 1)
+}
+
 // --- 奖项操作逻辑 (朴素版) ---
 const addAward = () => form.awards.push('')
 
@@ -87,7 +111,7 @@ async function handleSave() {
   await formRef.value.validate(async (valid) => {
     if (valid) {
       isSaving.value = true
-      
+      const workRange = Array.isArray(form.workTimeRange) ? form.workTimeRange : []
       const submitData = {
         comp_id: Number(route.params.id),
         participant_type: form.type,
@@ -96,14 +120,30 @@ async function handleSave() {
         grade_requirement: form.grades,
         need_advisor: form.allowAdvisor ? (form.advisorRequired ? 2 : 1) : 0,
         need_attachment: form.attachmentType,
+        need_reg_audit: form.needRegAudit ? 1 : 0,
         
         // 过滤空行提交
         award_hierarchy: form.awards.filter(item => item && item.trim() !== ''),
+        // 提交完整赛道+赛题结构
+        track: form.enableTrack
+          ? form.tracks
+              .map((track) => ({
+                trackName: (track.trackName || '').trim(),
+                subTrack: Array.isArray(track.subTrack)
+                  ? track.subTrack
+                      .map((q) => ({
+                        title: (q.title || '').trim(),
+                      }))
+                      .filter((q) => q.title !== '')
+                  : [],
+              }))
+              .filter((track) => track.trackName !== '')
+          : [],
 
         reg_start_time: formatToGoTime(form.timeRange[0]),
         reg_end_time: formatToGoTime(form.timeRange[1]),
         submit_start_time: workRange.length === 2 ? formatToGoTime(workRange[0]) : null,
-  submit_end_time: workRange.length === 2 ? formatToGoTime(workRange[1]) : null,
+        submit_end_time: workRange.length === 2 ? formatToGoTime(workRange[1]) : null,
       }
 
       try {
@@ -134,7 +174,9 @@ async function fetchConfig() {
       form.minMember = data.min_team_member || 1
       form.maxMember = data.max_team_member || 1
       form.grades = data.grade_requirement || []
-      form.attachmentType = data.need_attachment
+      form.attachmentType = data.need_attachment ?? null
+      const needRegAuditValue = Number(data.need_reg_audit ?? 1)
+      form.needRegAudit = needRegAuditValue !== 0
       comp_name.value = data.comp_name || ''
       
       if (data.need_advisor === 0) {
@@ -150,6 +192,21 @@ async function fetchConfig() {
       }
       if(data.submit_start_time && data.submit_end_time) {
         form.workTimeRange = [new Date(data.submit_start_time), new Date(data.submit_end_time)]
+      }
+
+      // 赛道回显：仅使用新格式对象数组
+      if (data.track && data.track.length > 0) {
+        form.enableTrack = true
+        form.tracks = data.track.map((t) => {
+          const trackName = t.trackName || ''
+          const subTrackList = Array.isArray(t.subTrack) && t.subTrack.length > 0
+            ? t.subTrack
+            : [{ title: '' }]
+          return { trackName, subTrack: subTrackList }
+        })
+      } else {
+        form.enableTrack = false
+        form.tracks = []
       }
 
       // 奖项回显
@@ -261,6 +318,15 @@ onMounted(() => {
           />
         </el-form-item>
 
+        
+        <el-form-item label="报名审核">
+          <el-switch
+            v-model="form.needRegAudit"
+            active-text="需要审核"
+            inactive-text="免审核"
+          />
+        </el-form-item>
+
         <el-divider border-style="dashed" />
 
         <div class="form-section-title">资格与限制</div>
@@ -306,12 +372,88 @@ onMounted(() => {
         </el-form-item>
 
         <el-divider border-style="dashed" />
-        
+
+<div class="form-section-title">赛道配置</div>
+
+<el-form-item label="启用赛道">
+  <el-switch
+    v-model="form.enableTrack"
+    active-text="启用赛道"
+    inactive-text="无赛道"
+  />
+</el-form-item>
+
+<transition name="el-fade-in">
+  <el-form-item v-if="form.enableTrack" label="">
+    <div class="track-list-container" style="max-width: 600px;"> <div v-if="form.tracks.length === 0" class="empty-state">
+        <span>暂无赛道，请添加</span>
+      </div>
+
+      <div v-for="(track, index) in form.tracks" :key="index" class="track-item-box">
+        <div class="track-row">
+          <span class="track-label">赛道 {{ index + 1 }}</span>
+          <el-input
+            v-model="track.trackName"
+            placeholder="请输入赛道名称"
+            style="width: 240px"
+            clearable
+          />
+          <el-button
+            link
+            type="danger"
+            @click="removeTrack(index)"
+            :icon="Delete"
+          />
+        </div>
+
+        <div class="topic-section">
+          <div v-for="(topic, tIndex) in track.subTrack" :key="tIndex" class="topic-row">
+            <span class="topic-dot">●</span>
+            <el-input
+              v-model="topic.title"
+              placeholder="具体赛题名称"
+              size="small"
+              style="width: 200px"
+            />
+            <el-button
+              link
+              type="danger"
+              :icon="Delete"
+              @click="removeQuestion(index, tIndex)"
+              v-if="track.subTrack.length > 1"
+            />
+          </div>
+          <el-button
+            type="primary"
+            link
+            size="small"
+            :icon="Plus"
+            @click="addQuestion(index, tIndex)"
+          >
+            添加赛题
+          </el-button>
+        </div>
+      </div>
+
+      <el-button
+        type="primary"
+        plain
+        :icon="Plus"
+        @click="addTrack"
+        style="margin-top: 12px;"
+      >
+        新增整个赛道
+      </el-button>
+    </div>
+  </el-form-item>
+</transition>
+
+<el-divider border-style="dashed" />
+
         <div class="form-section-title">奖项排名规则</div>
-        <el-form-item >
+
+        <el-form-item>
           <div class="award-list-simple">
-
-
             <div v-for="(item, index) in form.awards" :key="index" class="award-row-simple">
               <span class="rank-label">第 {{ index + 1 }} 级</span>
               
@@ -358,7 +500,7 @@ onMounted(() => {
 
         <div class="form-section-title">材料提交</div>
 
-        <el-form-item label="附件上传要求">
+        <el-form-item label="附件上传要求" prop="attachmentType">
           <el-radio-group v-model="form.attachmentType">
             <el-radio :value="0" border>无需附件</el-radio>
             <el-radio :value="1" border>选填 (可选上传)</el-radio>
@@ -453,6 +595,73 @@ onMounted(() => {
 .ml-2 { margin-left: 8px; }
 .mr-1 { margin-right: 4px; }
 
+/* === 赛道配置样式 === */
+.track-list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 15px; /* 增加卡片间的间距 */
+  width: 100%;
+  max-width: 600px; /* 稍微调宽一点，容纳嵌套内容 */
+}
+
+/* 每一个赛道的独立卡片外框 */
+.track-item-box {
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+  padding: 16px;
+  background-color: #fcfcfc;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+  transition: all 0.3s ease;
+}
+
+.track-item-box:hover {
+  border-color: #409eff; /* 鼠标悬停时高亮边框 */
+}
+
+/* 赛道行布局 */
+.track-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+
+  .track-label {
+    width: 60px;
+    font-size: 14px;
+    font-weight: bold;
+    color: #303133;
+  }
+}
+
+/* === 核心：赛题显示逻辑 === */
+.topic-section {
+  margin-left: 60px; /* 关键：左侧大缩进，体现父子关系 */
+  padding-left: 15px;
+  border-left: 2px dashed #e4e7ed; /* 左侧虚线引导 */
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.topic-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  .topic-dot {
+    color: #909399;
+    font-size: 12px;
+  }
+}
+
+.empty-state {
+  font-size: 13px;
+  color: #909399;
+  padding: 20px;
+  text-align: center;
+  background-color: #f5f7fa;
+  border-radius: 4px;
+}
 /* === 简约奖项样式 === */
 .award-list-simple {
   display: flex;

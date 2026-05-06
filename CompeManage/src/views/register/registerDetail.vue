@@ -1,7 +1,8 @@
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { api } from '@/api'
+import { nextTick } from 'vue'
 import {
   User,
   Iphone,
@@ -18,6 +19,7 @@ import {
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { debounce } from '@/utils/debounce'
+import { isValidPhone, isValidEmail, phoneRule, emailRule } from '@/utils/validators'
 
 const router = useRouter()
 const route = useRoute()
@@ -25,6 +27,8 @@ const formRef = ref(null)
 let maxMembers = ref()
 let minMembers = ref()
 let need_advisor = ref()
+let need_attachment = ref()
+let trackOptions = ref([]) // 赛道配置（含子赛道）
 let compType = 'team' // team / individual
 const uploadedUrls = ref([])
 const uploadRef = ref(null)
@@ -37,6 +41,7 @@ const rejectReason = ref('') // 驳回理由
 const isReadOnly = computed(() => pageStatus.value === 1) // 是否只读
 const isSelectingLeader = ref(false)
 const compInfo = ref({})
+const isSelectingAdvisor = ref(false)
 const formData = reactive({
   teamName: '',
   leader: {
@@ -50,15 +55,145 @@ const formData = reactive({
   // 队员列表 - 默认为空
   members: [],
   fileList: [],
+  advisorInfo: {
+    id: null,
+    username: '',
+    name: '',
+    phone: '',
+    email: '',
+    college: '',
+  },
+  trackName: '', // 选择的赛道
+  subTrackTitle: '', // 选择的赛题（子赛道）
+  track: '', // 提交给后端的赛道字符串
 })
 
 /* --- 校验规则 --- */
 const rules = {
   teamName: [{ required: true, message: '请输入团队名称', trigger: 'blur' }],
   'leader.name': [{ required: true, message: '请输入姓名', trigger: 'blur' }],
-  'leader.phone': [{ required: true, message: '请输入手机号', trigger: 'blur' }],
-  'leader.email': [{ required: true, message: '请输入邮箱', trigger: 'blur' }],
+  'leader.phone': [
+    { required: true, message: '请输入手机号', trigger: 'blur' },
+    phoneRule, // 使用验证工具
+  ],
+  'leader.email': [
+    { required: true, message: '请输入邮箱', trigger: 'blur' },
+    emailRule, // 使用验证工具
+  ],
+  'advisorInfo.phone': [
+    { required: true, message: '请输入手机号', trigger: 'blur' },
+    phoneRule,
+  ],
+  'advisorInfo.email': [
+    { required: true, message: '请输入邮箱', trigger: 'blur' },
+    emailRule,
+  ],
+  trackName: [],
+  subTrackTitle: [],
 }
+
+const subTrackOptions = computed(() => {
+  const current = trackOptions.value.find((item) => item.trackName === formData.trackName)
+  return current?.subTrack || []
+})
+
+const hasTrackConfig = computed(() => trackOptions.value.length > 0)
+
+const hasSubTrackForCurrentTrack = computed(() => subTrackOptions.value.length > 0)
+
+const updateSubTrackRule = () => {
+  if (hasTrackConfig.value && hasSubTrackForCurrentTrack.value) {
+    rules.trackName = [{ required: true, message: '请选择赛道', trigger: 'change' }]
+    rules.subTrackTitle = [{ required: true, message: '请选择赛题', trigger: 'change' }]
+  } else if (hasTrackConfig.value) {
+    rules.trackName = [{ required: true, message: '请选择赛道', trigger: 'change' }]
+    rules.subTrackTitle = []
+  } else {
+    rules.trackName = []
+    rules.subTrackTitle = []
+  }
+}
+
+const buildTrackValue = (trackName, subTrackTitle) => {
+  if (!trackName) return ''
+  if (!subTrackTitle) return trackName
+  return `${trackName} / ${subTrackTitle}`
+}
+
+const syncTrackValue = () => {
+  if (!formData.trackName) {
+    formData.track = ''
+    formData.subTrackTitle = ''
+    return
+  }
+
+  if (!hasSubTrackForCurrentTrack.value) {
+    formData.subTrackTitle = ''
+    formData.track = formData.trackName
+    return
+  }
+
+  if (!formData.subTrackTitle) {
+    formData.track = ''
+    return
+  }
+
+  formData.track = buildTrackValue(formData.trackName, formData.subTrackTitle)
+}
+
+const parseSavedTrackValue = async (savedTrack) => {
+  if (!savedTrack) {
+    formData.trackName = ''
+    formData.subTrackTitle = ''
+    formData.track = ''
+    return
+  }
+
+  // 直接按 " / " 分割
+  const parts = savedTrack.split(' / ')
+  
+  if (parts.length === 2) {
+    formData.trackName = parts[0].trim()
+    formData.subTrackTitle = parts[1].trim()
+    console.log(formData.subTrackTitle)
+    console.log('formData 转普通对象:', JSON.parse(JSON.stringify(formData)))
+    formData.track = savedTrack
+  } else if (parts.length === 1) {
+    // 只有赛道，没有赛题
+    formData.trackName = parts[0].trim()
+    formData.subTrackTitle = ''
+    formData.track = parts[0].trim()
+  } else {
+    // 其他情况，保持原值
+    formData.track = savedTrack
+  }
+  
+}
+
+watch(
+  () => formData.trackName,
+  (newTrackName, oldTrackName) => {
+    // 只有在手动切换（即 oldTrackName 有值且不是回显初始化）时才清空
+    // 或者在解析回显数据时，暂时禁用这个清空逻辑
+    if (oldTrackName && newTrackName !== oldTrackName) {
+      formData.subTrackTitle = ''
+    }
+    
+    // 更新子赛题的可选项列表 (subTrackOptions)
+    const currentTrack = trackOptions.value.find(t => t.trackName === newTrackName)
+    subTrackOptions.value = currentTrack ? currentTrack.subTrack : []
+    
+    updateSubTrackRule()
+    syncTrackValue()
+  }
+)
+
+watch(
+  () => formData.subTrackTitle,
+  () => {
+    syncTrackValue()
+  }
+)
 
 // ==================== 学生选择相关变量 ====================
 const studentDialogVisible = ref(false)
@@ -78,11 +213,18 @@ const studentTotal = ref(0)
 
 // 打开学生选择弹窗
 const openStudentSelect = (target = -1) => {
- if (target === 'leader') {
+  if (target === 'advisor') {
+    //  选择指导老师
+    isSelectingAdvisor.value = true
+    isSelectingLeader.value = false
+    currentMemberEditIndex.value = -1
+  } else if (target === 'leader') {
     isSelectingLeader.value = true
+    isSelectingAdvisor.value = false
     currentMemberEditIndex.value = -1
   } else {
     isSelectingLeader.value = false
+    isSelectingAdvisor.value = false
     currentMemberEditIndex.value = target // -1 表示新增成员，>=0 表示编辑成员
   }
   studentDialogVisible.value = true
@@ -122,7 +264,17 @@ const handleDialogClose = () => {
 
 //  确认选择学生
 const selectStudent = (row) => {
-  if (isSelectingLeader.value) {
+  if (isSelectingAdvisor.value) {
+    formData.advisorInfo = {
+      id: row.id,
+      username: row.username,
+      name: row.name,
+      phone: '', // 前端手动填写
+      email: '', // 前端手动填写
+      college: row.college || '',
+    }
+    ElMessage.success(`已选择指导老师：${row.name}`)
+  } else if (isSelectingLeader.value) {
     // 选择负责人
     formData.leader.name = row.name
     formData.leader.stuID = row.username
@@ -155,6 +307,7 @@ const selectStudent = (row) => {
 
   studentDialogVisible.value = false
   isSelectingLeader.value = false
+  isSelectingAdvisor.value = false
 }
 
 // ==================== 原有方法 ====================
@@ -217,6 +370,9 @@ async function checkRegStatus() {
         pageStatus.value = 1
       }
       formData.teamName = data.team_name
+       console.log('data.track =', data.track)  // 加这一行看看后端返回的值
+      await parseSavedTrackValue(data.track || '')
+      console.log("formData",formData);
       if (data.attachment_url) {
         const urls = data.attachment_url.split(',')
         formData.fileList = urls.map((url) => ({
@@ -225,6 +381,27 @@ async function checkRegStatus() {
           status: 'success', // 标记为已成功，防止重复上传
         }))
       }
+
+      if (data.advisor_info) {
+        try {
+          // 如果是 JSON 字符串，先解析
+          const advisorData = typeof data.advisor_info === 'string' 
+            ? JSON.parse(data.advisor_info) 
+            : data.advisor_info
+          
+          formData.advisorInfo = {
+            id: advisorData.id || null,
+            username: advisorData.username || '',
+            name: advisorData.name || '',
+            phone: advisorData.phone || '',
+            email: advisorData.email || '',
+            college: advisorData.college || '',
+          }
+        } catch (e) {
+          console.error('解析指导老师信息失败:', e)
+        }
+      }
+
       const leaderData = data.members.find((m) => m.is_leader)
       const memberData = data.members.filter((m) => !m.is_leader)
       if (leaderData) {
@@ -266,6 +443,28 @@ async function fetchRegSettings() {
     minMembers.value = config.min_team_member
     compInfo.value.title = config.comp_name
     need_advisor.value = config.need_advisor
+    need_attachment.value = config.need_attachment
+    
+    // 获取赛道配置（含子赛道）
+    if (config.track && config.track.length > 0) {
+      trackOptions.value = config.track
+        .map((item) => {
+          const trackName = (item?.trackName || '').trim()
+          const subTrack = Array.isArray(item?.subTrack)
+            ? item.subTrack
+                .map((sub) => ({ title: (sub?.title || '').trim() }))
+                .filter((sub) => sub.title)
+            : []
+          return { trackName, subTrack }
+        })
+        .filter((item) => item.trackName)
+
+      updateSubTrackRule()
+    } else {
+      trackOptions.value = []
+      updateSubTrackRule()
+    }
+
     if (maxMembers.value > 1) {
       compInfo.value.compType = 2
       compInfo.value.limitText = `团队赛 (${minMembers.value}-${maxMembers.value}人)`
@@ -280,11 +479,12 @@ async function fetchRegSettings() {
 
 async function fetchStudentList() {
   studentLoading.value = true
+  const role = isSelectingAdvisor.value ? 'teacher' : 'student'
   try {
     const response = await api.getStudentList({
       page: studentCurrentPage.value,
       page_size: studentPageSize.value,
-      role: 'student',
+      role: role,
       search: searchForm.name || searchForm.username || '',
     })
     if (response.code === 200) {
@@ -300,6 +500,23 @@ async function fetchStudentList() {
 
 async function submitVerify() {
   if (!formRef.value) return
+  
+  // 检查赛道是否必填
+  if (hasTrackConfig.value && !formData.trackName) {
+    ElMessage.error('请选择赛道')
+    return
+  }
+
+  if (hasSubTrackForCurrentTrack.value && !formData.subTrackTitle) {
+    ElMessage.error('请选择赛题')
+    return
+  }
+  
+  if (need_advisor.value === 2 && !formData.advisorInfo.name) {
+    ElMessage.error('该赛事要求必须选择指导老师')
+    return
+  }
+  
   await formRef.value.validate((valid) => {
     if (valid) {
       // 核心判断：有没有待上传的文件？
@@ -323,6 +540,8 @@ async function submitForm(attachmentURL) {
     leader: formData.leader,
     members: formData.members,
     attachment_url: attachmentURL,
+    advisor_info: formData.advisorInfo,
+    track: formData.track, // 新增：提交赛道
   }
   try {
     let response
@@ -339,13 +558,17 @@ async function submitForm(attachmentURL) {
       ElMessage.error(response.msg || '报名失败')
     }
   } catch (error) {
-    ElMessage.error(error.response.data.msg || '报名失败')
+    ElMessage.error(error.response.msg || '报名失败')
   }
 }
 
-onMounted(() => {
-  checkRegStatus()
-  fetchRegSettings()
+onMounted(async () => {
+  // 先获取赛道配置
+  await fetchRegSettings()
+  // 再获取报名状态
+  await checkRegStatus()
+  // 等待 DOM 更新完成
+  await nextTick()
 })
 </script>
 
@@ -408,10 +631,63 @@ onMounted(() => {
             <el-row>
               <el-col :span="24">
                 <el-form-item label="团队名称" prop="teamName" :disabled="isReadOnly">
-                  <el-input v-model="formData.teamName" prefix-icon="Trophy" />
+                  <el-input v-model="formData.teamName"/>
                 </el-form-item>
               </el-col>
             </el-row>
+          </div>
+
+          <!-- 赛道选择区域 -->
+          <div class="form-section" v-if="hasTrackConfig">
+            <h3 class="section-title">
+              选择赛道
+              <span class="required-mark">*</span>
+            </h3>
+            <el-row :gutter="16" class="track-select-row">
+              <el-col :span="hasSubTrackForCurrentTrack ? 12 : 24" :xs="24">
+                <el-form-item label="赛道" prop="trackName" :disabled="isReadOnly">
+                  <el-select
+                    v-model="formData.trackName"
+                    placeholder="请选择参赛赛道"
+                    clearable
+                    :disabled="isReadOnly"
+                    style="width: 100%"
+                  >
+                    <el-option
+                      v-for="item in trackOptions"
+                      :key="item.trackName"
+                      :label="item.trackName"
+                      :value="item.trackName"
+                    />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+
+              <el-col :span="12" :xs="24" v-if="hasSubTrackForCurrentTrack">
+                <el-form-item label="赛题" prop="subTrackTitle" :disabled="isReadOnly">
+                  <el-select
+                    v-model="formData.subTrackTitle"
+                    placeholder="请选择赛题"
+                    clearable
+                    :disabled="isReadOnly || !formData.trackName"
+                    style="width: 100%"
+                  >
+                    <el-option
+                      v-for="item in subTrackOptions"
+                      :key="item.title"
+                      :label="item.title"
+                      :value="item.title"
+                    />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <div
+              v-if="formData.trackName && !hasSubTrackForCurrentTrack"
+              class="track-single-tip"
+            >
+              当前赛道无需选择赛题，可直接填写下方报名信息。
+            </div>
           </div>
 
           <div class="form-section">
@@ -447,14 +723,13 @@ onMounted(() => {
               <el-row v-else :gutter="20">
                 <el-col :span="8" :xs="24">
                   <el-form-item label="姓名">
-                    <el-input v-model="formData.leader.name" prefix-icon="User" :disabled="true" />
+                    <el-input v-model="formData.leader.name"  :disabled="true" />
                   </el-form-item>
                 </el-col>
                 <el-col :span="8" :xs="24">
                   <el-form-item label="学号">
                     <el-input
                       v-model="formData.leader.stuID"
-                      prefix-icon="Postcard"
                       :disabled="true"
                     />
                   </el-form-item>
@@ -538,8 +813,6 @@ onMounted(() => {
                       >
                         <el-input
                           v-model="m.name"
-                          placeholder="填写真实姓名"
-                          prefix-icon="User"
                           :disabled="true"
                         />
                       </el-form-item>
@@ -553,8 +826,6 @@ onMounted(() => {
                       >
                         <el-input
                           v-model="m.stuID"
-                          placeholder="填写学号"
-                          prefix-icon="Postcard"
                           :disabled="true"
                         />
                       </el-form-item>
@@ -562,20 +833,33 @@ onMounted(() => {
 
                     <el-col :span="8" :xs="24">
                       <el-form-item
-                        label="手机号"
+                        label="联系电话"
                         :prop="'members.' + i + '.phone'"
                         :rules="{ required: true, message: '请输入手机号', trigger: 'blur' }"
                       >
                         <el-input
                           v-model="m.phone"
-                          placeholder="填写手机号"
-                          prefix-icon="Iphone"
+                          placeholder="请输入手机号"
                           :disabled="isReadOnly"
                         />
                       </el-form-item>
                     </el-col>
 
-                    <el-col :span="12" :xs="24">
+                    <el-col :span="8" :xs="24">
+                      <el-form-item
+                        label="联系邮箱"
+                        :prop="'members.' + i + '.email'"
+                        :rules="{ required: true, message: '请输入邮箱', trigger: 'blur' }"
+                      >
+                        <el-input
+                          v-model="m.email"
+                          placeholder="请输入邮箱"
+                          :disabled="isReadOnly"
+                        />
+                      </el-form-item>
+                    </el-col>
+
+                    <el-col :span="8" :xs="24">
                       <el-form-item
                         label="所属学院"
                         :prop="'members.' + i + '.college'"
@@ -583,24 +867,8 @@ onMounted(() => {
                       >
                         <el-input
                           v-model="m.college"
-                          placeholder="例如：计算机科学与网络工程学院"
-                          prefix-icon="School"
+                          placeholder="所属学院"
                           :disabled="true"
-                        />
-                      </el-form-item>
-                    </el-col>
-
-                    <el-col :span="12" :xs="24">
-                      <el-form-item
-                        label="电子邮箱"
-                        :prop="'members.' + i + '.email'"
-                        :rules="{ required: true, message: '请输入邮箱', trigger: 'blur' }"
-                      >
-                        <el-input
-                          v-model="m.email"
-                          placeholder="接收比赛通知使用"
-                          prefix-icon="Message"
-                          :disabled="isReadOnly"
                         />
                       </el-form-item>
                     </el-col>
@@ -610,7 +878,81 @@ onMounted(() => {
             </div>
           </div>
 
-          <div class="form-section">
+          <div class="form-section" v-if="need_advisor > 0">
+            <div class="section-header">
+              <h3 class="section-title" style="margin: 0">
+                指导老师信息
+                <span v-if="need_advisor === 2" class="required-mark">*</span>
+              </h3>
+              <el-button
+                v-if="!isReadOnly && !formData.advisorInfo.name"
+                link
+                type="primary"
+                @click="openStudentSelect('advisor')"
+                :icon="Plus"
+              >
+                选择指导老师
+              </el-button>
+              <el-button
+                v-if="!isReadOnly && formData.advisorInfo.name"
+                link
+                type="primary"
+                @click="openStudentSelect('advisor')"
+              >
+                重新选择
+              </el-button>
+            </div>
+
+            <div class="info-grid">
+              <el-empty
+                v-if="!formData.advisorInfo.name"
+                description="请先选择指导老师"
+                :image-size="80"
+              />
+
+              <el-row v-else :gutter="20">
+                <el-col :span="8" :xs="24">
+                  <el-form-item label="姓名">
+                    <el-input v-model="formData.advisorInfo.name" :disabled="true" />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8" :xs="24">
+                  <el-form-item label="工号">
+                    <el-input v-model="formData.advisorInfo.username" :disabled="true" />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8" :xs="24">
+                  <el-form-item label="联系电话" prop="advisorInfo.phone">
+                    <el-input
+                      v-model="formData.advisorInfo.phone"
+                      placeholder="请输入手机号"
+                      :disabled="isReadOnly"
+                    />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8" :xs="24">
+                  <el-form-item label="联系邮箱" prop="advisorInfo.email">
+                    <el-input
+                      v-model="formData.advisorInfo.email"
+                      placeholder="请输入邮箱"
+                      :disabled="isReadOnly"
+                    />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8" :xs="24">
+                  <el-form-item label="所属学院">
+                    <el-input
+                      v-model="formData.advisorInfo.college"
+                      placeholder="所属学院"
+                      :disabled="true"
+                    />
+                  </el-form-item>
+                </el-col>
+              </el-row>
+            </div>
+          </div>
+
+          <div class="form-section" v-if="need_attachment > 0">
             <h3 class="section-title">附件材料</h3>
             <el-upload
               ref="uploadRef"
@@ -644,10 +986,10 @@ onMounted(() => {
     </div>
   </div>
 
-  <!-- ✅ 学生选择弹窗 -->
+  <!--  学生选择弹窗 -->
   <el-dialog
     v-model="studentDialogVisible"
-    :title="isSelectingLeader ? '选择负责人' : '选择队员'"
+    :title="isSelectingAdvisor ? '选择指导老师' : isSelectingLeader ? '选择负责人' : '选择队员'"
     width="800px"
     align-center
     append-to-body
@@ -696,6 +1038,7 @@ onMounted(() => {
       </el-form>
     </div>
 
+    
     <el-table
       :data="studentList"
       border
@@ -717,6 +1060,7 @@ onMounted(() => {
       </template>
     </el-table>
 
+    
     <div class="pagination-wrapper">
       <el-pagination
         v-model:current-page="studentCurrentPage"
@@ -805,13 +1149,12 @@ onMounted(() => {
 }
 
 .content-area {
-  max-width: 900px;
+  max-width: 1000px;
   width: 100%;
   margin: 0 auto;
   padding: 0 20px 40px;
   position: relative;
   z-index: 5;
-
   .form-card {
     background: #fff;
     border-radius: 8px;
@@ -830,6 +1173,12 @@ onMounted(() => {
         margin-bottom: 20px;
         padding-left: 12px;
         border-left: 4px solid var(--primary-color);
+
+        .required-mark {
+          color: #f56c6c;
+          margin-left: 4px;
+          font-size: 14px;
+        }
       }
 
       .section-header {
@@ -911,6 +1260,20 @@ onMounted(() => {
           }
         }
       }
+    }
+
+    .track-select-row {
+      margin-bottom: 4px;
+    }
+
+    .track-single-tip {
+      margin-top: 4px;
+      padding: 8px 12px;
+      border-radius: 6px;
+      background: #f4f8ff;
+      color: #5a6b8c;
+      font-size: 13px;
+      line-height: 1.5;
     }
   }
 

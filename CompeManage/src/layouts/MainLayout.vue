@@ -4,7 +4,7 @@ import Header from '@/components/Header.vue'
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-import { House, Trophy, ArrowRight, EditPen, Key, Document, Medal, DataAnalysis } from '@element-plus/icons-vue'
+import { House, Trophy, ArrowRight, EditPen, Key, Document, Medal, DataAnalysis, DocumentChecked } from '@element-plus/icons-vue'
 
 const userStore = useUserStore()
 const route = useRoute()
@@ -35,11 +35,6 @@ const allMenus = [
         title: userStore.role === 'school_admin' ? '赛事审核' : '赛事申报',
         roles: ['school_admin', 'college_admin'],
       },
-      {
-        path: '/competition/declare',
-        title: '新增申报',
-        roles: ['college_admin'],
-      },
     ],
   },
   {
@@ -51,7 +46,7 @@ const allMenus = [
       {
         path: '/register',
         title: '赛事报名',
-        roles: ['school_admin', 'college_admin', 'student', 'competition_manager'],
+        roles: ['school_admin', 'college_admin', 'student'],
       },
       {
         path: '/register/edit',
@@ -61,6 +56,11 @@ const allMenus = [
       {
         path: '/register/audit',
         title: '报名审核',
+        roles: ['school_admin', 'college_admin', 'competition_manager'],
+      },
+      {
+        path: '/register/work-audit',
+        title: '作品审核',
         roles: ['school_admin', 'college_admin', 'competition_manager'],
       },
       {
@@ -93,6 +93,12 @@ const allMenus = [
     title: '我的竞赛',
     roles: ['student'],
     icon: Document,
+  },
+  {
+    path: '/review',
+    title: '专家评审',
+    roles: ['school_admin', 'college_admin', 'competition_manager'],
+    icon: DocumentChecked,
   },
   {
     path: '/summary',
@@ -165,14 +171,27 @@ const breadcrumbs = computed(() => {
   // 1. 获取当前路由匹配到的所有嵌套路径（过滤掉没有 title 的）
   let matched = route.matched.filter((item) => item.meta && item.meta.title)
 
-  // 2. 处理父级插入逻辑
+  // 2. 处理父级链插入逻辑（支持多级 parent）
   const currentRouteMeta = route.meta
-  if (currentRouteMeta && currentRouteMeta.parent) {
-    const parentRoute = router.getRoutes().find((r) => r.name === currentRouteMeta.parent)
-    if (parentRoute) {
-      const last = matched.pop()
-      matched.push(parentRoute) // 插入父级路由
-      matched.push(last) // 放回当前路由
+  if (currentRouteMeta && currentRouteMeta.parent && matched.length > 0) {
+    const routeMap = new Map(router.getRoutes().map((r) => [r.name, r]))
+    const parentChain = []
+    const visited = new Set()
+    let parentName = currentRouteMeta.parent
+
+    while (parentName && !visited.has(parentName)) {
+      visited.add(parentName)
+      const parentRoute = routeMap.get(parentName)
+      if (!parentRoute || !parentRoute.meta?.title) {
+        break
+      }
+      parentChain.unshift(parentRoute)
+      parentName = parentRoute.meta?.parent
+    }
+
+    if (parentChain.length > 0) {
+      const current = matched[matched.length - 1]
+      matched = [...parentChain, current]
     }
   }
   return matched
@@ -185,6 +204,24 @@ const handleLink = (item) => {
   if (redirect === 'noRedirect' || item.meta?.redirect === 'noRedirect') {
     return
   }
+
+  if (item.name === 'work-audit-comp-detail') {
+    const compId = route.query.comp_id
+    if (compId) {
+      router.push({
+        name: 'work-audit-comp-detail',
+        params: { id: compId },
+        query: {
+          comp_name: route.query.comp_name || '',
+        },
+      })
+      return
+    }
+
+    router.push(item.meta?.activeMenu || '/register/work-audit')
+    return
+  }
+
   router.push(path)
 }
 

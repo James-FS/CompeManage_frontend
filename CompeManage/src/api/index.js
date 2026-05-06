@@ -38,8 +38,11 @@ export const api = {
   getRegConfig: (compID) => get(`/api/reg/config/get?comp_id=${compID}`),
   getRegStatus: (comp_id) => get(`/api/reg/status?comp_id=${comp_id}`),
   submitReg: (data) => post('/api/reg/submit', data),
+  resubmitReg: (data) => put('/api/reg/resubmit', data),
   reSubmitReg: (data) => put('/api/reg/resubmit', data),
   getRegList: (params) => get('/api/reg/list', params),
+  getWorkAuditCompList: (params) => get('/api/reg/work/audit/comp/list', params),
+  getWorkAuditStudentList: (params) => get('/api/reg/work/audit/student/list', params),
   getRegDetail: (id) => get(`/api/reg/detail?id=${id}`),
   auditReg: (data) => put('/api/reg/audit', data),
   getStudentList: (params) => get('/api/reg/user/list', params),
@@ -64,9 +67,10 @@ export const api = {
   //==================== 报名相关 ====================
   getMyReg: (id) => get(`/api/reg/my-reg`, id),
   submitWork: (data) => put('/api/reg/work-submit', data),
+ 
   // ==================== 通知相关 ====================
   getNoticeList: (params) => get('/api/notice/list', params),
-  getNoticeDetail: (id) => get(`/api/notice/detail/${id}`),
+  getNoticeDetail: (id) => get(`/api/notice/${id}`),
   createNotice: (data) => post('/api/notice/comp/create', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
   publishNotice: (id) => put(`/api/notice/${id}/publish`),
   deleteNotice: (id) => del(`/api/notice/${id}`),
@@ -76,7 +80,6 @@ export const api = {
   getAwardTemplate: (comp_id) => get(`/api/award/export-template?comp_id=${comp_id}`, {}, { responseType: 'blob' }),
   getAwardCompList:(params) => get('/api/award/list', params),
   getCompAwards:(comp_id) => get(`/api/award/comp-awards?comp_id=${comp_id}`),
-  getAwardTemplate:(comp_id) => get(`/api/award/export-template?comp_id=${comp_id}`, {},{ responseType: 'blob' }),
   getMyAwardList:(params) => get('/api/award/student/my-awards', params),
   getAwardAuditList: (params) => get('/api/award/audit/list', params),
   getAwardAuditDetail: (id) => get(`/api/award/audit/detail/${id}`),

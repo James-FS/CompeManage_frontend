@@ -316,12 +316,10 @@ onMounted(() => {
 }
 
 .section {
-  margin-bottom: 30px;
   .section-title {
     font-size: 16px;
     font-weight: 600;
     color: #303133;
-    margin-bottom: 8px;
     padding-left: 10px;
     border-left: 4px solid var(--primary-color);
     line-height: 1;

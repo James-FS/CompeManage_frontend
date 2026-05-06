@@ -1,9 +1,10 @@
 <script setup>
-import { ElTable, ElTableColumn, ElPagination, ElInput, ElDatePicker, ElButton, ElMessage } from 'element-plus'
-import { Search, Refresh } from '@element-plus/icons-vue';
+import { ElTable, ElTableColumn, ElPagination, ElInput, ElDatePicker, ElButton, ElMessage} from 'element-plus'
+import { Search, Refresh,ArrowLeft } from '@element-plus/icons-vue';
 import { ref, reactive, onMounted } from 'vue'
 import api from '@/api'
-
+import { useRouter } from 'vue-router'
+const router = useRouter()
 let currentPage = ref(1)
 let pageSize = ref(10)
 let total = ref(0)
@@ -77,6 +78,20 @@ function ResetFilter(){
     fetchNoticeList();
 }
 
+function goToDetail(row) {
+    if (row && row.id) {
+        router.push({
+    name: 'Notice',
+    params: { id: row.id }
+  });
+    } else {
+        ElMessage.error('无法获取通知ID');
+    }
+}
+
+const goBack = () => {
+  router.back()
+}
 onMounted(() => {
     fetchNoticeList();
 });
@@ -85,6 +100,12 @@ onMounted(() => {
 <template>
   <div class="page-container">
     <div class="list-container">
+    <div class="back-btn" @click="goBack">
+      <svg class="back-arrow" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M20 12H4M10 18L4 12L10 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>返回</span>
+    </div>
       <div class="list-header">
         <div class="header-title">赛事通知列表</div>
         <div class="header-filter">
@@ -121,6 +142,7 @@ onMounted(() => {
               fontSize: '14px',
               fontWeight: '600' 
           }"
+          @row-click="goToDetail"
           class="list-table"
         >
           <el-table-column label="通知标题" min-width="400">
@@ -188,6 +210,30 @@ onMounted(() => {
     backdrop-filter: blur(8px); /* 毛玻璃效果 */
     border: 1px solid rgba(255, 255, 255, 0.5);
     
+    .back-btn{
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #9ca3af;
+      cursor: pointer;
+      transition: all 0.2s;
+      width: fit-content;
+      
+      &:hover {
+        color: #64748b;
+      }
+      
+      .back-arrow {
+        width: 20px;
+        height: 20px;
+        color: inherit;
+      }
+      
+      span {
+        font-size: 14px;
+      }
+    }
+
     .list-header {
       display: flex;
       flex-direction: row;
@@ -196,7 +242,7 @@ onMounted(() => {
       border-left: 4px solid var(--primary-color);
       padding-left: 12px;
       margin-bottom: 40px;
-      
+      margin-top:20px;
       .header-title {
         font-size: 20px;
         font-weight: 600;

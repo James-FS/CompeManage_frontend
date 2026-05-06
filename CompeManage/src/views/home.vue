@@ -5,18 +5,12 @@ import { useRouter } from 'vue-router'
 import api from '@/api'
 import {
   Trophy, Bell, ArrowRight, Promotion,
-  Checked, Management, Histogram, Timer,
-  Document, UserFilled, Calendar, Refresh,
-  Warning, CircleCheck, Phone, QuestionFilled,
-  DataLine
+  Checked, Histogram, Document, UserFilled
 } from '@element-plus/icons-vue'
 
 const userStore = useUserStore()
 const router = useRouter()
 const role = computed(() => userStore.role || 'student')
-const currentDate = new Date().toLocaleDateString('zh-CN', {
-  year: 'numeric', month: 'long', day: 'numeric', weekday: 'long'
-})
 
 const notices = ref([])
 
@@ -28,22 +22,6 @@ const bannerCounts = reactive({
   regOpen: 0,
   ongoing: 0,
   todo: 0
-})
-
-const myProgressList = computed(() => {
-  if (role.value === 'student') {
-    return [
-      { title: '互联网+创新创业大赛', action: '报名审核', status: '被退回', time: '10分钟前', state: 'danger', icon: Warning },
-      { title: '蓝桥杯软件赛', action: '资格确认', status: '已通过', time: '昨天', state: 'success', icon: CircleCheck },
-      { title: '全国大学生数学建模', action: '缴费状态', status: '处理中', time: '2天前', state: 'primary', icon: Refresh },
-    ]
-  } else {
-    return [
-      { title: '张三 - 互联网+大赛', action: '报名表审核', status: '已驳回', time: '刚刚', state: 'danger', icon: Warning },
-      { title: '李四 - 蓝桥杯', action: '获奖证书', status: '已归档', time: '1小时前', state: 'success', icon: CircleCheck },
-      { title: '王五 - 数学建模', action: '材料提交', status: '待审核', time: '3小时前', state: 'primary', icon: Refresh },
-    ]
-  }
 })
 
 const quickFunctions = computed(() => {
@@ -147,7 +125,12 @@ const loadBannerCounts = async () => {
     const pendingRes = await api.getPendingDeclares({ page: 1, page_size: 1 })
     bannerCounts.todo = pendingRes?.data?.total || 0
   } else {
-    bannerCounts.todo = 0
+    try {
+      const pendingRes = await api.getMyPendingDeclares({ page: 1, page_size: 1 })
+      bannerCounts.todo = pendingRes?.data?.total || 0
+    } catch {
+      bannerCounts.todo = 0
+    }
   }
 }
 

@@ -141,6 +141,39 @@ const routes = [
         component: () => import('@/views/register/audit.vue'),
       },
       {
+        path: '/register/work-audit',
+        name: 'register-work-audit',
+        component: () => import('@/views/register/workAudit.vue'),
+        meta: {
+          title: '作品审核',
+          roles: ['school_admin', 'college_admin', 'competition_manager'],
+        },
+      },
+      {
+        path: '/register/work-audit/comp/:id',
+        name: 'work-audit-comp-detail',
+        component: () => import('@/views/register/workAuditCompDetail.vue'),
+        meta: {
+          title: '作品列表',
+          roles: ['school_admin', 'college_admin', 'competition_manager'],
+          parent: 'register-work-audit',
+          activeMenu: '/register/work-audit',
+        },
+        props: true,
+      },
+      {
+        path: '/register/work-audit/detail/:id',
+        name: 'work-audit-detail',
+        component: () => import('@/views/register/workAuditDetail.vue'),
+        meta: {
+          title: '作品详情',
+          roles: ['school_admin', 'college_admin', 'competition_manager'],
+          parent: 'work-audit-comp-detail',
+          activeMenu: '/register/work-audit',
+        },
+        props: true,
+      },
+      {
         path: '/register/audit/detail/:id',
         name: 'audit-detail',
         meta: {
@@ -194,6 +227,7 @@ const routes = [
         meta: {
           title: '获奖详情',
           parent: 'AwardList',
+          activeMenu: '/award/list',
         },
       },
       {
@@ -203,6 +237,7 @@ const routes = [
         meta: {
           title: '导入获奖名单',
           parent: 'AwardDetail',
+          activeMenu: '/award/list',
         },
       },
       {
@@ -296,6 +331,21 @@ const routes = [
         meta: {
           title: '数据汇总',
           roles: ['school_admin', 'college_admin'], // 仅限管理员查看
+        },
+      },
+    ],
+  },
+  {
+    path: '/review',
+    component: MainLayout,
+    children: [
+      {
+        path: '',
+        name: 'ExpertReview',
+        component: () => import('@/views/review/index.vue'),
+        meta: {
+          title: '专家评审',
+          roles: ['school_admin', 'college_admin', 'competition_manager'],
         },
       },
     ],

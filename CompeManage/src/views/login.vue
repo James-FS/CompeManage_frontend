@@ -33,6 +33,10 @@ const handleLogin = async () => {
                 ElMessage.success(`你好，${userStore.userInfo.name}`)
                 router.push('/home')
             } catch (error) {
+                // 网络层错误已在请求拦截器中提示，避免登录页重复弹窗
+                if (error?.message === 'Network Error' || (!error?.response && error?.request)) {
+                    return
+                }
                 ElMessage.error(error.message || '登录失败')
             } finally {
                 loading.value = false
@@ -67,7 +71,8 @@ const quickFill = (roleKey) => {
 
             <div class="login-right">
                 <h3>用户登录</h3>
-                <el-form ref="formRef" :model="loginForm" :rules="rules" class="login-form" size="large">
+                <el-form ref="formRef" :model="loginForm" :rules="rules" class="login-form" size="large"
+                    @submit.prevent>
                     <el-form-item prop="username">
                         <el-input v-model="loginForm.username" placeholder="请输入用户名" :prefix-icon="User" />
                     </el-form-item>
@@ -77,11 +82,12 @@ const quickFill = (roleKey) => {
                             show-password @keyup.enter="handleLogin" />
                     </el-form-item>
 
-                    <el-button type="primary" class="login-btn" :loading="loading" @click="handleLogin">
+                    <el-button type="primary" class="login-btn" :loading="loading" native-type="button"
+                        @click="handleLogin">
                         立即登录
                     </el-button>
 
-                    <div class="dev-tools">
+                    <!-- <div class="dev-tools">
                         <div class="divider"><span>测试账号</span></div>
                         <div class="role-tags">
                             <el-tag effect="dark" @click="quickFill('school_admin')" class="role-tag cursor-pointer">
@@ -103,7 +109,7 @@ const quickFill = (roleKey) => {
                                 学生
                             </el-tag>
                         </div>
-                    </div>
+                    </div> -->
                 </el-form>
             </div>
         </div>
