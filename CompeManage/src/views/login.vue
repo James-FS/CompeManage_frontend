@@ -87,7 +87,7 @@ const quickFill = (roleKey) => {
                         立即登录
                     </el-button>
 
-                    <div class="dev-tools">
+                    <!-- <div class="dev-tools">
                         <div class="divider"><span>测试账号</span></div>
                         <div class="role-tags">
                             <el-tag effect="dark" @click="quickFill('school_admin')" class="role-tag cursor-pointer">
@@ -109,7 +109,7 @@ const quickFill = (roleKey) => {
                                 学生
                             </el-tag>
                         </div>
-                    </div>
+                    </div> -->
                 </el-form>
             </div>
         </div>

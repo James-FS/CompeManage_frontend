@@ -125,8 +125,14 @@ const goSubmitWork = (item, state) => {
   router.push({ name: 'work-detail', params: { id: item.id } })
 }
 
+const normalizeRegStatus = (status) => {
+  const parsed = Number(status)
+  return Number.isNaN(parsed) ? status : parsed
+}
+
 const getActionState = (item) => {
-  if (item.status !== 1) {
+  const status = normalizeRegStatus(item.status)
+  if (status !== 1 && status !== 4) {
     return {
       disabled: true,
       btnText: '资格审核中',
@@ -164,13 +170,16 @@ const getActionState = (item) => {
 }
 
 const getStatusTag = (status) => {
+  const normalizedStatus = normalizeRegStatus(status)
   const map = {
     0: { type: 'warning', text: '待审核' },
     1: { type: 'success', text: '已报名' },
     2: { type: 'danger', text: '已驳回' },
     3: { type: 'info', text: '申报补录' },
+    4: { type: 'success', text: '已通过' },
+    5: { type: 'danger', text: '已驳回' },
   }
-  return map[status] || { type: 'info', text: '未知' }
+  return map[normalizedStatus] || { type: 'info', text: '未知' }
 }
 
 onMounted(() => {
