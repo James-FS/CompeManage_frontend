@@ -336,6 +336,21 @@ const routes = [
     ],
   },
   {
+    path: '/review',
+    component: MainLayout,
+    children: [
+      {
+        path: '',
+        name: 'ExpertReview',
+        component: () => import('@/views/review/index.vue'),
+        meta: {
+          title: '专家评审',
+          roles: ['school_admin', 'college_admin', 'competition_manager'],
+        },
+      },
+    ],
+  },
+  {
     path: '/permission',
     component: MainLayout,
     children: [

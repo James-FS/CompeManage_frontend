@@ -4,7 +4,7 @@ import Header from '@/components/Header.vue'
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-import { House, Trophy, ArrowRight, EditPen, Key, Document, Medal, DataAnalysis } from '@element-plus/icons-vue'
+import { House, Trophy, ArrowRight, EditPen, Key, Document, Medal, DataAnalysis, DocumentChecked } from '@element-plus/icons-vue'
 
 const userStore = useUserStore()
 const route = useRoute()
@@ -93,6 +93,12 @@ const allMenus = [
     title: '我的竞赛',
     roles: ['student'],
     icon: Document,
+  },
+  {
+    path: '/review',
+    title: '专家评审',
+    roles: ['school_admin', 'college_admin', 'competition_manager'],
+    icon: DocumentChecked,
   },
   {
     path: '/summary',
