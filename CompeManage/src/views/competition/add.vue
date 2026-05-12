@@ -201,6 +201,16 @@ const handleFinalImport = () => {
         return;
     }
 
+    // 校验学院是否在数据库中存在
+    if (collegeList.value.length > 0) {
+        const collegeNames = new Set(collegeList.value.map(c => c.name));
+        const invalidItem = importList.value.find(item => item.college && !collegeNames.has(item.college));
+        if (invalidItem) {
+            ElMessage.error(`赛事"${invalidItem.comp_name}"的学院"${invalidItem.college}"不存在，请检查后重试`);
+            return;
+        }
+    }
+
     ElMessageBox.confirm(
         `确认将这 ${importList.value.length} 项赛事导入到本年度赛事库吗？`,
         '最终确认',
@@ -462,6 +472,16 @@ const handleExcelImportSubmit = () => {
         return;
     }
 
+    // 校验学院是否在数据库中存在
+    if (collegeList.value.length > 0) {
+        const collegeNames = new Set(collegeList.value.map(c => c.name));
+        const badCollege = excelList.value.find(item => item.college && !collegeNames.has(item.college));
+        if (badCollege) {
+            ElMessage.error(`赛事"${badCollege.comp_name}"的学院"${badCollege.college}"不存在，请检查后重试`);
+            return;
+        }
+    }
+
     ElMessageBox.confirm(
         `确认导入这 ${excelList.value.length} 条赛事数据吗？`,
         '提示',
@@ -472,7 +492,7 @@ const handleExcelImportSubmit = () => {
             ElMessage.success('批量导入成功');
             router.push({ name: 'CompetitionList' });
         } catch (error) {
-            ElMessage.error('导入失败，请检查数据是否完整');
+            ElMessage.error(error.message || '导入失败');
             console.error('Excel导入失败:', error);
         }
     }).catch(() => { });
