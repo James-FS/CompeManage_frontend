@@ -1,0 +1,15 @@
+{
+  "all": true,
+  "include": [
+    "src/**"
+  ],
+  "exclude": [
+    "src/main.js",
+    "**/node_modules/**",
+    "e2e/**",
+    "dist/**"
+  ],
+  "report-dir": "./coverage",
+  "reporter": ["html", "text", "lcov", "json"],
+  "extension": [".js", ".vue"]
+}
