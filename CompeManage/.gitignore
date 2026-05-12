@@ -41,3 +41,8 @@ __screenshots__/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+# NYC coverage
+/.nyc_output/
+e2e/coverage-summary.md
+test.md

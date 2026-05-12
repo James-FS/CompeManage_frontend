@@ -164,3 +164,8 @@ npm run build # 生产构建
 1. "在编写新测试前，先读取 `src/views/` 下对应的 `.vue` 文件，确认 `v-model` 绑定的变量名。"
 2. "审查测试失败原因时，请优先对比 `claude.md` 中的数据结构定义与实际拦截到的网络请求载荷。"
 3. "如果页面存在 Loading 遮罩，请在操作前添加处理逻辑，等待遮罩消失。"
+
+### 测试失败可能原因(需规避)
+1.API 验证失败 - 页面加载后立即调用后端 API /api/comp/list，但 mock token 不是真实后端签发的，被拒绝返回空数据或错误
+2.路由守卫可能未放行 - 虽然 localStorage 有 token，但 Vue 应用可能需要通过 API 验证 token 的有效性才能完成初始化
+3.Pinia store 状态未就绪 - addInitScript 设置 localStorage 后，Vue 应用刷新时 Pinia store 的 restoreState() 可能在 API 请求之后才执行

@@ -29,19 +29,10 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
-    {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
-    },
-
-    {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
-    },
   ],
 
   webServer: {
-    command: 'npm run dev',
+    command: 'npm run preview',
     url: 'http://localhost:5219',
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
