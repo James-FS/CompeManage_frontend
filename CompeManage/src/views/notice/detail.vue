@@ -51,8 +51,8 @@ function handleEdit(row) {
 
 function handleDelete(row) {
   ElMessageBox.confirm(
-    `确定要删除通知 "${row.title}" 吗？此操作不可恢复。`, 
-    '删除确认', 
+    `确定要删除通知 "${row.title}" 吗？此操作不可恢复。`,
+    '删除确认',
     {
       confirmButtonText: '确定删除',
       cancelButtonText: '取消',
@@ -62,14 +62,14 @@ function handleDelete(row) {
   ).then(async () => {
     try {
       const res = await api.deleteNotice(row.ID)
-      if (res.code === 0) {
+      if (res && res.code === 200) {
         ElMessage.success('删除成功')
-        fetchNoticeList()
+        await fetchNoticeList() // 重新获取列表
       } else {
-        ElMessage.error(res.data.msg || '删除失败')
+        ElMessage.error(res?.message || res?.msg || '删除失败')
       }
     } catch (error) {
-      ElMessage.error('删除失败：' + error.message)
+      ElMessage.error('删除失败：' + (error.message || error))
     }
   })
 }
