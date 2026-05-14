@@ -72,6 +72,7 @@ export const api = {
   getNoticeList: (params) => get('/api/notice/list', params),
   getNoticeDetail: (id) => get(`/api/notice/${id}`),
   createNotice: (data) => post('/api/notice/comp/create', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  updateNotice: (id, data) => put(`/api/notice/${id}`, data, { headers: { 'Content-Type': 'multipart/form-data' } }),
   publishNotice: (id) => put(`/api/notice/${id}/publish`),
   deleteNotice: (id) => del(`/api/notice/${id}`),
   // ==================== 获奖相关 ====================
