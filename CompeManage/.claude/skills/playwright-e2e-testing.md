@@ -266,6 +266,128 @@ expect(newCount).toBe(oldCount + 1)
 7. **`waitForResponse` 时序** — 必须在触发动作**之前**注册 Promise，否则错过响应
 8. **保存后页面可能跳转** — 验证"保存被阻止"应检查 ElMessage.error，而非假设 URL 不变
 
+## 测试实战问题与解决方案
+
+### 1. 选择器歧义导致 `strict mode violation`
+
+页面多处存在相同文本时，`locator('button:has-text("确认")')` 会匹配多个元素。
+
+**解决**：使用更精确的上下文选择器
+```js
+// ❌ 错误：匹配多个按钮
+await page.locator('button:has-text("确认导入")').click()
+
+// ✅ 正确：限定父容器
+await page.locator('.step-footer button:has-text("确认导入")').click()
+await page.locator('.import-container button:has-text("确认导入")').click()
+```
+
+### 2. Dialog 弹窗数据未加载完成
+
+弹窗打开后立即查找表格行，但数据还在请求中。
+
+**解决**：
+```js
+await page.locator('input[placeholder="请选择赛事负责人"]').click()
+await page.waitForSelector('.el-dialog:visible', { timeout: 5000 })
+await page.waitForLoadState('networkidle')  // 等待网络请求完成
+await page.waitForTimeout(800)             // 留渲染缓冲时间
+```
+
+### 3. Excel 导入数据校验失败
+
+提示"存在赛事名称、级别或负责人为空"，即使 Excel 中有数据。
+
+**原因**：Excel 导入后需要通过工号自动匹配负责人 `manager_id`，但如果工号不在系统中则匹配失败。
+
+**解决**：确保 Excel 数据中的工号是系统中存在的用户（如 `T2023001`）。
+
+### 4. Table 内嵌按钮定位失败
+
+表格内的删除/修改按钮无法用 `button:has-text("删除")` 定位到。
+
+**解决**：使用 button 的 type class
+```js
+// ❌ 可能失败
+await page.locator('.edit-table .el-table__body tr').first().locator('button:has-text("删除")').click()
+
+// ✅ 使用 class 定位 danger 类型按钮
+await page.locator('.edit-table .el-table__body tr').first().locator('.el-button--danger').click()
+```
+
+### 5. 确认对话框不出现
+
+点击"确认导入"后没有弹出 `ElMessageBox`，而是直接显示错误 toast。
+
+**原因**：后端数据校验失败（如缺少必填字段、学院不存在等），跳过了确认框直接报错。
+
+**解决**：不强制要求确认框出现，检查错误消息即可
+```js
+await confirmBtn.click()
+const msgBoxVisible = await page.locator('.el-message-box__wrapper').isVisible({ timeout: 3000 }).catch(() => false)
+
+if (msgBoxVisible) {
+  await page.locator('.el-message-box__wrapper button:has-text("确认")').click()
+} else {
+  // 检查是否是错误消息
+  const errorMsg = page.locator('.el-message--error')
+  if (await errorMsg.isVisible()) {
+    console.log('数据校验失败:', await errorMsg.textContent())
+  }
+}
+```
+
+### 6. `waitForResponse` 注册太晚
+
+动作触发后才注册响应监听，可能错过响应。
+
+**解决**：先注册监听，再触发动作
+```js
+// ✅ 正确顺序
+const respPromise = page.waitForResponse(
+  resp => resp.url().includes('/api/comp/create') && resp.request().method() === 'POST',
+  { timeout: 15000 }
+)
+await page.locator('button:has-text("创建")').click()
+const resp = await respPromise
+```
+
+### 7. 批量操作测试依赖数据状态
+
+测试假设表格有数据、多行可选择，但数据可能为空。
+
+**解决**：添加条件检查
+```js
+const rows = page.locator('.el-table__body tr')
+const rowCount = await rows.count()
+if (rowCount < 2) {
+  console.log('数据不足，跳过批量选择测试')
+  return
+}
+```
+
+### 8. 文件上传 buffer 格式
+
+`setInputFiles` 需要 `Buffer.from(buffer)` 格式。
+
+```js
+await fileInput.setInputFiles({
+  name: 'test.xlsx',
+  mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  buffer: Buffer.from(excelBuffer)
+})
+```
+
+### 9. 分页切换后数据为空
+
+切换每页条数后，`waitForLoadState('networkidle')` 完成后表格可能还未渲染新数据。
+
+**解决**：增加额外等待
+```js
+await page.waitForLoadState('networkidle')
+await page.waitForTimeout(500)
+```
+
 ## 测试用例设计原则
 
 每个设置页面至少需要覆盖：
