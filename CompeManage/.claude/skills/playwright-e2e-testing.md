@@ -399,3 +399,238 @@ await page.waitForTimeout(500)
 | 联动行为 | 切换参赛形式 → 验证相关控件出现/隐藏 |
 | 增删操作 | 添加赛道 → 验证数量 +1，输入值正确 |
 | 条件显示 | 开启开关 → 验证关联组件出现 |
+
+## 联动选择逻辑测试
+
+联动选择（如赛道-赛题、省市-学校）是常见场景，需要验证：
+1. 父选项改变时，子选项列表立即更新
+2. 父选项改变时，原有的子选项选中值被清空
+
+```js
+// 联动选择验证模板
+test('联动选择 - 子选项清空验证', async ({ page }) => {
+  // 1. 选择父选项
+  const parentSelect = page.locator('.el-select[placeholder="请选择父选项"]')
+  await parentSelect.click()
+  await page.waitForTimeout(400)
+  await page.getByRole('option').first().click()
+  await page.waitForTimeout(500)
+
+  // 2. 选择子选项
+  const childSelect = page.locator('.el-select[placeholder="请选择子选项"]')
+  if (await childSelect.isVisible()) {
+    await childSelect.click()
+    await page.waitForTimeout(400)
+    await page.getByRole('option').first().click()
+    await page.waitForTimeout(300)
+
+    // 3. 切换父选项
+    await parentSelect.click()
+    await page.waitForTimeout(400)
+    await page.getByRole('option').nth(1).click()
+    await page.waitForTimeout(500)
+
+    // 4. 验证子选项已被清空
+    const childValue = await childSelect.locator('input').inputValue()
+    expect(childValue).toBe('')
+  }
+})
+```
+
+## 搜索+分页组合测试
+
+列表页面通常有搜索条件和分页器，组合测试时：
+
+```js
+test('搜索与分页组合', async ({ page }) => {
+  // 1. 输入搜索条件
+  await page.locator('input[placeholder="输入搜索词"]').fill('关键词')
+  await page.waitForTimeout(600) // 等待防抖
+
+  // 2. 切换每页条数
+  const sizeSelect = page.locator('.el-pagination__sizes .el-select').first()
+  await sizeSelect.click()
+  await page.waitForTimeout(300)
+  await page.locator('.el-select-dropdown__item:has-text("20")').click()
+  await page.waitForTimeout(500)
+
+  // 3. 点击下一页
+  const nextBtn = page.locator('.el-pagination__next')
+  await nextBtn.click()
+  await page.waitForTimeout(500)
+
+  // 4. 重置搜索
+  await page.locator('button:has-text("重置")').click()
+  await page.waitForTimeout(300)
+})
+```
+
+## 文件导入测试
+
+Excel 导入功能需要验证：模板下载、文件格式校验、必填字段校验
+
+```js
+test('Excel导入 - 格式校验', async ({ page }) => {
+  // 1. 下载模板
+  await page.locator('button:has-text("下载模板")').click()
+
+  // 2. 上传错误格式文件
+  const fileInput = page.locator('input[type="file"]')
+  await fileInput.setInputFiles({
+    name: 'test.txt',
+    mimeType: 'text/plain',
+    buffer: Buffer.from('不是Excel文件')
+  })
+
+  // 3. 验证错误提示
+  await expect(page.locator('.el-message--error')).toBeVisible({ timeout: 5000 })
+})
+
+test('Excel导入 - 数据校验', async ({ page }) => {
+  // 上传有效 Excel（包含正确工号如 T2023001）
+  const excelBuffer = await generateValidExcel()
+  await page.locator('input[type="file"]').setInputFiles({
+    name: 'valid.xlsx',
+    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    buffer: Buffer.from(excelBuffer)
+  })
+
+  // 验证解析后的数据
+  await page.waitForTimeout(500)
+  const rowCount = await page.locator('.edit-table .el-table__body tr').count()
+  expect(rowCount).toBeGreaterThan(0)
+})
+```
+
+## 弹窗内嵌表格操作
+
+弹窗内通常有表格，操作时需等待数据加载完成：
+
+```js
+test('弹窗表格操作', async ({ page }) => {
+  // 1. 打开弹窗
+  await page.locator('button:has-text("选择")').click()
+  await page.waitForSelector('.el-dialog:visible', { timeout: 5000 })
+
+  // 2. 等待网络请求完成
+  await page.waitForLoadState('networkidle')
+  await page.waitForTimeout(800) // 渲染缓冲
+
+  // 3. 操作表格行
+  const firstRow = page.locator('.el-dialog .el-table__body tr').first()
+  await firstRow.locator('button:has-text("选择")').click()
+
+  // 4. 验证弹窗关闭
+  await expect(page.locator('.el-dialog')).not.toBeVisible()
+})
+```
+
+## Flaky 测试处理
+
+网络波动或后端响应慢会导致测试不稳定，需要重试机制：
+
+```js
+test('不稳定测试', async ({ page }) => {
+  let success = false
+  for (let i = 0; i < 3; i++) {
+    try {
+      await page.locator('button:has-text("提交")').click()
+      await page.waitForSelector('.el-message--success', { timeout: 5000 })
+      success = true
+      break
+    } catch {
+      await page.waitForTimeout(1000)
+    }
+  }
+  expect(success).toBe(true)
+})
+```
+
+## 条件执行测试
+
+页面状态不确定时（如有些赛事有赛道，有些没有），使用条件执行：
+
+```js
+test('可选功能测试', async ({ page }) => {
+  const btn = page.locator('button:has-text("添加")')
+  const isVisible = await btn.isVisible({ timeout: 3000 }).catch(() => false)
+
+  if (!isVisible) {
+    console.log('功能不可用，跳过')
+    return
+  }
+
+  await btn.click()
+  // ... 继续测试
+})
+```
+
+## 常用代码模板
+
+### 验证消息提示
+
+```js
+// 成功消息
+await expect(page.locator('.el-message--success')).toBeVisible({ timeout: 5000 })
+
+// 错误消息
+const errorMsg = page.locator('.el-message--error')
+if (await errorMsg.isVisible()) {
+  console.log('错误:', await errorMsg.textContent())
+}
+
+// 表单验证错误
+const formError = page.locator('.el-form-item__error')
+if (await formError.isVisible()) {
+  console.log('表单错误:', await formError.textContent())
+}
+```
+
+### 等待网络请求完成
+
+```js
+// 等待列表数据加载
+await page.waitForResponse(
+  resp => resp.url().includes('/api/xxx/list') && resp.status() === 200,
+  { timeout: 10000 }
+)
+await page.waitForTimeout(500) // 渲染缓冲
+
+// 等待下拉选项加载
+await page.waitForLoadState('networkidle')
+const options = page.getByRole('option')
+await options.first().waitFor({ state: 'visible' })
+```
+
+### 数据回显验证
+
+```js
+// 验证下拉框回显值（避免只检查 DOM 文本）
+const select = page.locator('.el-select')
+await select.click()
+const selectedValue = await select.locator('input').inputValue()
+expect(selectedValue).toBe('期望的选中值')
+```
+
+## 覆盖率检测与提升
+
+```bash
+# 构建覆盖率报告
+npm run build:coverage
+
+# 运行测试并生成覆盖率
+rm -rf coverage
+npx nyc --reporter=text --report-dir=coverage \
+  npx playwright test e2e/<模块>/<文件>.spec.js --project=chromium
+
+# 查看特定文件覆盖率
+npx nyc --reporter=text --report-dir=coverage \
+  npx playwright test e2e/**/*.spec.js --project=chromium \
+  2>&1 | grep -E "^\s*(xxx\.vue|All files)"
+```
+
+覆盖率指标解读：
+- **语句覆盖 (statements)**: 代码语句执行比例
+- **分支覆盖 (branches)**: if/else 等分支执行比例
+- **函数覆盖 (functions)**: 函数调用比例
+- **行覆盖 (lines)**: 代码行执行比例
