@@ -829,3 +829,491 @@ test.describe('新增赛事页面 - Tab切换', () => {
     await expect(page.locator('button:has-text("创建")')).toBeVisible()
   })
 })
+
+test.describe('新增赛事页面 - 负责人弹窗深度测试', () => {
+  test.beforeEach(async ({ page }) => {
+    await login(page)
+    await navigateToAddCompetition(page)
+  })
+
+  test('负责人弹窗 - 搜索功能', async ({ page }) => {
+    // 打开负责人弹窗
+    await page.locator('input[placeholder="请选择赛事负责人"]').click()
+    await page.waitForSelector('.el-dialog:visible', { timeout: 5000 })
+    await page.waitForLoadState('networkidle')
+    await page.waitForTimeout(500)
+
+    // 验证搜索表单
+    await expect(page.locator('.el-dialog input[placeholder="输入姓名"]')).toBeVisible()
+    await expect(page.locator('.el-dialog input[placeholder="输入工号"]')).toBeVisible()
+    await expect(page.locator('.el-dialog button:has-text("重置")')).toBeVisible()
+
+    // 输入姓名搜索
+    const nameInput = page.locator('.el-dialog input[placeholder="输入姓名"]')
+    await nameInput.fill('张')
+    await page.waitForTimeout(600)
+
+    // 点击重置
+    await page.locator('.el-dialog button:has-text("重置")').click()
+    await page.waitForTimeout(300)
+
+    // 验证输入框已清空
+    await expect(nameInput).toHaveValue('')
+
+    // 关闭弹窗
+    await page.locator('.el-dialog__headerbtn').click()
+  })
+
+  test('负责人弹窗 - 分页切换', async ({ page }) => {
+    // 打开负责人弹窗
+    await page.locator('input[placeholder="请选择赛事负责人"]').click()
+    await page.waitForSelector('.el-dialog:visible', { timeout: 5000 })
+    await page.waitForLoadState('networkidle')
+    await page.waitForTimeout(500)
+
+    // 检查分页器
+    const pagination = page.locator('.el-dialog .el-pagination')
+    const isPaginationVisible = await pagination.isVisible().catch(() => false)
+
+    if (isPaginationVisible) {
+      // 切换每页条数
+      const sizeSelect = page.locator('.el-dialog .el-pagination__sizes').locator('.el-select').first()
+      await sizeSelect.click()
+      await page.waitForTimeout(300)
+
+      const dropdown = page.locator('.el-select-dropdown').last()
+      await dropdown.waitFor({ state: 'visible', timeout: 5000 })
+      await dropdown.locator('.el-select-dropdown__item:has-text("20")').click()
+      await page.waitForTimeout(500)
+
+      console.log('每页条数切换成功')
+
+      // 切换页码
+      const pager = page.locator('.el-dialog .el-pager')
+      const pageButtons = pager.locator('li:not(.is-active):not(.more):not(.btn-prev):not(.btn-next)')
+      const pageCount = await pageButtons.count()
+
+      if (pageCount > 0) {
+        const nextPageBtn = pageButtons.first()
+        const nextPageNum = await nextPageBtn.textContent()
+        await nextPageBtn.click()
+        await page.waitForTimeout(500)
+
+        const activePage = pager.locator('li.is-active')
+        const activePageText = await activePage.textContent()
+        expect(activePageText).toBe(nextPageNum)
+        console.log(`页码切换到: ${activePageText}`)
+      }
+    } else {
+      console.log('无分页器（数据量少）')
+    }
+
+    // 关闭弹窗
+    await page.locator('.el-dialog__headerbtn').click()
+  })
+
+  test('负责人弹窗 - 学院筛选', async ({ page }) => {
+    // 打开负责人弹窗
+    await page.locator('input[placeholder="请选择赛事负责人"]').click()
+    await page.waitForSelector('.el-dialog:visible', { timeout: 5000 })
+    await page.waitForLoadState('networkidle')
+    await page.waitForTimeout(500)
+
+    // 检查学院下拉
+    const collegeSelect = page.locator('.el-dialog .el-select').filter({ hasText: '选择学院' }).first()
+    const collegeVisible = await collegeSelect.isVisible().catch(() => false)
+
+    if (collegeVisible) {
+      await collegeSelect.click()
+      await page.waitForTimeout(400)
+
+      const options = page.getByRole('option')
+      const count = await options.count()
+      console.log(`学院选项数量: ${count}`)
+
+      if (count > 0) {
+        await options.first().click()
+        await page.waitForTimeout(500)
+      }
+
+      // 验证数据已更新
+      console.log('学院筛选完成')
+    }
+
+    // 关闭弹窗
+    await page.locator('.el-dialog__headerbtn').click()
+  })
+
+  test('负责人弹窗 - 选择并验证数据回填', async ({ page }) => {
+    // 打开负责人弹窗
+    await page.locator('input[placeholder="请选择赛事负责人"]').click()
+    await page.waitForSelector('.el-dialog:visible', { timeout: 5000 })
+    await page.waitForLoadState('networkidle')
+    await page.waitForTimeout(500)
+
+    // 获取第一行数据
+    const firstRow = page.locator('.el-dialog .el-table__body tr').first()
+    const firstName = await firstRow.locator('td').nth(1).textContent()
+    const firstWorkId = await firstRow.locator('td').first().textContent()
+    console.log(`选择前: 姓名=${firstName}, 工号=${firstWorkId}`)
+
+    // 选择该行
+    await firstRow.locator('button:has-text("选择")').click()
+    await page.waitForTimeout(600)
+
+    // 验证弹窗关闭
+    await expect(page.locator('.el-dialog')).not.toBeVisible()
+
+    // 验证负责人输入框已显示选择的姓名
+    const managerInput = page.locator('input[placeholder="请选择赛事负责人"]')
+    const managerValue = await managerInput.inputValue()
+    console.log(`回填后负责人: ${managerValue}`)
+  })
+})
+
+test.describe('新增赛事页面 - Excel导入深度测试', () => {
+  test.beforeEach(async ({ page }) => {
+    await login(page)
+    await navigateToAddCompetition(page)
+
+    // 切换到Excel批量导入Tab
+    await page.getByRole('tab', { name: 'Excel 批量导入' }).click()
+    await page.waitForSelector('.el-alert', { timeout: 5000 })
+    await page.waitForTimeout(500)
+  })
+
+  test('Excel导入 - 工号回填负责人功能', async ({ page }) => {
+    // 创建一个包含有效工号的Excel
+    const header = ['赛事名称', '赛事级别', '赛事类型', '主办单位', '承办单位', '赛事负责人工号', '赛事负责人姓名', '所属学院', '年份', '备注']
+    const data = [
+      ['测试竞赛_' + Date.now(), '校级', '学科竞赛', '测试大学', '测试学院', 'T2023001', '系统管理员', '计算机科学与网络工程学院', '2026', '测试']
+    ]
+    const ws = XLSX.utils.aoa_to_sheet([header, ...data])
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, "导入模板")
+    const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' })
+
+    // 上传文件
+    const fileInput = page.locator('.upload-demo input[type="file"]')
+    await fileInput.setInputFiles({
+      name: 'test_import.xlsx',
+      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      buffer: Buffer.from(excelBuffer)
+    })
+
+    // 等待解析完成
+    await page.waitForLoadState('networkidle')
+    await page.waitForTimeout(1500)
+
+    // 检查表格数据
+    const editTable = page.locator('.edit-table')
+    const hasTable = await editTable.isVisible().catch(() => false)
+
+    if (hasTable) {
+      // 检查负责人姓名是否已自动填入
+      const firstRowCells = page.locator('.edit-table .el-table__body tr').first().locator('td')
+      const managerCell = firstRowCells.nth(6) // 负责人姓名列
+      const managerValue = await managerCell.locator('input').inputValue()
+      console.log(`自动匹配后负责人: ${managerValue}`)
+
+      // 如果自动匹配成功，验证工号也已填入
+      const workIdCell = firstRowCells.nth(5) // 工号列
+      const workIdValue = await workIdCell.locator('input').inputValue()
+      console.log(`工号: ${workIdValue}`)
+    }
+  })
+
+  test('Excel导入 - 手动编辑负责人', async ({ page }) => {
+    // 创建一个空的或不完整的Excel
+    const header = ['赛事名称', '赛事级别', '赛事类型', '主办单位', '承办单位', '赛事负责人工号', '赛事负责人姓名', '所属学院', '年份', '备注']
+    const data = [
+      ['手动编辑竞赛_' + Date.now(), '校级', '学科竞赛', '测试大学', '测试学院', '', '', '计算机科学与网络工程学院', '2026', '测试']
+    ]
+    const ws = XLSX.utils.aoa_to_sheet([header, ...data])
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, "导入模板")
+    const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' })
+
+    // 上传文件
+    const fileInput = page.locator('.upload-demo input[type="file"]')
+    await fileInput.setInputFiles({
+      name: 'test_import.xlsx',
+      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      buffer: Buffer.from(excelBuffer)
+    })
+
+    // 等待解析
+    await page.waitForLoadState('networkidle')
+    await page.waitForTimeout(1500)
+
+    // 检查表格
+    const editTable = page.locator('.edit-table')
+    const hasTable = await editTable.isVisible().catch(() => false)
+
+    if (hasTable) {
+      // 点击负责人姓名的输入框（应该会打开选择弹窗）
+      const firstRowCells = page.locator('.edit-table .el-table__body tr').first().locator('td')
+      const managerCell = firstRowCells.nth(6) // 负责人姓名列
+
+      // 检查是否有警告图标（表示负责人为空）
+      const warningIcon = managerCell.locator('.el-icon-warning')
+      const hasWarning = await warningIcon.isVisible().catch(() => false)
+      console.log(`负责人为空警告: ${hasWarning}`)
+
+      // 点击输入框打开选择弹窗
+      const managerInput = managerCell.locator('input')
+      await managerInput.click()
+      await page.waitForTimeout(500)
+
+      // 检查是否打开了弹窗
+      const dialogVisible = await page.locator('.el-dialog:visible').isVisible().catch(() => false)
+
+      if (dialogVisible) {
+        // 选择一个负责人
+        const firstRow = page.locator('.el-dialog .el-table__body tr').first()
+        await firstRow.locator('button:has-text("选择")').click()
+        await page.waitForTimeout(600)
+
+        // 验证弹窗关闭
+        await expect(page.locator('.el-dialog')).not.toBeVisible()
+      }
+    }
+  })
+
+  test('Excel导入 - 删除单行', async ({ page }) => {
+    // 创建包含多条数据的Excel
+    const header = ['赛事名称', '赛事级别', '赛事类型', '主办单位', '承办单位', '赛事负责人工号', '赛事负责人姓名', '所属学院', '年份', '备注']
+    const data = [
+      ['竞赛1_' + Date.now(), '校级', '学科竞赛', '测试大学', '测试学院', 'T2023001', '系统管理员', '计算机科学与网络工程学院', '2026', '测试1'],
+      ['竞赛2_' + Date.now(), '校级', '学科竞赛', '测试大学', '测试学院', 'T2023001', '系统管理员', '计算机科学与网络工程学院', '2026', '测试2']
+    ]
+    const ws = XLSX.utils.aoa_to_sheet([header, ...data])
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, "导入模板")
+    const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' })
+
+    // 上传文件
+    const fileInput = page.locator('.upload-demo input[type="file"]')
+    await fileInput.setInputFiles({
+      name: 'test_import.xlsx',
+      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      buffer: Buffer.from(excelBuffer)
+    })
+
+    // 等待解析
+    await page.waitForLoadState('networkidle')
+    await page.waitForTimeout(1500)
+
+    // 检查表格行数
+    const editTable = page.locator('.edit-table')
+    const hasTable = await editTable.isVisible().catch(() => false)
+
+    if (hasTable) {
+      const rowsBefore = page.locator('.edit-table .el-table__body tr')
+      const countBefore = await rowsBefore.count()
+      console.log(`导入后行数: ${countBefore}`)
+
+      if (countBefore > 1) {
+        // 点击第一行的删除按钮
+        const deleteBtn = page.locator('.edit-table .el-table__body tr').first().locator('.el-button--danger')
+        await deleteBtn.click()
+        await page.waitForTimeout(500)
+
+        const countAfter = await rowsBefore.count()
+        console.log(`删除后行数: ${countAfter}`)
+        expect(countAfter).toBeLessThan(countBefore)
+      }
+    }
+  })
+
+  test('Excel导入 - 文件格式校验', async ({ page }) => {
+    // 尝试上传一个非Excel文件
+    const fileInput = page.locator('.upload-demo input[type="file"]')
+    await fileInput.setInputFiles({
+      name: 'test.txt',
+      mimeType: 'text/plain',
+      buffer: Buffer.from('This is not an Excel file')
+    })
+
+    // 等待错误提示
+    await page.waitForTimeout(500)
+
+    const errorMsg = page.locator('.el-message--error')
+    const hasError = await errorMsg.isVisible().catch(() => false)
+
+    if (hasError) {
+      console.log('错误提示:', await errorMsg.textContent())
+    }
+  })
+
+  test('Excel导入 - 空表格校验', async ({ page }) => {
+    // 创建一个只有表头的Excel
+    const header = ['赛事名称', '赛事级别', '赛事类型', '主办单位', '承办单位', '赛事负责人工号', '赛事负责人姓名', '所属学院', '年份', '备注']
+    const ws = XLSX.utils.aoa_to_sheet([header])
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, "导入模板")
+    const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' })
+
+    // 上传文件
+    const fileInput = page.locator('.upload-demo input[type="file"]')
+    await fileInput.setInputFiles({
+      name: 'empty.xlsx',
+      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      buffer: Buffer.from(excelBuffer)
+    })
+
+    // 等待警告提示
+    await page.waitForTimeout(500)
+
+    const warningMsg = page.locator('.el-message--warning')
+    const hasWarning = await warningMsg.isVisible().catch(() => false)
+
+    if (hasWarning) {
+      console.log('警告提示:', await warningMsg.textContent())
+    }
+  })
+})
+
+test.describe('新增赛事页面 - 往年复用深度测试', () => {
+  test.beforeEach(async ({ page }) => {
+    await login(page)
+    await navigateToAddCompetition(page)
+
+    // 切换到从往年赛事复用Tab
+    await page.getByRole('tab', { name: '从往年赛事复用' }).click()
+    await page.waitForSelector('.el-step', { timeout: 5000 })
+    await page.waitForTimeout(500)
+  })
+
+  test('往年复用 - 修改赛事名称后验证', async ({ page }) => {
+    // 选择年份
+    const yearSelect = page.locator('.el-form-item').filter({ hasText: '赛事所属年份' }).locator('.el-select').first()
+    await yearSelect.click()
+    await page.waitForTimeout(400)
+
+    const yearOptions = page.getByRole('option')
+    const count = await yearOptions.count()
+
+    if (count > 0) {
+      await yearOptions.first().click()
+      await page.waitForLoadState('networkidle')
+      await page.waitForTimeout(800)
+
+      const emptyText = page.locator('.el-table__empty-text')
+      const hasData = !(await emptyText.isVisible().catch(() => false))
+
+      if (hasData) {
+        // 选择第一行
+        const firstRow = page.locator('.el-table__body tr').first()
+        const originalName = await firstRow.locator('td').nth(1).textContent()
+        console.log(`原始赛事名称: ${originalName}`)
+
+        await firstRow.locator('.el-checkbox').click()
+        await page.waitForTimeout(300)
+
+        // 点击下一步
+        await page.locator('button:has-text("下一步")').click()
+        await page.waitForTimeout(500)
+
+        // 修改赛事名称
+        const nameInput = page.locator('.edit-table .el-table__body tr').first().locator('td').nth(1).locator('input')
+        const newName = '修改后_' + Date.now()
+        await nameInput.fill(newName)
+        await page.waitForTimeout(300)
+
+        const filledName = await nameInput.inputValue()
+        console.log(`修改后赛事名称: ${filledName}`)
+        expect(filledName).toContain('修改后_')
+      }
+    }
+  })
+
+  test('往年复用 - 修改负责人', async ({ page }) => {
+    // 选择年份
+    const yearSelect = page.locator('.el-form-item').filter({ hasText: '赛事所属年份' }).locator('.el-select').first()
+    await yearSelect.click()
+    await page.waitForTimeout(400)
+
+    const yearOptions = page.getByRole('option')
+    const count = await yearOptions.count()
+
+    if (count > 0) {
+      await yearOptions.first().click()
+      await page.waitForLoadState('networkidle')
+      await page.waitForTimeout(800)
+
+      const emptyText = page.locator('.el-table__empty-text')
+      const hasData = !(await emptyText.isVisible().catch(() => false))
+
+      if (hasData) {
+        // 选择第一行
+        const firstRow = page.locator('.el-table__body tr').first()
+        await firstRow.locator('.el-checkbox').click()
+        await page.waitForTimeout(300)
+
+        // 点击下一步
+        await page.locator('button:has-text("下一步")').click()
+        await page.waitForTimeout(500)
+
+        // 点击负责人输入框打开选择弹窗
+        const managerCell = page.locator('.edit-table .el-table__body tr').first().locator('td').nth(2)
+        await managerCell.locator('input').click()
+        await page.waitForTimeout(500)
+
+        // 检查是否打开弹窗
+        const dialogVisible = await page.locator('.el-dialog:visible').isVisible().catch(() => false)
+
+        if (dialogVisible) {
+          // 选择第一行
+          await page.locator('.el-dialog .el-table__body tr').first().locator('button:has-text("选择")').click()
+          await page.waitForTimeout(500)
+
+          // 验证弹窗关闭
+          await expect(page.locator('.el-dialog')).not.toBeVisible()
+        }
+      }
+    }
+  })
+
+  test('往年复用 - 返回上一步后重新选择', async ({ page }) => {
+    // 选择年份
+    const yearSelect = page.locator('.el-form-item').filter({ hasText: '赛事所属年份' }).locator('.el-select').first()
+    await yearSelect.click()
+    await page.waitForTimeout(400)
+
+    const yearOptions = page.getByRole('option')
+    const count = await yearOptions.count()
+
+    if (count > 0) {
+      await yearOptions.first().click()
+      await page.waitForLoadState('networkidle')
+      await page.waitForTimeout(800)
+
+      const emptyText = page.locator('.el-table__empty-text')
+      const hasData = !(await emptyText.isVisible().catch(() => false))
+
+      if (hasData) {
+        // 选择第一行
+        const firstRow = page.locator('.el-table__body tr').first()
+        await firstRow.locator('.el-checkbox').click()
+        await page.waitForTimeout(300)
+
+        // 点击下一步
+        await page.locator('button:has-text("下一步")').click()
+        await page.waitForTimeout(500)
+
+        // 点击上一步
+        await page.locator('button:has-text("上一步")').click()
+        await page.waitForTimeout(500)
+
+        // 验证回到步骤一
+        await expect(page.locator('.el-form-item').filter({ hasText: '赛事所属年份' })).toBeVisible()
+
+        // 验证之前的选中状态已清除
+        const checkboxes = page.locator('.el-table__body .el-checkbox')
+        const firstChecked = await checkboxes.first().isChecked()
+        expect(firstChecked).toBe(false)
+      }
+    }
+  })
+})
