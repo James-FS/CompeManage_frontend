@@ -89,7 +89,8 @@ const handleSearch = async () => {
                     page_size: page_size.value,
                     comp_name: searchForm.comp_name,
                     comp_level: searchForm.comp_level,
-                    college_id: searchForm.college || undefined
+                    college_id: searchForm.college || undefined,
+                    declare_status: searchForm.status || undefined
                 });
             }
         } else {
@@ -381,6 +382,12 @@ watch(() => activeTab.value, () => {
                             :label="college.name"
                             :value="college.id"
                         />
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="审核状态" v-if="currentRole === 'school_admin' && activeTab === 'history'">
+                    <el-select v-model="searchForm.status" placeholder="选择状态" clearable style="width: 150px">
+                        <el-option label="已通过" :value="2" />
+                        <el-option label="已驳回" :value="3" />
                     </el-select>
                 </el-form-item>
                 <el-form-item>
