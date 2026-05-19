@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -c e2e/award/audit-detail.spec.js)"
+    ]
+  }
+}
