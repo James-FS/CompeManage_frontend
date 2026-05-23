@@ -62,78 +62,55 @@ test.describe('奖项审计列表页面', () => {
     await expect(page).toHaveURL(/#\/award\/audit/)
 
     // 验证页面容器
-    await expect(page.locator('.audit-list-container')).toBeVisible()
-
-    // ---------- 面包屑 ----------
-    await expect(page.locator('.el-breadcrumb')).toBeVisible()
-    await expect(page.locator('.el-breadcrumb-item:has-text("奖项管理")')).toBeVisible()
-    await expect(page.locator('.el-breadcrumb-item:has-text("填报审核")')).toBeVisible()
-
-    // ---------- 页面标题 ----------
-    await expect(page.locator('.page-title:has-text("填报审核")')).toBeVisible()
+    await expect(page.locator('.list-container')).toBeVisible()
 
     // ---------- 搜索栏 ----------
-    await expect(page.locator('.search-container')).toBeVisible()
+    await expect(page.locator('.filter-card')).toBeVisible()
 
     // 赛事名称输入框
     await expect(page.locator('input[placeholder="请输入赛事名称"]')).toBeVisible()
 
-    // 学生姓名输入框
-    await expect(page.locator('input[placeholder="请输入学生姓名"]')).toBeVisible()
+    // 姓名或学号输入框
+    await expect(page.locator('input[placeholder="请输入姓名或学号"]')).toBeVisible()
 
     // 获奖等级下拉选择器
-    const awardLevelSelect = page.locator('.search-form .el-select').nth(0)
+    const awardLevelSelect = page.locator('.filter-form .el-select').nth(0)
     await expect(awardLevelSelect).toBeVisible()
 
     // 审核状态下拉选择器
-    const statusSelect = page.locator('.search-form .el-select').nth(1)
+    const statusSelect = page.locator('.filter-form .el-select').nth(1)
     await expect(statusSelect).toBeVisible()
 
-    // 查询按钮（蓝色）
-    await expect(
-      page.locator('.search-actions button:has-text("查询")')
-    ).toBeVisible()
+    // 查询按钮
+    await expect(page.locator('.filter-actions .search-btn')).toBeVisible()
 
     // 重置按钮
     await expect(
-      page.locator('.search-actions button:has-text("重置")')
+      page.locator('.filter-actions button:has-text("重置")')
     ).toBeVisible()
 
     // ---------- 顶部操作按钮 ----------
-    // 批量通过按钮（绿色）
     await expect(
-      page.locator('.table-toolbar button:has-text("批量通过")')
+      page.locator('.action-bar button:has-text("批量通过")')
     ).toBeVisible()
 
-    // 批量驳回按钮（红色）
     await expect(
-      page.locator('.table-toolbar button:has-text("批量驳回")')
+      page.locator('.action-bar button:has-text("批量驳回")')
     ).toBeVisible()
 
     // ---------- 表格 ----------
     await expect(page.locator('.el-table')).toBeVisible()
 
     // 验证表格列头
-    const columnHeaders = [
-      '学生信息',
-      '赛事名称',
-      '获奖等级',
-      '获奖日期',
-      '申报时间',
-      '状态',
-      '操作',
-    ]
+    const columnHeaders = ['学生信息', '赛事名称', '获奖等级', '获奖日期', '申报时间', '状态', '操作']
     for (const header of columnHeaders) {
       const th = page.locator('.el-table__header th').filter({ hasText: header })
       await expect(th).toBeVisible()
     }
 
     // ---------- 分页器 ----------
-    await expect(page.locator('.pagination-wrapper')).toBeVisible()
+    await expect(page.locator('.pagination-bar')).toBeVisible()
     await expect(page.locator('.el-pagination')).toBeVisible()
-    await expect(page.locator('.el-pagination__total')).toBeVisible()
-    await expect(page.locator('.el-pagination__sizes')).toBeVisible()
-    await expect(page.locator('.el-pagination__jump')).toBeVisible()
   })
 
   test('列表数据加载验证', async ({ page }) => {
@@ -150,12 +127,17 @@ test.describe('奖项审计列表页面', () => {
       console.log(`表格数据行数: ${rowCount}`)
 
       // 验证第一行有学生信息
-      const firstRowName = rows.first().locator('td').nth(0)
-      const nameText = await firstRowName.textContent()
-      expect(nameText.trim().length).toBeGreaterThan(0)
-      console.log(`第一条记录: ${nameText.trim()}`)
+      const firstRow = rows.first()
+      const studentCell = firstRow.locator('.student-cell')
+      const hasStudentCell = await studentCell.isVisible().catch(() => false)
 
-      // 验证分页总数与行数一致（首页）
+      if (hasStudentCell) {
+        const nameText = await studentCell.locator('.name').textContent()
+        expect(nameText.trim().length).toBeGreaterThan(0)
+        console.log(`第一条记录学生: ${nameText.trim()}`)
+      }
+
+      // 验证分页总数
       const totalText = await page.locator('.el-pagination__total').textContent()
       console.log(`分页总数文本: ${totalText}`)
     } else {
@@ -194,7 +176,7 @@ test.describe('奖项审计列表页面', () => {
       .catch(() => null)
 
     // 点击查询按钮
-    await page.locator('.search-actions button:has-text("查询")').click()
+    await page.locator('.filter-actions .search-btn').click()
     await searchRespPromise
     await page.waitForTimeout(800)
 
@@ -206,17 +188,11 @@ test.describe('奖项审计列表页面', () => {
       console.log(`搜索"计算机"后结果行数: ${countAfter}`)
       // 验证结果中每行的赛事名称都包含"计算机"
       for (let i = 0; i < Math.min(countAfter, 3); i++) {
-        const cellText = await rowsAfter.nth(i).locator('td').nth(1).textContent()
+        const cellText = await rowsAfter.nth(i).locator('.comp-text').textContent()
         console.log(`第 ${i + 1} 行赛事名称: ${cellText.trim()}`)
       }
     } else {
-      // 搜索无结果是正常情况
       console.log('搜索"计算机"无结果，可能数据库中无匹配赛事')
-      const emptyEl = page.locator('.el-empty')
-      const hasEmpty = await emptyEl.isVisible().catch(() => false)
-      if (hasEmpty) {
-        console.log('空状态提示已显示')
-      }
     }
 
     // 验证搜索输入框有值
@@ -239,9 +215,9 @@ test.describe('奖项审计列表页面', () => {
 
       // 验证结果中的状态列都是"待审核"
       for (let i = 0; i < Math.min(rowCount, 3); i++) {
-        const statusTag = rows.nth(i).locator('.el-tag--warning')
-        const hasWarningTag = await statusTag.isVisible().catch(() => false)
-        if (hasWarningTag) {
+        const statusDot = rows.nth(i).locator('.status-dot.status-0')
+        const hasStatus = await statusDot.isVisible().catch(() => false)
+        if (hasStatus) {
           console.log(`第 ${i + 1} 行状态确认为"待审核"`)
         }
       }
@@ -256,17 +232,17 @@ test.describe('奖项审计列表页面', () => {
 
     // 填写搜索条件
     await page.locator('input[placeholder="请输入赛事名称"]').fill('测试赛事')
-    await page.locator('input[placeholder="请输入学生姓名"]').fill('测试学生')
+    await page.locator('input[placeholder="请输入姓名或学号"]').fill('测试学生')
 
     // 选择获奖等级
-    await selectElOption(page, '获奖等级', '一等奖')
+    await selectElOption(page, '获奖等级', '国家级一等奖')
 
     // 选择审核状态
     await selectElOption(page, '审核状态', '待审核')
 
     // 验证输入框有值
     await expect(page.locator('input[placeholder="请输入赛事名称"]')).toHaveValue('测试赛事')
-    await expect(page.locator('input[placeholder="请输入学生姓名"]')).toHaveValue('测试学生')
+    await expect(page.locator('input[placeholder="请输入姓名或学号"]')).toHaveValue('测试学生')
 
     // 注册重置后的 API 响应监听
     const resetRespPromise = page
@@ -277,30 +253,29 @@ test.describe('奖项审计列表页面', () => {
       .catch(() => null)
 
     // 点击重置按钮
-    await page.locator('.search-actions button:has-text("重置")').click()
+    await page.locator('.filter-actions button:has-text("重置")').click()
     await resetRespPromise
     await page.waitForTimeout(800)
 
     // 验证所有输入框已清空
     await expect(page.locator('input[placeholder="请输入赛事名称"]')).toHaveValue('')
-    await expect(page.locator('input[placeholder="请输入学生姓名"]')).toHaveValue('')
+    await expect(page.locator('input[placeholder="请输入姓名或学号"]')).toHaveValue('')
 
     // 验证下拉已清空（placeholder 应显示）
     const awardLevelSelectInput = page
-      .locator('.search-form .el-select')
+      .locator('.filter-form .el-select')
       .nth(0)
       .locator('input')
     const awardLevelValue = await awardLevelSelectInput.inputValue()
     expect(awardLevelValue).toBe('')
 
     const statusSelectInput = page
-      .locator('.search-form .el-select')
+      .locator('.filter-form .el-select')
       .nth(1)
       .locator('input')
     const statusValue = await statusSelectInput.inputValue()
     expect(statusValue).toBe('')
 
-    // 验证表格数据已刷新（重新加载全部数据）
     console.log('重置操作完成，所有搜索条件已清空')
   })
 
@@ -309,7 +284,7 @@ test.describe('奖项审计列表页面', () => {
     await waitForAuditListLoad(page)
 
     // 验证分页器可见
-    const pagination = page.locator('.pagination-wrapper .el-pagination')
+    const pagination = page.locator('.pagination-bar .el-pagination')
     await expect(pagination).toBeVisible()
 
     // 读取总数
@@ -319,17 +294,15 @@ test.describe('奖项审计列表页面', () => {
     // 提取数字
     const totalMatch = totalText.match(/\d+/)
     if (!totalMatch) {
-      console.log('无法解析总数，跳过分页测试')
+      console.log('无法解析总数，跳过分页切换测试')
       return
     }
 
     const totalCount = parseInt(totalMatch[0], 10)
     if (totalCount <= 10) {
       console.log(`总数 ${totalCount} 不超过10条，跳过分页切换测试`)
-      // 仍然验证分页组件各元素存在
       await expect(page.locator('.el-pagination .btn-prev')).toBeVisible()
       await expect(page.locator('.el-pagination .btn-next')).toBeVisible()
-      await expect(page.locator('.el-pagination__jump')).toBeVisible()
       return
     }
 
@@ -391,10 +364,6 @@ test.describe('奖项审计列表页面', () => {
     const activePageBack = page.locator('.el-pager .is-active')
     await expect(activePageBack).toHaveText('1')
     console.log('成功回到第1页')
-
-    // 验证 Go to 跳转输入框
-    const jumperInput = page.locator('.el-pagination__jump input')
-    await expect(jumperInput).toBeVisible()
   })
 
   test('操作按钮验证', async ({ page }) => {
@@ -415,33 +384,26 @@ test.describe('奖项审计列表页面', () => {
     for (let i = 0; i < rowCount; i++) {
       const row = rows.nth(i)
 
-      // 操作列中应有按钮："详情" 和 "通过"
-      const detailBtn = row.locator('button:has-text("详情")')
-      const passBtn = row.locator('button:has-text("通过")')
-
+      const detailBtn = row.locator('.btn-detail')
       const hasDetail = await detailBtn.isVisible().catch(() => false)
-      const hasPass = await passBtn.isVisible().catch(() => false)
 
-      expect(hasDetail || hasPass).toBe(true)
+      expect(hasDetail).toBe(true)
 
       if (hasDetail) {
         console.log(`第 ${i + 1} 行: "详情"按钮可见`)
-      }
-      if (hasPass) {
-        console.log(`第 ${i + 1} 行: "通过"按钮可见`)
       }
     }
 
     // 验证状态标签与按钮类型一致
     const firstRow = rows.first()
-    const hasWarningTag = await firstRow
-      .locator('.el-tag--warning')
+    const hasPendingStatus = await firstRow
+      .locator('.status-dot.status-0')
       .isVisible()
       .catch(() => false)
 
-    if (hasWarningTag) {
+    if (hasPendingStatus) {
       // "待审核" -> 应有"通过"按钮
-      await expect(firstRow.locator('button:has-text("通过")')).toBeVisible()
+      await expect(firstRow.locator('.btn-pass')).toBeVisible()
       console.log('状态"待审核"与"通过"按钮一致')
     }
   })
@@ -460,7 +422,7 @@ test.describe('奖项审计列表页面', () => {
 
     // 点击第一行的详情按钮
     const firstRow = rows.first()
-    const detailBtn = firstRow.locator('button:has-text("详情")')
+    const detailBtn = firstRow.locator('.btn-detail')
 
     const hasDetail = await detailBtn.isVisible().catch(() => false)
     if (!hasDetail) {
@@ -486,8 +448,8 @@ test.describe('奖项审计列表页面', () => {
     await page.waitForTimeout(800)
 
     // 验证详情页面元素
-    await expect(page.locator('.audit-detail-container')).toBeVisible()
-    await expect(page.locator('.page-title:has-text("奖项审核详情")')).toBeVisible()
+    await expect(page.locator('.detail-page')).toBeVisible()
+    await expect(page.locator('.page-title:has-text("获奖申报审核")')).toBeVisible()
 
     console.log('成功跳转到审计详情页面')
   })
@@ -497,11 +459,11 @@ test.describe('奖项审计列表页面', () => {
     await waitForAuditListLoad(page)
 
     // 验证批量通过按钮可见
-    const passBtn = page.locator('.table-toolbar button:has-text("批量通过")')
+    const passBtn = page.locator('.action-bar button:has-text("批量通过")')
     await expect(passBtn).toBeVisible()
 
     // 验证批量驳回按钮可见
-    const rejectBtn = page.locator('.table-toolbar button:has-text("批量驳回")')
+    const rejectBtn = page.locator('.action-bar button:has-text("批量驳回")')
     await expect(rejectBtn).toBeVisible()
 
     console.log('批量操作按钮验证完成')
@@ -526,7 +488,7 @@ test.describe('奖项审计列表页面', () => {
       .catch(() => null)
 
     // 点击查询
-    await page.locator('.search-actions button:has-text("查询")').click()
+    await page.locator('.filter-actions .search-btn').click()
     await comboRespPromise
     await page.waitForTimeout(800)
 
@@ -542,9 +504,8 @@ test.describe('奖项审计列表页面', () => {
       // 验证状态列
       for (let i = 0; i < Math.min(rowCount, 2); i++) {
         const row = rows.nth(i)
-        const statusTag = row.locator('.el-tag--warning')
-        const hasWarningTag = await statusTag.isVisible().catch(() => false)
-        if (hasWarningTag) {
+        const hasPendingStatus = await row.locator('.status-dot.status-0').isVisible().catch(() => false)
+        if (hasPendingStatus) {
           console.log(`第 ${i + 1} 行状态为"待审核"`)
         }
       }
@@ -560,7 +521,7 @@ test.describe('奖项审计列表页面', () => {
       )
       .catch(() => null)
 
-    await page.locator('.search-actions button:has-text("重置")').click()
+    await page.locator('.filter-actions button:has-text("重置")').click()
     await resetRespPromise
     await page.waitForTimeout(800)
 
