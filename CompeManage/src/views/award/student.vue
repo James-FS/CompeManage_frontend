@@ -120,6 +120,21 @@ const goDeclare = () => {
   router.push('/award/student/declare')
 }
 
+const goResubmit = (award) => {
+  const compName = award.register?.competition?.comp_name || award.comp_name || ''
+  sessionStorage.setItem('resubmitAward', JSON.stringify({
+    comp_id: award.comp_id,
+    comp_name: compName,
+    award_level: award.award_level,
+    award_name: award.award_name,
+    team_name: award.register?.team_name || '',
+    proof_url: award.proof_url || '',
+    members: award.register?.members || [],
+    leader: award.register?.leader || null,
+  }))
+  router.push(`/award/student/declare?comp_id=${award.comp_id}&comp_name=${encodeURIComponent(compName)}`)
+}
+
 const goSubmitWork = (item, state) => {
   if (state.disabled) return
   router.push({ name: 'work-detail', params: { id: item.id } })
@@ -333,8 +348,12 @@ onMounted(() => {
                 </a>
               </div>
 
-              <div class="reject-box" v-if="award.status === 'rejected' && award.reject_reason">
-                驳回原因：{{ award.reject_reason }}
+              <div class="reject-box" v-if="award.status === 'rejected'">
+                <span v-if="award.reject_reason">驳回原因：{{ award.reject_reason }}</span>
+                <span v-else>审核未通过</span>
+                <el-button type="primary" size="small" class="resubmit-btn" @click="goResubmit(award)">
+                  重新申报
+                </el-button>
               </div>
             </div>
 
@@ -633,6 +652,14 @@ onMounted(() => {
     color: #a8071a;
     font-size: 13px;
     line-height: 1.5;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+
+    .resubmit-btn {
+      flex-shrink: 0;
+    }
   }
 }
 
