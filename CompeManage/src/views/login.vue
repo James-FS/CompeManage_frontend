@@ -1,14 +1,17 @@
 <script setup>
-import { ref, reactive } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, reactive, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-import { User, Lock, Trophy, } from '@element-plus/icons-vue'
+import { User, Lock, Trophy } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
 
 const loading = ref(false)
+const casLoading = ref(false)
+const showPasswordLogin = ref(false)
 const loginForm = reactive({
     username: '',
     password: ''
@@ -54,6 +57,47 @@ const quickFill = (roleKey) => {
         ElMessage.info(`已填入 ${user.name} 的账号`)
     }
 }
+
+// ===== CAS/OAuth2.0 统一认证 =====
+
+const handleCasLogin = () => {
+    casLoading.value = true
+    window.location.href = '/api/cas/login'
+}
+
+onMounted(() => {
+    const token = route.query.token
+    const casError = route.query.cas_error
+
+    if (token) {
+        const username = route.query.username
+        const realname = route.query.realname
+        const role = route.query.role
+        const userId = route.query.user_id
+
+        localStorage.setItem('token', token)
+        localStorage.setItem('role', role)
+        localStorage.setItem('userInfo', JSON.stringify({
+            id: Number(userId) || 0,
+            name: realname || username,
+            username: username,
+        }))
+
+        userStore.token = token
+        userStore.role = role
+        userStore.userInfo = {
+            id: Number(userId) || 0,
+            name: realname || username,
+            username: username,
+        }
+
+        ElMessage.success(`欢迎，${realname || username}`)
+        router.replace('/home')
+    } else if (casError) {
+        ElMessage.error(decodeURIComponent(casError))
+        router.replace({ query: {} })
+    }
+})
 </script>
 
 <template>
@@ -70,46 +114,39 @@ const quickFill = (roleKey) => {
             </div>
 
             <div class="login-right">
-                <h3>用户登录</h3>
-                <el-form ref="formRef" :model="loginForm" :rules="rules" class="login-form" size="large"
+                <h3>欢迎登录</h3>
+
+                <!-- 主入口: CAS统一认证登录按钮 -->
+                <el-button type="primary" class="cas-main-btn" @click="handleCasLogin" :loading="casLoading">
+                    统一身份认证登录
+                </el-button>
+                <p class="cas-hint">使用学校融合门户账号登录</p>
+
+                <!-- 分隔线 -->
+                <el-divider><span style="color: #c0c4cc; font-size: 12px">管理员专用</span></el-divider>
+
+                <!-- 管理员入口: 默认折叠，点击展开密码登录表单 -->
+                <div v-if="!showPasswordLogin" class="admin-toggle">
+                    <el-button type="default" link size="small" @click="showPasswordLogin = true">
+                        管理员账号登录
+                    </el-button>
+                </div>
+
+                <el-form v-else ref="formRef" :model="loginForm" :rules="rules" class="login-form" size="large"
                     @submit.prevent>
                     <el-form-item prop="username">
-                        <el-input v-model="loginForm.username" placeholder="请输入用户名" :prefix-icon="User" />
+                        <el-input v-model="loginForm.username" placeholder="管理员用户名" :prefix-icon="User" />
                     </el-form-item>
 
                     <el-form-item prop="password">
-                        <el-input v-model="loginForm.password" type="password" placeholder="请输入密码" :prefix-icon="Lock"
+                        <el-input v-model="loginForm.password" type="password" placeholder="密码" :prefix-icon="Lock"
                             show-password @keyup.enter="handleLogin" />
                     </el-form-item>
 
-                    <el-button type="primary" class="login-btn" :loading="loading" native-type="button"
+                    <el-button type="default" class="login-btn" :loading="loading" native-type="button"
                         @click="handleLogin">
-                        立即登录
+                        登录
                     </el-button>
-
-                    <!-- <div class="dev-tools">
-                        <div class="divider"><span>测试账号</span></div>
-                        <div class="role-tags">
-                            <el-tag effect="dark" @click="quickFill('school_admin')" class="role-tag cursor-pointer">
-                                校管理员
-                            </el-tag>
-
-                            <el-tag type="success" effect="dark" @click="quickFill('college_admin')"
-                                class="role-tag cursor-pointer">
-                                院管理员
-                            </el-tag>
-
-                            <el-tag type="warning" effect="dark" @click="quickFill('competition_manager')"
-                                class="role-tag cursor-pointer">
-                                赛事负责人
-                            </el-tag>
-
-                            <el-tag type="info" effect="dark" @click="quickFill('student')"
-                                class="role-tag cursor-pointer">
-                                学生
-                            </el-tag>
-                        </div>
-                    </div> -->
                 </el-form>
             </div>
         </div>
@@ -177,6 +214,25 @@ const quickFill = (roleKey) => {
             width: 100%;
             margin-top: 10px;
             font-weight: bold;
+        }
+
+        .cas-main-btn {
+            width: 100%;
+            height: 48px;
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .cas-hint {
+            text-align: center;
+            color: #909399;
+            font-size: 12px;
+            margin: 0 0 10px;
+        }
+
+        .admin-toggle {
+            text-align: center;
         }
     }
 }
