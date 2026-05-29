@@ -21,7 +21,7 @@ async function getTableRowCount(page) {
 // 辅助函数：获取表格第一行的赛事名称
 async function getFirstRowCompetitionName(page) {
   const firstRow = page.locator('.el-table__body tr').first();
-  const nameCell = firstRow.locator('td').nth(0); // 赛事名称是第一列
+  const nameCell = firstRow.locator('td').nth(1); // 赛事名称是第二列（第一列是selection）
   return await nameCell.textContent();
 }
 

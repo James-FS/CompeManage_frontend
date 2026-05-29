@@ -1068,3 +1068,48 @@ npx nyc --reporter=text --report-dir=coverage \
 - **分支覆盖 (branches)**: if/else 等分支执行比例
 - **函数覆盖 (functions)**: 函数调用比例
 - **行覆盖 (lines)**: 代码行执行比例
+
+## 通知模块测试要点
+
+### 路由结构
+Notice 模块路由较复杂，需注意：
+- `/notice/list` - 通知列表页（独立布局，无侧边栏）
+- `/notice/detail/:id` - 通知管理页（嵌套在 MainLayout）
+- `/notice/edit/:id` - 通知编辑页
+- `/notice/notice/:id` - 通知详情页
+
+### 通知管理页 (detail.vue)
+测试要点：
+- 创建赛事后进入 `/#/notice/detail/${compId}`
+- 验证 `.toolbar-title` 包含"通知公告管理"
+- 验证发布新通知、表格、状态标签等元素
+
+```js
+// 进入通知管理页
+await page.goto(`/#/notice/detail/${compId}`)
+await page.waitForLoadState('networkidle')
+await expect(page.locator('.toolbar-title')).toContainText('通知公告管理')
+```
+
+### 通知编辑页 (edit.vue)
+测试要点：
+- 模式判断：`isEditMode = route.params.id !== '0'`
+- 标题和正文为必填项
+- 文件上传使用 `:auto-upload="false"`，需手动触发提交
+
+### 常见选择器问题
+1. **列表页表格行** - 使用 `.el-table__body tr`，不是 `.list-table__body tr`
+2. **分页器** - 检查 `.el-pagination` 是否存在后再操作
+3. **空数据状态** - 使用 `isVisible().catch(() => false)` 安全检查
+
+### 通知模块测试要点（实战经验）
+
+**问题**：测试因"表格无数据"被跳过，原因是依赖外部已存在的数据。
+
+**原则**：测试数据自足 — 每个测试都应自己创建所需的前置数据，而不是假设数据已存在。
+
+**实践**：
+1. `beforeEach` 中调用 `createCompetitionAndGoToNoticeDetail()` 创建赛事并进入通知管理页
+2. 测试用例中先调用 `createAndPublishNotice()` 创建通知，再执行验证
+3. 不要写 `if (rowCount === 0) { skip }` 逻辑 — 这会导致测试永远被跳过
+4. 只有验证"空状态 UI"时才需要检查空数据并跳过
