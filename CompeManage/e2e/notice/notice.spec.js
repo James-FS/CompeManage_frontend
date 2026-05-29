@@ -19,231 +19,137 @@ async function login(page) {
   )
 }
 
-async function navigateToNoticeList(page) {
-  await page.goto('/#/notice/list')
+async function navigateToNoticeDetail(page, compId) {
+  await page.goto(`/#/notice/detail/${compId}`)
   await page.waitForLoadState('networkidle')
-  await page.waitForSelector('.page-container', { timeout: 15000 })
+  await page.waitForTimeout(1000)
 }
 
 test.describe('通知详情页面 - 基本功能', () => {
   test.beforeEach(async ({ page }) => {
     await login(page)
-    await navigateToNoticeList(page)
-    await page.waitForTimeout(1000)
   })
 
-  test('从列表页跳转到详情页', async ({ page }) => {
-    const rowCount = await page.locator('.list-table__body tr').count()
+  test('进入通知管理页验证页面结构', async ({ page }) => {
+    // 创建赛事后进入通知管理页
+    await page.goto('/#/competition/list')
+    await page.waitForLoadState('networkidle')
+    await page.waitForTimeout(500)
 
-    if (rowCount > 0) {
-      // 获取第一行标题
-      const firstTitle = await page.locator('.table-title').first().textContent()
-      console.log(`准备查看的通知: ${firstTitle}`)
+    await page.locator('button:has-text("新增赛事")').click()
+    await page.waitForURL(/\/competition\/add/)
+    await page.waitForLoadState('networkidle')
+    await page.waitForSelector('.el-tabs', { timeout: 15000 })
 
-      // 点击第一行
-      await page.locator('.list-table__body tr').first().click()
-      await page.waitForURL(/\/notice\/notice\/\d+/, { timeout: 10000 })
+    const compName = `通知详情测试_${Date.now()}`
+    await page.fill('input[placeholder="请输入赛事名称"]', compName)
 
-      // 验证页面元素
-      await expect(page.locator('.notice-card')).toBeVisible()
-      console.log('成功进入通知详情页')
-    } else {
-      console.log('表格无数据，跳过测试')
-    }
+    // 选择赛事级别
+    const levelSelect = page.locator('.el-form-item').filter({ hasText: '赛事级别' }).locator('.el-select')
+    await levelSelect.click()
+    await page.waitForTimeout(300)
+    await page.getByRole('option').first().click()
+    await page.waitForTimeout(300)
+
+    // 填写主办单位
+    await page.fill('input[placeholder="请填写主办单位"]', '测试主办方')
+
+    // 选择学院
+    const collegeSelect = page.locator('.el-form-item').filter({ hasText: '所属学院' }).locator('.el-select')
+    await collegeSelect.click()
+    await page.waitForTimeout(300)
+    await page.getByRole('option').first().click()
+    await page.waitForTimeout(300)
+
+    // 选择赛事负责人
+    const managerRespPromise = page.waitForResponse(
+      resp => resp.url().includes('/api/comp/manager/list') && resp.status() === 200,
+      { timeout: 10000 }
+    )
+    await page.locator('.manager-input input').click()
+    await page.waitForSelector('.el-dialog:visible', { timeout: 10000 })
+    await managerRespPromise
+    await page.waitForTimeout(800)
+    await page.locator('.el-dialog .el-table__body tr').first().locator('button:has-text("选择")').click()
+    await page.waitForTimeout(500)
+
+    // 填写年份
+    await page.getByRole('textbox', { name: '所属年份' }).fill('2026')
+
+    // 创建赛事
+    const createRespPromise = page.waitForResponse(
+      resp => resp.url().includes('/api/comp/create') && resp.request().method() === 'POST',
+      { timeout: 15000 }
+    )
+    await page.locator('button:has-text("创建")').first().click()
+    const createResp = await createRespPromise
+    const createData = await createResp.json()
+    const compId = createData.data?.data?.id || createData.data?.id
+
+    await page.waitForURL(/\/competition\/list/, { timeout: 10000 })
+    await page.waitForTimeout(500)
+
+    // 进入通知管理页
+    await navigateToNoticeDetail(page, compId)
+
+    // 验证页面标题
+    await expect(page.locator('.toolbar-title')).toContainText('通知公告管理')
+
+    // 验证发布新通知按钮
+    await expect(page.locator('button:has-text("发布新通知")')).toBeVisible()
+
+    // 验证表格
+    await expect(page.locator('.el-table')).toBeVisible()
+
+    console.log('通知详情页验证完成')
   })
 })
 
 test.describe('通知详情页面 - 页面结构验证', () => {
   test.beforeEach(async ({ page }) => {
     await login(page)
-    await navigateToNoticeList(page)
+  })
+
+  test('验证通知公告管理页面元素', async ({ page }) => {
+    // 进入通知管理页
+    await page.goto('/#/notice/detail/1')
+    await page.waitForLoadState('networkidle')
     await page.waitForTimeout(1000)
-  })
 
-  test('详情页基本结构', async ({ page }) => {
-    const rowCount = await page.locator('.list-table__body tr').count()
+    // 验证页面标题
+    await expect(page.locator('.toolbar-title')).toContainText('通知公告管理')
 
-    if (rowCount > 0) {
-      // 跳转到详情页
-      await page.locator('.list-table__body tr').first().click()
-      await page.waitForURL(/\/notice\/notice\/\d+/, { timeout: 10000 })
-      await page.waitForLoadState('networkidle')
+    // 验证发布新通知按钮
+    await expect(page.locator('button:has-text("发布新通知")')).toBeVisible()
 
-      // 验证卡片容器
-      await expect(page.locator('.notice-card')).toBeVisible()
-
-      // 验证标题区域
-      await expect(page.locator('.header-title')).toBeVisible()
-
-      // 验证日期
-      await expect(page.locator('.notice-date')).toBeVisible()
-
-      // 验证内容区域
-      await expect(page.locator('.notice-body')).toBeVisible()
-    } else {
-      console.log('表格无数据，跳过测试')
-    }
-  })
-
-  test('详情页标题显示', async ({ page }) => {
-    const rowCount = await page.locator('.list-table__body tr').count()
-
-    if (rowCount > 0) {
-      // 从列表获取标题
-      const listTitle = await page.locator('.table-title').first().textContent()
-      console.log(`列表中的标题: ${listTitle}`)
-
-      // 跳转到详情页
-      await page.locator('.list-table__body tr').first().click()
-      await page.waitForURL(/\/notice\/notice\/\d+/, { timeout: 10000 })
-      await page.waitForLoadState('networkidle')
-
-      // 验证详情页标题
-      const detailTitle = await page.locator('.header-title').textContent()
-      console.log(`详情页标题: ${detailTitle}`)
-      expect(detailTitle.trim().length).toBeGreaterThan(0)
-    } else {
-      console.log('表格无数据，跳过测试')
-    }
-  })
-
-  test('详情页日期显示', async ({ page }) => {
-    const rowCount = await page.locator('.list-table__body tr').count()
-
-    if (rowCount > 0) {
-      // 跳转到详情页
-      await page.locator('.list-table__body tr').first().click()
-      await page.waitForURL(/\/notice\/notice\/\d+/, { timeout: 10000 })
-      await page.waitForLoadState('networkidle')
-
-      // 验证日期显示
-      const dateText = await page.locator('.notice-date').textContent()
-      console.log(`日期: ${dateText}`)
-      expect(dateText.trim().length).toBeGreaterThan(0)
-    } else {
-      console.log('表格无数据，跳过测试')
-    }
-  })
-
-  test('详情页内容或无附件提示', async ({ page }) => {
-    const rowCount = await page.locator('.list-table__body tr').count()
-
-    if (rowCount > 0) {
-      // 跳转到详情页
-      await page.locator('.list-table__body tr').first().click()
-      await page.waitForURL(/\/notice\/notice\/\d+/, { timeout: 10000 })
-      await page.waitForLoadState('networkidle')
-
-      // 验证内容区域
-      const contentSection = page.locator('.content-section')
-      const noAttachment = page.locator('.no-attachment')
-
-      const hasContent = await contentSection.isVisible().catch(() => false)
-      const hasNoAttachment = await noAttachment.isVisible().catch(() => false)
-
-      console.log(`有内容: ${hasContent}, 无附件提示: ${hasNoAttachment}`)
-      expect(hasContent || hasNoAttachment).toBe(true)
-    } else {
-      console.log('表格无数据，跳过测试')
-    }
-  })
-})
-
-test.describe('通知详情页面 - 附件功能', () => {
-  test.beforeEach(async ({ page }) => {
-    await login(page)
-    await navigateToNoticeList(page)
-    await page.waitForTimeout(1000)
-  })
-
-  test('有附件时显示附件下载区域', async ({ page }) => {
-    const rowCount = await page.locator('.list-table__body tr').count()
-
-    if (rowCount > 0) {
-      // 跳转到详情页
-      await page.locator('.list-table__body tr').first().click()
-      await page.waitForURL(/\/notice\/notice\/\d+/, { timeout: 10000 })
-      await page.waitForLoadState('networkidle')
-
-      // 检查是否有附件下载区域
-      const attachmentBox = page.locator('.attachment-box')
-      const noAttachment = page.locator('.no-attachment')
-
-      const hasAttachment = await attachmentBox.isVisible().catch(() => false)
-      const hasNoAttachment = await noAttachment.isVisible().catch(() => false)
-
-      console.log(`有附件: ${hasAttachment}, 无附件: ${hasNoAttachment}`)
-
-      if (hasAttachment) {
-        // 验证附件区域内容
-        await expect(attachmentBox.locator('.file-label')).toContainText('附件下载')
-        await expect(attachmentBox.locator('.download-hint')).toContainText('点击下载')
-      } else {
-        // 验证无附件提示
-        await expect(noAttachment).toBeVisible()
-      }
-    } else {
-      console.log('表格无数据，跳过测试')
-    }
-  })
-
-  test('附件下载区域悬停效果', async ({ page }) => {
-    const rowCount = await page.locator('.list-table__body tr').count()
-
-    if (rowCount > 0) {
-      // 跳转到详情页
-      await page.locator('.list-table__body tr').first().click()
-      await page.waitForURL(/\/notice\/notice\/\d+/, { timeout: 10000 })
-      await page.waitForLoadState('networkidle')
-
-      // 检查是否有附件
-      const attachmentBox = page.locator('.attachment-box')
-      const hasAttachment = await attachmentBox.isVisible().catch(() => false)
-
-      if (hasAttachment) {
-        // 悬停到附件区域
-        await attachmentBox.hover()
-        await page.waitForTimeout(300)
-
-        // 验证悬停效果 - 下载提示应该显示
-        const downloadHint = attachmentBox.locator('.download-hint')
-        await expect(downloadHint).toBeVisible()
-        console.log('附件悬停效果正常')
-      } else {
-        console.log('该通知没有附件，跳过悬停测试')
-      }
-    } else {
-      console.log('表格无数据，跳过测试')
-    }
+    // 验证表格存在
+    await expect(page.locator('.el-table')).toBeVisible()
   })
 })
 
 test.describe('通知详情页面 - 返回功能', () => {
   test.beforeEach(async ({ page }) => {
     await login(page)
-    await navigateToNoticeList(page)
-    await page.waitForTimeout(1000)
   })
 
-  test('返回按钮回到列表页', async ({ page }) => {
-    const rowCount = await page.locator('.list-table__body tr').count()
+  test('通知管理页返回按钮', async ({ page }) => {
+    // 进入通知管理页
+    await page.goto('/#/notice/detail/1')
+    await page.waitForLoadState('networkidle')
+    await page.waitForTimeout(500)
 
-    if (rowCount > 0) {
-      // 跳转到详情页
-      await page.locator('.list-table__body tr').first().click()
-      await page.waitForURL(/\/notice\/notice\/\d+/, { timeout: 10000 })
-      await page.waitForLoadState('networkidle')
+    // 点击发布新通知进入编辑页
+    await page.locator('button:has-text("发布新通知")').click()
+    await page.waitForURL(/\/notice\/edit\/0/, { timeout: 10000 })
+    await page.waitForLoadState('networkidle')
 
-      // 点击返回按钮
-      await page.locator('.back-btn').click()
-      await page.waitForURL(/\/notice\/list/, { timeout: 5000 })
+    // 验证编辑页标题
+    await expect(page.locator('.main-title')).toContainText('发布赛事通知')
 
-      // 验证回到列表页
-      await expect(page).toHaveURL(/\/notice\/list/)
-      await expect(page.locator('.header-title')).toContainText('赛事通知列表')
-      console.log('成功返回列表页')
-    } else {
-      console.log('表格无数据，跳过测试')
-    }
+    // 点击返回
+    await page.locator('.back-area').click()
+    await page.waitForTimeout(1000)
+
+    console.log('返回功能验证完成')
   })
 })

@@ -149,26 +149,42 @@ test.describe('报名设置功能测试', () => {
     // 切换参赛形式后 disabled 不会正确更新，故跳过团队赛切换。
     // 个人赛/团队赛切换功能由单独测试覆盖。
 
-    // 设置报名时间范围
+    // 设置报名时间范围（使用当前时间确保在报名中状态）
+    const now = new Date()
+    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, now.getDate())
+    const futureDate = new Date(nextMonth.getTime() + 30 * 24 * 60 * 60 * 1000) // 1个月后
+
+    const formatDate = (date) => {
+      const y = date.getFullYear()
+      const m = String(date.getMonth() + 1).padStart(2, '0')
+      const d = String(date.getDate()).padStart(2, '0')
+      const h = String(date.getHours()).padStart(2, '0')
+      const min = String(date.getMinutes()).padStart(2, '0')
+      return `${y}-${m}-${d} ${h}:${min}`
+    }
+
     const regStartInput = page.locator('input[placeholder="开始报名"]')
     const regEndInput = page.locator('input[placeholder="报名截止"]')
     await regStartInput.click()
-    await regStartInput.fill('2026-06-01 00:00')
+    await regStartInput.fill(formatDate(now))
     await page.waitForTimeout(200)
     await regEndInput.click()
-    await regEndInput.fill('2026-07-15 23:59')
+    await regEndInput.fill(formatDate(futureDate))
     // 点击其他区域关闭日期面板
     await page.locator('.form-section-title').first().click()
     await page.waitForTimeout(300)
 
     // 设置作品提交时间范围
+    const workTimeStart = new Date(futureDate.getTime() + 7 * 24 * 60 * 60 * 1000)
+    const workTimeEnd = new Date(futureDate.getTime() + 60 * 24 * 60 * 60 * 1000)
+
     const submitStartInput = page.locator('input[placeholder="开始提交"]')
     const submitEndInput = page.locator('input[placeholder="提交截止"]')
     await submitStartInput.click()
-    await submitStartInput.fill('2026-06-15 00:00')
+    await submitStartInput.fill(formatDate(workTimeStart))
     await page.waitForTimeout(200)
     await submitEndInput.click()
-    await submitEndInput.fill('2026-08-15 23:59')
+    await submitEndInput.fill(formatDate(workTimeEnd))
     await page.locator('.form-section-title').first().click()
     await page.waitForTimeout(300)
 

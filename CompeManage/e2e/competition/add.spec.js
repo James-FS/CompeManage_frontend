@@ -20,6 +20,9 @@ async function login(page) {
   await page.waitForURL(url => url.hash.includes('home') || url.hash.includes('competition'), {
     timeout: 10000
   })
+  // 额外等待确保登录完成
+  await page.waitForLoadState('networkidle')
+  await page.waitForTimeout(500)
 }
 
 // 辅助函数：进入新增赛事页面

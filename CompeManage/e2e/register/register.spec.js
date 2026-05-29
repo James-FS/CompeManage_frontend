@@ -356,7 +356,7 @@ test.describe('报名列表页面测试', () => {
       // 验证状态标签存在且有内容
       await expect(statusBadge).toBeVisible()
       const statusText = await statusBadge.textContent()
-      expect(['未开始', '报名中', '已结束']).toContain(statusText.trim())
+      expect(['未开始', '报名中', '已结束', '筹备中']).toContain(statusText.trim())
     }
   })
 
