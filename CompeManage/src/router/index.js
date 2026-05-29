@@ -19,7 +19,7 @@ const routes = [
         component: () => import('@/views/home.vue'),
         meta: {
           title: '首页',
-          roles: ['school_admin', 'college_admin', 'competition_manager', 'student'],
+          roles: ['school_admin', 'college_admin', 'competition_manager', 'student', 'teacher'],
         },
       },
     ],
@@ -34,7 +34,7 @@ const routes = [
         component: () => import('@/views/competition/list.vue'),
         meta: {
           title: '赛事目录',
-          roles: ['school_admin', 'college_admin', 'competition_manager', 'student'],
+          roles: ['school_admin', 'college_admin', 'competition_manager', 'student', 'teacher'],
         },
       },
       {
@@ -372,7 +372,7 @@ const routes = [
         component: () => import('@/views/notice/notice.vue'),
         meta: {
           title: '通知',
-          roles: ['school_admin', 'college_admin', 'competition_manager', 'student'],
+          roles: ['school_admin', 'college_admin', 'competition_manager', 'student', 'teacher'],
         },
       },
        {
@@ -382,7 +382,7 @@ const routes = [
         props: true,
         meta: {
           title: '通知详情',
-          roles: ['school_admin', 'college_admin', 'competition_manager', 'student'],
+          roles: ['school_admin', 'college_admin', 'competition_manager', 'student', 'teacher'],
           parent:"register-Edit",
         },
       },
@@ -409,10 +409,10 @@ const routes = [
         component: () => import('@/views/notice/list.vue'),
         meta: {
           title: '通知列表',
-          roles: ['school_admin', 'college_admin', 'competition_manager', 'student'],
+          roles: ['school_admin', 'college_admin', 'competition_manager', 'student', 'teacher'],
         },
       },
-     
+
       {
         path: 'notice/edit/:id',
         name: 'NoticeEdit',

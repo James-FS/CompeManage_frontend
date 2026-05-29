@@ -1,6 +1,6 @@
 <script setup>
-import { reactive, ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { reactive, ref, computed, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { 
   ArrowLeft, Trophy, UploadFilled, InfoFilled, Plus, Delete, User, Postcard, Iphone, Message 
@@ -9,6 +9,7 @@ import api from '@/api'
 import { debounce } from '@/utils/debounce'
 
 const router = useRouter()
+const route = useRoute()
 const formRef = ref(null)
 const isSubmitting = ref(false)
 
@@ -295,7 +296,6 @@ const handleSubmit = async () => {
         }
       } catch (error) {
         console.error(error)
-        ElMessage.error(error.response?.data?.msg || '补录申报失败，请联系管理员')
       } finally {
         isSubmitting.value = false
       }
@@ -304,6 +304,57 @@ const handleSubmit = async () => {
 }
 
 const goBack = () => router.back()
+
+onMounted(() => {
+  const compId = route.query.comp_id
+  const compName = route.query.comp_name
+  if (compId && compName) {
+    form.compID = Number(compId)
+    form.compName = compName
+    compOptions.value = [{
+      value: Number(compId),
+      label: compName,
+      year: '',
+    }]
+  }
+
+  const saved = sessionStorage.getItem('resubmitAward')
+  if (saved) {
+    try {
+      const data = JSON.parse(saved)
+      if (data.comp_id === form.compID) {
+        form.awardLevel = data.award_level || ''
+        form.awardSpecific = data.award_name || ''
+        form.teamName = data.team_name || ''
+        form.certImage = data.proof_url || ''
+
+        const members = data.members || []
+        const leader = members.find(m => m.is_leader)
+        if (leader) {
+          form.leader = {
+            name: leader.name || '',
+            stuID: leader.stu_id || '',
+            phone: leader.phone || '',
+            email: leader.email || '',
+            college: leader.college || '',
+          }
+        }
+        form.members = members
+          .filter(m => !m.is_leader)
+          .map(m => ({
+            name: m.name || '',
+            stuID: m.stu_id || '',
+            phone: m.phone || '',
+            email: m.email || '',
+            college: m.college || '',
+          }))
+      }
+    } catch (e) {
+      console.error('回显申报数据失败', e)
+    }
+    sessionStorage.removeItem('resubmitAward')
+  }
+})
 </script>
 
 <template>
@@ -748,7 +799,7 @@ const goBack = () => router.back()
           display: inline-block;
           width: 3px;
           height: 12px;
-          background-color: var(--primary-color, #a71d31);
+          background-color: var(--primary-color, #2c5f8a);
           margin-right: 8px;
           border-radius: 2px;
         }
@@ -804,7 +855,7 @@ const goBack = () => router.back()
 }
 
 .paper-header {
-  background: linear-gradient(135deg, #a71d31 0%, #7d1524 100%);
+  background: linear-gradient(135deg, #2c5f8a 0%, #1a3a56 100%);
   color: #fff;
   padding: 35px 45px;
   display: flex;
@@ -957,9 +1008,9 @@ const goBack = () => router.back()
   transition: all 0.3s;
 
   &:hover {
-    border-color: #a71d31;
-    background-color: #fffbfb;
-    .upload-icon { color: #a71d31; }
+    border-color: #2c5f8a;
+    background-color: #f5f9fc;
+    .upload-icon { color: #2c5f8a; }
   }
 
   .upload-icon {
@@ -994,15 +1045,15 @@ const goBack = () => router.back()
   border-top: 1px solid #f2f2f2;
 
   .btn-submit {
-    background-color: #a71d31;
-    border-color: #a71d31;
+    background-color: #2c5f8a;
+    border-color: #2c5f8a;
     padding: 12px 36px;
     font-size: 15px;
     letter-spacing: 1px;
-    
+
     &:hover {
-      background-color: #c9243f;
-      border-color: #c9243f;
+      background-color: #3a7ab5;
+      border-color: #3a7ab5;
     }
   }
   

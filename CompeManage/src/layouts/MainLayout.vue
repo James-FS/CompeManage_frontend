@@ -16,19 +16,19 @@ const allMenus = [
     path: '/home',
     title: '首页',
     icon: House,
-    roles: ['school_admin', 'college_admin', 'competition_manager', 'student'],
+    roles: ['school_admin', 'college_admin', 'competition_manager', 'student', 'teacher'],
   },
   {
     path: '/competition',
     title: '赛事管理',
     icon: Trophy,
     // 只要有任意子菜单权限，就显示父菜单
-    roles: ['school_admin', 'college_admin', 'competition_manager', 'student'],
+    roles: ['school_admin', 'college_admin', 'competition_manager', 'student', 'teacher'],
     children: [
       {
         path: '/competition/list',
         title: '赛事目录',
-        roles: ['school_admin', 'college_admin', 'competition_manager', 'student'],
+        roles: ['school_admin', 'college_admin', 'competition_manager', 'student', 'teacher'],
       },
       {
         path: '/competition/audit',
