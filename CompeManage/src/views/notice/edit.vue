@@ -127,14 +127,7 @@ const finalSubmit = async () => {
     // 根据模式调用不同接口
     let createRes
     if (isEditMode.value) {
-      createRes = {
-        code: 0,
-        data: {
-          notice: {
-            ID: Number(noticeID.value),
-          },
-        },
-      }
+      createRes = await api.updateNotice(noticeID.value, params)
     } else {
       createRes = await api.createNotice(params)
     }
@@ -160,7 +153,7 @@ const finalSubmit = async () => {
     const publishRes = await api.publishNotice(noticeIdToPublish)
 
     if (isSuccessCode(publishRes?.code)) {
-      ElMessage.success('通知发布成功')
+      ElMessage.success(isEditMode.value ? '修改已保存' : '通知发布成功')
       router.back()
     } else {
       ElMessage.error(getRespMessage(publishRes, '发布失败'))
@@ -176,15 +169,38 @@ const finalSubmit = async () => {
 
 onMounted(() => {
   noticeID.value = route.params.id
-  // if (isEditMode.value) {
-  //   // === 编辑模式模拟回显 ===
-  //   setTimeout(() => {
-  //     form.title = '关于延长2026年互联网+大赛报名时间的紧急通知'
-  //     form.content = '各位同学：\n\n接到组委会最新通知，原定于...'
-  //     form.compID = 1
-  //   }, 500)
-  // }
+  if (isEditMode.value) {
+    // 编辑模式：获取通知详情回显
+    loadNoticeDetail()
+  }
 })
+
+// 加载通知详情用于编辑
+const loadNoticeDetail = async () => {
+  try {
+    const res = await api.getNoticeDetail(noticeID.value)
+    if (isSuccessCode(res?.code)) {
+      const notice = res.data?.notice || res.data
+      if (notice) {
+        form.title = notice.title || ''
+        form.content = notice.content || ''
+        form.compID = notice.compID || notice.competition_detail_id || ''
+        // 如果有附件，回显文件列表
+        if (notice.attachment) {
+          const urls = notice.attachment.split(',')
+          form.fileList = urls.map((url, index) => ({
+            name: `附件${index + 1}`,
+            url: url.trim(),
+            status: 'success'
+          }))
+        }
+      }
+    }
+  } catch (error) {
+    console.error('获取通知详情失败', error)
+    ElMessage.error('加载通知信息失败')
+  }
+}
 </script>
 
 <template>

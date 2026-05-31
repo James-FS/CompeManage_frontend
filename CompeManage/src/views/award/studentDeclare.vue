@@ -1,20 +1,33 @@
 <script setup>
-import { reactive, ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { reactive, ref, computed, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { 
-  ArrowLeft, Trophy, UploadFilled, InfoFilled, Plus, Delete, User, Postcard, Iphone, Message 
+import {
+  ArrowLeft, Trophy, UploadFilled, InfoFilled, Plus, Delete, User, Postcard, Iphone, Message, Document
 } from '@element-plus/icons-vue'
 import api from '@/api'
 import { debounce } from '@/utils/debounce'
 
 const router = useRouter()
+const route = useRoute()
 const formRef = ref(null)
 const isSubmitting = ref(false)
 
 // 搜索相关
 const searchLoading = ref(false)
 const compOptions = ref([]) // 搜索结果列表
+
+// 判断是否为 PDF 文件
+const isPdfFile = computed(() => {
+  return form.certImage && form.certImage.toLowerCase().endsWith('.pdf')
+})
+
+// 从 URL 中提取文件名
+function getFileName(url) {
+  if (!url) return ''
+  const parts = url.split('/')
+  return parts[parts.length - 1] || '证明材料.pdf'
+}
 
 // ==================== 学生选择相关变量 ====================
 const studentDialogVisible = ref(false)
@@ -257,6 +270,7 @@ const handleSubmit = async () => {
           comp_id: form.compID,
           award_level: form.awardLevel,
           award_name: form.awardSpecific,
+          award_date: form.awardDate,
           team_name: form.teamName || '个人参赛',
           proof_url: form.certImage,
           members: [
@@ -295,7 +309,6 @@ const handleSubmit = async () => {
         }
       } catch (error) {
         console.error(error)
-        ElMessage.error(error.response?.data?.msg || '补录申报失败，请联系管理员')
       } finally {
         isSubmitting.value = false
       }
@@ -304,6 +317,57 @@ const handleSubmit = async () => {
 }
 
 const goBack = () => router.back()
+
+onMounted(() => {
+  const compId = route.query.comp_id
+  const compName = route.query.comp_name
+  if (compId && compName) {
+    form.compID = Number(compId)
+    form.compName = compName
+    compOptions.value = [{
+      value: Number(compId),
+      label: compName,
+      year: '',
+    }]
+  }
+
+  const saved = sessionStorage.getItem('resubmitAward')
+  if (saved) {
+    try {
+      const data = JSON.parse(saved)
+      if (data.comp_id === form.compID) {
+        form.awardLevel = data.award_level || ''
+        form.awardSpecific = data.award_name || ''
+        form.teamName = data.team_name || ''
+        form.certImage = data.proof_url || ''
+
+        const members = data.members || []
+        const leader = members.find(m => m.is_leader)
+        if (leader) {
+          form.leader = {
+            name: leader.name || '',
+            stuID: leader.stu_id || '',
+            phone: leader.phone || '',
+            email: leader.email || '',
+            college: leader.college || '',
+          }
+        }
+        form.members = members
+          .filter(m => !m.is_leader)
+          .map(m => ({
+            name: m.name || '',
+            stuID: m.stu_id || '',
+            phone: m.phone || '',
+            email: m.email || '',
+            college: m.college || '',
+          }))
+      }
+    } catch (e) {
+      console.error('回显申报数据失败', e)
+    }
+    sessionStorage.removeItem('resubmitAward')
+  }
+})
 </script>
 
 <template>
@@ -575,12 +639,16 @@ const goBack = () => router.back()
                 class="cert-uploader"
                 action="/api/upload"
                 :headers="uploadHeaders"
-                :data="{type:'award_cert'}" 
+                :data="{type:'award_cert'}"
                 :show-file-list="false"
                 :on-success="handleUploadSuccess"
                 accept=".jpg,.png,.jpeg,.pdf"
               >
-                <img v-if="form.certImage" :src="form.certImage" class="cert-img" />
+                <img v-if="form.certImage && !isPdfFile" :src="form.certImage" class="cert-img" />
+                <div v-else-if="form.certImage && isPdfFile" class="pdf-info">
+                  <el-icon class="pdf-icon"><Document /></el-icon>
+                  <span class="pdf-name">{{ getFileName(form.certImage) }}</span>
+                </div>
                 <div v-else class="upload-area">
                   <el-icon class="upload-icon"><UploadFilled /></el-icon>
                   <div class="upload-text">点击上传证明材料</div>
@@ -748,7 +816,7 @@ const goBack = () => router.back()
           display: inline-block;
           width: 3px;
           height: 12px;
-          background-color: var(--primary-color, #a71d31);
+          background-color: var(--primary-color, #2c5f8a);
           margin-right: 8px;
           border-radius: 2px;
         }
@@ -804,7 +872,7 @@ const goBack = () => router.back()
 }
 
 .paper-header {
-  background: linear-gradient(135deg, #a71d31 0%, #7d1524 100%);
+  background: linear-gradient(135deg, #2c5f8a 0%, #1a3a56 100%);
   color: #fff;
   padding: 35px 45px;
   display: flex;
@@ -957,9 +1025,9 @@ const goBack = () => router.back()
   transition: all 0.3s;
 
   &:hover {
-    border-color: #a71d31;
-    background-color: #fffbfb;
-    .upload-icon { color: #a71d31; }
+    border-color: #2c5f8a;
+    background-color: #f5f9fc;
+    .upload-icon { color: #2c5f8a; }
   }
 
   .upload-icon {
@@ -985,6 +1053,33 @@ const goBack = () => router.back()
   border-radius: 6px;
 }
 
+.pdf-info {
+  width: 100%;
+  height: 220px;
+  border: 2px dashed #dcdfe6;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background-color: #fafafa;
+
+  .pdf-icon {
+    font-size: 48px;
+    color: #c0c4cc;
+    margin-bottom: 12px;
+  }
+
+  .pdf-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #606266;
+    padding: 0 20px;
+    word-break: break-all;
+    text-align: center;
+  }
+}
+
 .form-footer {
   margin-top: 50px;
   display: flex;
@@ -994,15 +1089,15 @@ const goBack = () => router.back()
   border-top: 1px solid #f2f2f2;
 
   .btn-submit {
-    background-color: #a71d31;
-    border-color: #a71d31;
+    background-color: #2c5f8a;
+    border-color: #2c5f8a;
     padding: 12px 36px;
     font-size: 15px;
     letter-spacing: 1px;
-    
+
     &:hover {
-      background-color: #c9243f;
-      border-color: #c9243f;
+      background-color: #3a7ab5;
+      border-color: #3a7ab5;
     }
   }
   
