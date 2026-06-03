@@ -452,8 +452,17 @@ router.beforeEach((to, from, next) => {
   }
   document.title = pageTitle
 
+  // 判断是否为生产环境（服务器部署）
+  const isProduction = import.meta.env.PROD
+
   // 白名单页面放行
   if (to.path === '/login') {
+    // 生产环境：直接跳转到 CAS 认证（除非是 CAS 回调或明确请求密码登录）
+    if (isProduction && !to.query.token && to.query.method !== 'password') {
+      window.location.href = '/api/cas/login'
+      return
+    }
+    // 开发环境或 CAS 回调或管理员密码登录：放行
     next()
     return
   }
@@ -461,6 +470,12 @@ router.beforeEach((to, from, next) => {
   // 检查是否登录
   const token = localStorage.getItem('token')
   if (!token) {
+    // 生产环境：直接跳转到 CAS 认证
+    if (isProduction) {
+      window.location.href = '/api/cas/login'
+      return
+    }
+    // 开发环境：跳转到登录页面
     next('/login')
     return
   }
@@ -468,7 +483,11 @@ router.beforeEach((to, from, next) => {
   // 确保角色已经被设置
   if (!userStore.role) {
     console.warn('请重新登录')
-    next('/login')
+    if (isProduction) {
+      window.location.href = '/api/cas/login'
+    } else {
+      next('/login')
+    }
     return
   }
 

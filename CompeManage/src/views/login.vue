@@ -105,9 +105,7 @@ onMounted(() => {
         <div class="login-box">
             <div class="login-left">
                 <div class="logo-area">
-                    <el-icon :size="60" color="white">
-                        <Trophy />
-                    </el-icon>
+                    <img src="/gzhu3.png" alt="广州大学" class="login-logo" />
                     <h2>学科竞赛管理系统</h2>
                     <p>Academic Competition Management System</p>
                 </div>
@@ -192,6 +190,11 @@ onMounted(() => {
             p {
                 font-size: 14px;
                 opacity: 0.8;
+            }
+
+            .login-logo {
+                width: 210px;
+                height: auto;
             }
         }
     }
