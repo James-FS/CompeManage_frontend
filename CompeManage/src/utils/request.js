@@ -2,8 +2,8 @@ import axios from 'axios'
 import { ElMessage } from 'element-plus'
 
 // 配置后端服务器地址
-//const baseURL = 'http://localhost:8080' // 开发环境
-const baseURL = "" // 生产环境，使用代理转发到后端服务器
+const baseURL = 'http://localhost:8080' // 开发环境
+//const baseURL = "" // 生产环境，使用代理转发到后端服务器
 
 // 创建 axios 实例
 const service = axios.create({
