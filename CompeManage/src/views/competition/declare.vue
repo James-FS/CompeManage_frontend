@@ -228,6 +228,16 @@ const getDisplayFileName = (url) => {
     return fileName;
 };
 
+const downloadDeclareFile = async (url) => {
+    try {
+        // api.downloadFile 内部已封装 window.open(blobUrl, '_blank')，不要接收返回值
+        await api.downloadFile(url, true);
+    } catch (error) {
+        ElMessage.error('文件打开失败：' + (error.message || '未知错误'));
+        console.error(error);
+    }
+};
+
 const parseAttachmentUrls = (urlStr) => {
     if (!urlStr) return [];
     return urlStr.split(',').filter(Boolean).map((url) => ({
@@ -437,7 +447,7 @@ const selectTeacher = (row) => {
                                         <div v-for="(fileItem, index) in form.attachments" :key="index" class="file-item">
                                             <span>已选择: {{ fileItem.name || getDisplayFileName(fileItem.url) }}</span>
                                             <div class="file-actions">
-                                                <el-link v-if="fileItem.url" :href="fileItem.url" target="_blank" download>
+                                                <el-link v-if="fileItem.url" @click="downloadDeclareFile(fileItem.url)">
                                                     下载
                                                 </el-link>
                                                 <el-button v-if="!isReadOnly" link type="danger" @click="handleRemoveFile(index)">移除</el-button>

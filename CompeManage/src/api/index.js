@@ -102,7 +102,46 @@ export const api = {
   // ==================== 通用上传 ====================
   uploadFile: (data) => post('/api/upload', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
 
-  
+  // ==================== 文件下载/预览（受控接口，带 Bearer Token）====================
+  // url 是后端返回的 /api/file/download/<type>/<md5>_<name> 格式
+  // preview=true 走内嵌（图片/PDF 浏览器内打开，docx 等不可内嵌类型仍下载）
+  // preview=false 强制下载，文件名取自 Content-Disposition
+  // fallbackName 是后端拿不到文件名时的兜底
+  downloadFile: async (url, preview = true, fallbackName = '') => {
+    const fullUrl = url
+    const token = localStorage.getItem('token')
+    const res = await fetch(fullUrl, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+    if (!res.ok) throw new Error(`下载失败: ${res.status}`)
+
+    const disp = res.headers.get('Content-Disposition') || ''
+    const match = /filename\*?=(?:UTF-8'')?([^;]+)/i.exec(disp)
+    let fileName = fallbackName
+    if (match) {
+      fileName = decodeURIComponent(match[1].replace(/^"|"$/g, '').trim())
+    }
+
+    const blob = await res.blob()
+    // PDF/图片浏览器可内嵌，其他类型（docx/xlsx/zip 等）浏览器不认识 MIME 只能下载
+    const canInline = /^(image\/|application\/pdf)/i.test(blob.type)
+
+    if (preview && canInline) {
+      const blobUrl = URL.createObjectURL(blob)
+      window.open(blobUrl, '_blank')
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000)
+    } else {
+      // 触发下载，强制用后端返回的文件名
+      const blobUrl = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = blobUrl
+      a.download = fileName
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000)
+    }
+  },
 }
 
 export default api
