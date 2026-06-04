@@ -166,10 +166,15 @@ const workList = computed(() => {
 })
 
 // 修改打开附件的方法，支持传入具体的 URL
-const openAttachment = (url) => {
+const openAttachment = async (url) => {
   if (!url) return
-  const fullUrl = url.startsWith('http') ? url : `http://localhost:8080${url}`
-  window.open(fullUrl, '_blank')
+  try {
+    // 走预览分支（api 内已封装 window.open(blobUrl, '_blank')）
+    await api.downloadFile(url, true)
+  } catch (error) {
+    ElMessage.error('文件打开失败：' + (error.message || '未知错误'))
+    console.error(error)
+  }
 }
 
 onMounted(() => {

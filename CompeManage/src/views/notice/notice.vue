@@ -6,7 +6,6 @@ import { Document, Download } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import 'element-plus/dist/index.css'
 import { api } from '@/api'
-
 const route = useRoute()
 const loading = ref(false)
 
@@ -52,17 +51,18 @@ async function fetchNoticeDetail() {
 }
 
 // 下载附件
-function downloadAttachment() {
+const downloadAttachment = async () => {
   if (!notice.value.attachment) {
     ElMessage.warning('该通知没有附件')
     return
   }
-  
-  // 方案1：直接打开链接（如果是可直接访问的URL）
-  window.open(notice.value.attachment, '_blank')
-  
-  // 方案2：如果需要后端处理下载，可以改为：
-  // window.location.href = `/api/notice/download?url=${encodeURIComponent(notice.value.attachment)}`
+  try {
+    // 强制走下载分支（保留后端返回的原始文件名）
+    await api.downloadFile(notice.value.attachment, false)
+  } catch (error) {
+    ElMessage.error('附件打开失败：' + (error.message || '未知错误'))
+    console.error(error)
+  }
 }
 
 onMounted(async() => {
