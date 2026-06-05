@@ -21,6 +21,9 @@ export const api = {
   // ==================== 学院相关 ====================
   getCollegeList: () => get('/api/college/list'),
 
+  // ==================== 部门相关 ====================
+  getDepartmentList: () => get('/api/department/list'),
+
   // ==================== 竞赛相关 ====================
   getCompetitionList: (params) => get('/api/comp/list', params),
   createCompetition: (data) => post('/api/comp/create', data),
