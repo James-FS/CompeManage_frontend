@@ -1,13 +1,14 @@
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { 
+import {
   Setting, Select, User, UserFilled,
-  Top, Bottom, Delete, Plus 
+  Top, Bottom, Delete, Plus, Search
 } from '@element-plus/icons-vue'
 import { api } from '@/api'
 import { formatToGoTime } from '@/utils/format'
+import { ElMessageBox } from 'element-plus'
 
 const route = useRoute()
 const router = useRouter()
@@ -26,6 +27,7 @@ const gradeOptions = [
 ]
 
 const competitionYear = ref(2026)
+const reviewWasOn = ref(false)  // 追踪是否之前开启了评审
 const getEntranceYear = (gradeValue) => {
   if (gradeValue === 9) return '不限年份'
   return `${competitionYear.value - gradeValue}级`
@@ -45,8 +47,96 @@ const form = reactive({
   attachmentType: null,
   enableTrack: false,  // 新增：是否启用赛道配置
   tracks: [],  // 新增：赛道列表
-  awards: ['一等奖', '二等奖', '三等奖'], 
+  awards: ['一等奖', '二等奖', '三等奖'],
+  // 专家评审配置
+  needReview: false,
+  reviewTimeRange: [],
+  experts: [],
 })
+
+// ========== 专家选择弹窗逻辑 ==========
+const expertDialogVisible = ref(false)
+const expertTableRef = ref(null)
+const expertTableData = ref([])
+const expertLoading = ref(false)
+const selectedExperts = ref([])
+const expertSearch = ref('')
+const expertPage = ref(1)
+const expertTotal = ref(0)
+const expertPageSize = ref(10)
+
+const openExpertSelect = () => {
+  selectedExperts.value = form.experts.map(e => e.id)
+  loadExpertTable()
+  expertDialogVisible.value = true
+}
+
+const loadExpertTable = async () => {
+  expertLoading.value = true
+  try {
+    const res = await api.getExpertList({ page: expertPage.value, size: expertPageSize.value, keyword: expertSearch.value || undefined })
+    const data = res.data || res
+    expertTableData.value = (data.list || []).map(item => ({
+      ...item,
+      disabled: form.experts.some(e => e.id === item.id),
+    }))
+    expertTotal.value = data.total || 0
+
+    // 回显已选专家勾选状态
+    await nextTick()
+    if (expertTableRef.value) {
+      expertTableRef.value.clearSelection()
+      expertTableData.value.forEach(row => {
+        if (selectedExperts.value.includes(row.id)) {
+          expertTableRef.value.toggleRowSelection(row, true)
+        }
+      })
+    }
+  } catch {
+    expertTableData.value = []
+  } finally {
+    expertLoading.value = false
+  }
+}
+
+const handleExpertSearch = () => {
+  expertPage.value = 1
+  loadExpertTable()
+}
+
+const handleExpertSelect = (selection) => {
+  selectedExperts.value = selection.map(row => row.id)
+}
+
+const confirmExpertSelect = async () => {
+  if (selectedExperts.value.length === 0) {
+    form.experts = []
+    expertDialogVisible.value = false
+    return
+  }
+  expertLoading.value = true
+  try {
+    const res = await api.getExpertList({ page: 1, size: 100 })
+    const data = res.data || res
+    const allExperts = data.list || []
+    form.experts = allExperts.filter(e => selectedExperts.value.includes(e.id)).map(e => ({
+      id: e.id,
+      name: e.name,
+      username: e.username,
+    }))
+  } finally {
+    expertLoading.value = false
+  }
+  expertDialogVisible.value = false
+}
+
+const removeExpert = (id) => {
+  form.experts = form.experts.filter(e => e.id !== id)
+}
+
+const handleExpertPageChange = () => {
+  loadExpertTable()
+}
 
 const rules = {
   timeRange: [{ required: true, message: '请设置报名起止时间', trigger: 'change' }],
@@ -144,9 +234,31 @@ async function handleSave() {
         reg_end_time: formatToGoTime(form.timeRange[1]),
         submit_start_time: workRange.length === 2 ? formatToGoTime(workRange[0]) : null,
         submit_end_time: workRange.length === 2 ? formatToGoTime(workRange[1]) : null,
+
+        // 专家评审配置
+        need_review: form.needReview ? 1 : 0,
+        review_start_time: form.reviewTimeRange?.[0] ? formatToGoTime(form.reviewTimeRange[0]) : null,
+        review_end_time: form.reviewTimeRange?.[1] ? formatToGoTime(form.reviewTimeRange[1]) : null,
+        expert_ids: form.experts.map(e => e.id),
+        force_close_review: false,
       }
 
       try {
+        // 如果关闭专家评审，弹窗确认
+        if (!form.needReview && reviewWasOn.value) {
+          try {
+            await ElMessageBox.confirm(
+              '已存在评审记录，关闭后评审数据将不再展示，是否继续？',
+              '关闭专家评审',
+              { confirmButtonText: '确认关闭', cancelButtonText: '取消', type: 'warning' }
+            )
+            submitData.force_close_review = true
+          } catch {
+            isSaving.value = false
+            return
+          }
+        }
+
         const response = await api.saveRegConfig(submitData)
         if (response.code === 200) {
           ElMessage.success('报名设置已更新')
@@ -208,6 +320,14 @@ async function fetchConfig() {
         form.enableTrack = false
         form.tracks = []
       }
+
+      // 专家评审配置回显
+      form.needReview = data.need_review === 1
+      reviewWasOn.value = form.needReview
+      if (data.review_start_time && data.review_end_time) {
+        form.reviewTimeRange = [new Date(data.review_start_time), new Date(data.review_end_time)]
+      }
+      form.experts = (data.experts || []).map(e => ({ id: e.id, name: e.name, username: e.username }))
 
       // 奖项回显
       if (data.award_hierarchy) {
@@ -428,7 +548,7 @@ onMounted(() => {
             link
             size="small"
             :icon="Plus"
-            @click="addQuestion(index, tIndex)"
+            @click="addQuestion(index)"
           >
             添加赛题
           </el-button>
@@ -449,6 +569,92 @@ onMounted(() => {
 </transition>
 
 <el-divider border-style="dashed" />
+
+        <div class="form-section-title">专家评审配置</div>
+
+        <el-form-item label="专家评审">
+          <el-switch
+            v-model="form.needReview"
+            active-text="需要专家评审"
+            inactive-text="无需评审"
+          />
+          <div class="form-tip">
+            开启后，获奖名单将由专家评审结果自动生成
+          </div>
+        </el-form-item>
+
+        <transition name="el-fade-in">
+          <div v-if="form.needReview">
+            <el-form-item label="评审时间窗口">
+              <el-date-picker
+                v-model="form.reviewTimeRange"
+                type="datetimerange"
+                range-separator="至"
+                start-placeholder="评审开始"
+                end-placeholder="评审截止"
+                format="YYYY-MM-DD HH:mm"
+                :default-time="defaultTime"
+                style="width: 100%; max-width: 400px"
+              />
+            </el-form-item>
+
+            <el-form-item label="评审专家">
+              <div class="expert-tags">
+                <el-tag
+                  v-for="expert in form.experts"
+                  :key="expert.id"
+                  closable
+                  @close="removeExpert(expert.id)"
+                  style="margin-right: 8px; margin-bottom: 4px"
+                >
+                  {{ expert.name }} ({{ expert.username }})
+                </el-tag>
+                <el-button type="primary" link @click="openExpertSelect">
+                  + 添加专家
+                </el-button>
+              </div>
+            </el-form-item>
+          </div>
+        </transition>
+
+        <!-- 专家选择弹窗 -->
+        <el-dialog v-model="expertDialogVisible" title="选择评审专家" width="600px" :close-on-click-modal="false">
+          <div class="expert-search-bar">
+            <el-input v-model="expertSearch" placeholder="搜索姓名或工号" clearable style="width: 240px" @keyup.enter="handleExpertSearch" />
+            <el-button type="primary" :icon="Search" @click="handleExpertSearch" style="margin-left: 8px">搜索</el-button>
+          </div>
+          <el-table
+            ref="expertTableRef"
+            v-loading="expertLoading"
+            :data="expertTableData"
+            stripe
+            style="margin-top: 12px"
+            max-height="400"
+            @selection-change="handleExpertSelect"
+          >
+            <el-table-column type="selection" width="50" :selectable="(row) => !row.disabled" />
+            <el-table-column prop="username" label="工号" width="120" align="center" />
+            <el-table-column prop="name" label="姓名" width="120" align="center" />
+            <el-table-column prop="college" label="所属学院" min-width="160" align="center" show-overflow-tooltip />
+          </el-table>
+          <div class="expert-pagination">
+            <el-pagination
+              v-model:current-page="expertPage"
+              v-model:page-size="expertPageSize"
+              :page-sizes="[10, 20, 50]"
+              layout="total, prev, pager, next"
+              :total="expertTotal"
+              @current-change="handleExpertPageChange"
+              small
+            />
+          </div>
+          <template #footer>
+            <el-button @click="expertDialogVisible = false">取消</el-button>
+            <el-button type="primary" @click="confirmExpertSelect">确认添加</el-button>
+          </template>
+        </el-dialog>
+
+        <el-divider border-style="dashed" />
 
         <div class="form-section-title">奖项排名规则</div>
 

@@ -16,19 +16,19 @@ const allMenus = [
     path: '/home',
     title: '首页',
     icon: House,
-    roles: ['school_admin', 'college_admin', 'competition_manager', 'student', 'teacher'],
+    roles: ['school_admin', 'college_admin', 'competition_manager', 'student', 'teacher', 'expert'],
   },
   {
     path: '/competition',
     title: '赛事管理',
     icon: Trophy,
     // 只要有任意子菜单权限，就显示父菜单
-    roles: ['school_admin', 'college_admin', 'competition_manager', 'student', 'teacher'],
+    roles: ['school_admin', 'college_admin', 'competition_manager', 'student', 'teacher', 'expert'],
     children: [
       {
         path: '/competition/list',
         title: '赛事目录',
-        roles: ['school_admin', 'college_admin', 'competition_manager', 'student', 'teacher'],
+        roles: ['school_admin', 'college_admin', 'competition_manager', 'student', 'teacher', 'expert'],
       },
       {
         path: '/competition/audit',
@@ -98,6 +98,12 @@ const allMenus = [
     path: '/review',
     title: '专家评审',
     roles: ['school_admin', 'college_admin', 'competition_manager'],
+    icon: DocumentChecked,
+  },
+  {
+    path: '/review/expert',
+    title: '专家评审',
+    roles: ['expert'],
     icon: DocumentChecked,
   },
   {

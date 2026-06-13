@@ -23,3 +23,7 @@
      --primary-btn-shadow: 0 4px 12px rgba(19, 194, 194, 0.3);
      --primary-btn-hover-shadow: 0 6px 16px rgba(19, 194, 194, 0.4);
 }
+
+.dept-select-popper {
+    max-width: 350px !important;
+}

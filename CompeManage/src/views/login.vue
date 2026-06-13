@@ -34,7 +34,12 @@ const handleLogin = async () => {
             try {
                 await userStore.login(loginForm)
                 ElMessage.success(`你好，${userStore.userInfo.name}`)
-                router.push('/home')
+                // 专家角色跳转到专家评审页面，其他角色跳转到首页
+                if (userStore.role === 'expert') {
+                  router.push('/review/expert')
+                } else {
+                  router.push('/home')
+                }
             } catch (error) {
                 // 网络层错误已在请求拦截器中提示，避免登录页重复弹窗
                 if (error?.message === 'Network Error' || (!error?.response && error?.request)) {

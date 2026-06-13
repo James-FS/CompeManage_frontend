@@ -1,11 +1,5 @@
-import { test, expect } from 'playwright-test-coverage';
-
-// 测试用户 - school_admin
-const TEST_USER = {
-  username: 'T2023001',
-  password: '123',
-  role: 'school_admin',
-};
+import { test, expect } from 'playwright-test-coverage'
+import { login } from '../helpers/auth'
 
 // 辅助函数：等待表格数据加载
 async function waitForTableData(page, timeout = 15000) {
@@ -27,21 +21,14 @@ async function getFirstRowCompetitionName(page) {
 
 // 辅助函数：登录并进入赛事目录页面
 async function loginAndNavigate(page) {
-  await page.goto('/#/login');
-  await page.waitForLoadState('networkidle');
-
-  await page.fill('input[placeholder="请输入用户名"]', TEST_USER.username);
-  await page.fill('input[placeholder="请输入密码"]', TEST_USER.password);
-  await page.locator('.el-button:has-text("立即登录")').click();
-
-  await page.waitForURL(url => url.hash.includes('home') || url.hash.includes('competition'), { timeout: 10000 });
-  await page.goto('/#/competition/list');
-  await page.waitForLoadState('networkidle');
+  await login(page)
+  await page.goto('/#/competition/list')
+  await page.waitForLoadState('networkidle')
 
   try {
-    await page.waitForSelector('.el-table', { timeout: 15000 });
+    await page.waitForSelector('.el-table', { timeout: 15000 })
   } catch (e) {
-    console.log('表格未找到，可能暂无数据');
+    console.log('表格未找到，可能暂无数据')
   }
 }
 
@@ -712,16 +699,9 @@ test.describe('赛事目录页面 - 编辑与删除操作', () => {
 test.describe('赛事目录页面 - 权限差异测试', () => {
   test('college_admin 不应看到新增赛事按钮', async ({ page }) => {
     // 使用 college_admin 账号登录
-    await page.goto('/#/login');
-    await page.waitForLoadState('networkidle');
-
-    await page.fill('input[placeholder="请输入用户名"]', 'T2023002');
-    await page.fill('input[placeholder="请输入密码"]', '123');
-    await page.locator('.el-button:has-text("立即登录")').click();
-
-    await page.waitForURL(url => url.hash.includes('home') || url.hash.includes('competition'), { timeout: 10000 });
-    await page.goto('/#/competition/list');
-    await page.waitForLoadState('networkidle');
+    await login(page, { username: 'T2023002', password: '123', role: 'college_admin' })
+    await page.goto('/#/competition/list')
+    await page.waitForLoadState('networkidle')
 
     // 严格验证：college_admin 不应该看到新增赛事和批量删除按钮
     await expect(page.locator('button:has-text("新增赛事")')).not.toBeVisible();

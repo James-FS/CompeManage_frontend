@@ -42,6 +42,8 @@ const isReadOnly = computed(() => pageStatus.value === 1) // 是否只读
 const isSelectingLeader = ref(false)
 const compInfo = ref({})
 const isSelectingAdvisor = ref(false)
+const collegeList = ref([])
+const departmentList = ref([])
 const formData = reactive({
   teamName: '',
   leader: {
@@ -562,7 +564,31 @@ async function submitForm(attachmentURL) {
   }
 }
 
+async function loadColleges() {
+  try {
+    const res = await api.getCollegeList()
+    if (res.code === 0 || res.code === 200) {
+      collegeList.value = res.data || []
+    }
+  } catch (e) {
+    console.error('加载学院列表失败', e)
+  }
+}
+
+async function loadDepartments() {
+  try {
+    const res = await api.getDepartmentList()
+    if (res.code === 0 || res.code === 200) {
+      departmentList.value = res.data || []
+    }
+  } catch (e) {
+    console.error('加载部门列表失败', e)
+  }
+}
+
 onMounted(async () => {
+  loadColleges()
+  loadDepartments()
   // 先获取赛道配置
   await fetchRegSettings()
   // 再获取报名状态
@@ -940,10 +966,10 @@ onMounted(async () => {
                   </el-form-item>
                 </el-col>
                 <el-col :span="8" :xs="24">
-                  <el-form-item label="所属学院">
+                  <el-form-item label="所属部门">
                     <el-input
                       v-model="formData.advisorInfo.college"
-                      placeholder="所属学院"
+                      placeholder="所属部门"
                       :disabled="true"
                     />
                   </el-form-item>
@@ -1017,23 +1043,23 @@ onMounted(async () => {
             style="width: 120px"
           />
         </el-form-item>
-        <el-form-item label="所属学院">
+        <el-form-item :label="isSelectingAdvisor ? '所属部门' : '所属学院'">
           <el-select
             v-model="searchForm.college"
-            placeholder="选择学院"
+            :placeholder="isSelectingAdvisor ? '选择部门' : '选择学院'"
             clearable
             @change="fetchStudentList"
             @clear="fetchStudentList"
-            style="width: 180px"
+            popper-class="dept-select-popper"
+            style="width: 330px"
           >
-            <el-option label="计算机科学与网络工程学院" value="计算机科学与网络工程学院" />
-            <el-option label="电子信息工程学院" value="电子信息工程学院" />
-            <el-option label="经济管理学院" value="经济管理学院" />
-            <el-option label="数学学院" value="数学学院" />
+            <el-option
+              v-for="item in (isSelectingAdvisor ? departmentList : collegeList)"
+              :key="item.id"
+              :label="item.name"
+              :value="item.name"
+            />
           </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button @click="resetSearch">重置</el-button>
         </el-form-item>
       </el-form>
     </div>
@@ -1049,7 +1075,7 @@ onMounted(async () => {
     >
       <el-table-column prop="username" label="学号" width="120" align="center" />
       <el-table-column prop="name" label="姓名" width="120" align="center" />
-      <el-table-column prop="college" label="所属学院" min-width="200" align="center" />
+      <el-table-column prop="college" :label="isSelectingAdvisor ? '所属部门' : '所属学院'" min-width="200" align="center" />
       <el-table-column label="操作" width="100" align="center" fixed="right">
         <template #default="{ row }">
           <el-button type="primary" link @click="selectStudent(row)">选择</el-button>
