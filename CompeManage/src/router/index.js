@@ -19,7 +19,7 @@ const routes = [
         component: () => import('@/views/home.vue'),
         meta: {
           title: '首页',
-          roles: ['school_admin', 'college_admin', 'competition_manager', 'student', 'teacher'],
+          roles: ['school_admin', 'college_admin', 'competition_manager', 'student', 'teacher', 'expert'],
         },
       },
     ],
@@ -34,7 +34,7 @@ const routes = [
         component: () => import('@/views/competition/list.vue'),
         meta: {
           title: '赛事目录',
-          roles: ['school_admin', 'college_admin', 'competition_manager', 'student', 'teacher'],
+          roles: ['school_admin', 'college_admin', 'competition_manager', 'student', 'teacher', 'expert'],
         },
       },
       {
@@ -341,11 +341,72 @@ const routes = [
     children: [
       {
         path: '',
-        name: 'ExpertReview',
+        name: 'ReviewDashboard',
         component: () => import('@/views/review/index.vue'),
         meta: {
           title: '专家评审',
           roles: ['school_admin', 'college_admin', 'competition_manager'],
+        },
+      },
+      {
+        path: 'progress/:compId',
+        name: 'ReviewProgress',
+        component: () => import('@/views/review/progress.vue'),
+        props: true,
+        meta: {
+          title: '评审进度',
+          roles: ['school_admin', 'college_admin', 'competition_manager'],
+          parent: 'ReviewDashboard',
+          activeMenu: '/review',
+          hidden: true,
+        },
+      },
+      {
+        path: 'result/:compId',
+        name: 'ReviewResult',
+        component: () => import('@/views/review/result.vue'),
+        props: true,
+        meta: {
+          title: '评审结果',
+          roles: ['school_admin', 'college_admin', 'competition_manager'],
+          parent: 'ReviewDashboard',
+          activeMenu: '/review',
+          hidden: true,
+        },
+      },
+      {
+        path: 'expert',
+        name: 'ExpertReview',
+        component: () => import('@/views/review/expert.vue'),
+        meta: {
+          title: '专家评审',
+          roles: ['expert'],
+        },
+      },
+      {
+        path: 'expert/works/:compId',
+        name: 'ExpertWorks',
+        component: () => import('@/views/review/expertWorks.vue'),
+        props: true,
+        meta: {
+          title: '作品列表',
+          roles: ['expert'],
+          parent: 'ExpertReview',
+          activeMenu: '/review/expert',
+          hidden: true,
+        },
+      },
+      {
+        path: 'expert/score/:regId',
+        name: 'ExpertScore',
+        component: () => import('@/views/review/expertScore.vue'),
+        props: true,
+        meta: {
+          title: '评审打分',
+          roles: ['expert'],
+          parent: 'ExpertWorks',
+          activeMenu: '/review/expert',
+          hidden: true,
         },
       },
     ],

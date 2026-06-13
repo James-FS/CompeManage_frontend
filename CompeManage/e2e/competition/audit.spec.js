@@ -1,4 +1,5 @@
 import { test, expect } from 'playwright-test-coverage'
+import { login } from '../helpers/auth'
 
 const COLLEGE_ADMIN = {
   username: 'T2023002',
@@ -15,14 +16,7 @@ const SCHOOL_ADMIN = {
 // 生成唯一赛事名称
 const DECLARE_NAME = `E2E申报审核_${Date.now()}`
 
-async function login(page, user) {
-  await page.goto('/#/login')
-  await page.waitForLoadState('networkidle')
-  await page.fill('input[placeholder="请输入用户名"]', user.username)
-  await page.fill('input[placeholder="请输入密码"]', user.password)
-  await page.locator('.el-button:has-text("立即登录")').click()
-  await page.waitForURL((url) => url.hash.includes('home'), { timeout: 10000 })
-}
+
 
 // 辅助函数：打开 Element Plus 下拉并选择
 async function selectElOption(page, formFieldLabel, optionText) {

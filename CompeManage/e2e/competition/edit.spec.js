@@ -1,25 +1,11 @@
 import { test, expect } from 'playwright-test-coverage'
+import { login } from '../helpers/auth'
 
 // 测试用户 - school_admin
-const TEST_USER = {
-  username: 'T2023001',
-  password: '123',
-  role: 'school_admin'
-}
+
 
 // 辅助函数：登录
-async function login(page) {
-  await page.goto('/#/login')
-  await page.waitForLoadState('networkidle')
 
-  await page.fill('input[placeholder="请输入用户名"]', TEST_USER.username)
-  await page.fill('input[placeholder="请输入密码"]', TEST_USER.password)
-  await page.locator('.el-button:has-text("立即登录")').click()
-
-  await page.waitForURL(url => url.hash.includes('home') || url.hash.includes('competition'), {
-    timeout: 10000
-  })
-}
 
 // 辅助函数：选择下拉选项
 async function selectElOption(page, labelText, optionText) {

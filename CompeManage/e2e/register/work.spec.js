@@ -1,4 +1,5 @@
 import { test, expect } from 'playwright-test-coverage'
+import { login } from '../helpers/auth'
 
 // ==================== 测试账号 ====================
 const STUDENT_USER = {
@@ -15,17 +16,7 @@ const ADMIN_USER = {
 
 // ==================== 辅助函数 ====================
 
-async function login(page, user) {
-  await page.goto('/#/login')
-  await page.waitForLoadState('networkidle')
-  await page.fill('input[placeholder="请输入用户名"]', user.username)
-  await page.fill('input[placeholder="请输入密码"]', user.password)
-  await page.locator('.el-button:has-text("立即登录")').click()
-  await page.waitForURL(
-    url => url.hash.includes('home') || url.hash.includes('work'),
-    { timeout: 10000 }
-  )
-}
+
 
 async function navigateToWork(page) {
   await page.goto('/#/register/work')

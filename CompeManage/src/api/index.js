@@ -105,6 +105,24 @@ export const api = {
   // ==================== 通用上传 ====================
   uploadFile: (data) => post('/api/upload', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
 
+  // ==================== 专家评审相关 ====================
+  // 管理员
+  getReviewCompList: (params) => get('/api/review/comp/list', params),
+  getExpertList: (params) => get('/api/review/expert/list', params),
+  getReviewTaskList: (params) => get('/api/review/task/list', params),
+  assignReviewTask: (data) => post('/api/review/task/assign', data),
+  initReviewTasks: (data) => post('/api/review/task/init', data),
+  deleteReviewTask: (id, params) => del(`/api/review/task/${id}`, params),
+  getReviewProgress: (params) => get('/api/review/progress', params),
+  getReviewResultList: (params) => get('/api/review/result/list', params),
+  confirmReviewResult: (data) => post('/api/review/result/confirm', data),
+  // 专家
+  getMyReviewTasks: (params) => get('/api/review/my/tasks', params),
+  getMyReviewWorks: (params) => get('/api/review/my/works', params),
+  getReviewWorkDetail: (regId, params) => get(`/api/review/my/works/${regId}`, params),
+  submitReview: (data) => post('/api/review/submit', data),
+  updateReview: (id, data) => put(`/api/review/submit/${id}`, data),
+
   // ==================== 文件下载/预览（受控接口，带 Bearer Token）====================
   // url 是后端返回的 /api/file/download/<type>/<md5>_<name> 格式
   // preview=true 走内嵌（图片/PDF 浏览器内打开，docx 等不可内嵌类型仍下载）
@@ -113,10 +131,17 @@ export const api = {
   downloadFile: async (url, preview = true, fallbackName = '') => {
     const fullUrl = url
     const token = localStorage.getItem('token')
+
+    // 先同步打开窗口，避免异步 fetch 后浏览器拦截弹窗
+    const previewWindow = preview ? window.open('', '_blank') : null
+
     const res = await fetch(fullUrl, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
-    if (!res.ok) throw new Error(`下载失败: ${res.status}`)
+    if (!res.ok) {
+      if (previewWindow) previewWindow.close()
+      throw new Error(`下载失败: ${res.status}`)
+    }
 
     const disp = res.headers.get('Content-Disposition') || ''
     const match = /filename\*?=(?:UTF-8'')?([^;]+)/i.exec(disp)
@@ -126,15 +151,18 @@ export const api = {
     }
 
     const blob = await res.blob()
-    // PDF/图片浏览器可内嵌，其他类型（docx/xlsx/zip 等）浏览器不认识 MIME 只能下载
     const canInline = /^(image\/|application\/pdf)/i.test(blob.type)
 
     if (preview && canInline) {
       const blobUrl = URL.createObjectURL(blob)
-      window.open(blobUrl, '_blank')
+      if (previewWindow) {
+        previewWindow.location.href = blobUrl
+      } else {
+        window.open(blobUrl, '_blank')
+      }
       setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000)
     } else {
-      // 触发下载，强制用后端返回的文件名
+      if (previewWindow) previewWindow.close()
       const blobUrl = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = blobUrl
