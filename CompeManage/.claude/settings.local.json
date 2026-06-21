@@ -1,7 +1,15 @@
 {
   "permissions": {
     "allow": [
-      "Bash(node -c e2e/award/audit-detail.spec.js)"
+      "Bash(node -c e2e/award/audit-detail.spec.js)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5219)",
+      "Bash(npm run *)",
+      "Bash(npm ls *)",
+      "Bash(node *)",
+      "Bash(npx playwright *)",
+      "Bash(./node_modules/.bin/playwright --version)",
+      "Bash(npx *)",
+      "Bash(git *)"
     ]
   }
 }
