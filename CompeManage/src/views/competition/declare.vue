@@ -307,6 +307,7 @@ const handleRemoveFile = (index) => {
 // 打开负责人选择弹窗
 const openManagerSelect = () => {
     managerDialogVisible.value = true;
+    managerCurrentPage.value = 1;
     getManagerList(); // 打开时获取一次列表
 };
 
@@ -335,8 +336,14 @@ const getManagerList = () => {
 };
 
 const debouncedSearch = debounce(() => {
+    managerCurrentPage.value = 1;
     getManagerList();
 }, 500);
+
+const onFilterChange = () => {
+    managerCurrentPage.value = 1;
+    getManagerList();
+};
 
 // 分页处理
 const handleManagerSizeChange = (val) => {
@@ -491,15 +498,16 @@ const selectTeacher = (row) => {
             <el-form :inline="true" :model="searchForm" class="search-form-inline">
                 <el-form-item label="姓名">
                     <el-input v-model="searchForm.name" placeholder="输入姓名" clearable @input="debouncedSearch"
-                        @clear="getManagerList" style="width: 120px;" />
+                        @clear="onFilterChange" style="width: 120px;" />
                 </el-form-item>
                 <el-form-item label="工号">
                     <el-input v-model="searchForm.work_id" placeholder="输入工号" clearable @input="debouncedSearch"
-                        @clear="getManagerList" style="width: 120px;" />
+                        @clear="onFilterChange" style="width: 120px;" />
                 </el-form-item>
                 <el-form-item label="所属部门">
-                    <el-select v-model="searchForm.college" placeholder="选择部门" clearable @change="getManagerList"
-                        @clear="getManagerList" popper-class="dept-select-popper" style="width: 330px;">
+                    <el-select v-model="searchForm.college" placeholder="选择部门" clearable filterable
+                        @change="onFilterChange" @clear="onFilterChange"
+                        popper-class="dept-select-popper" style="width: 330px;">
                         <el-option v-for="dept in departmentList" :key="dept.id"
                             :label="dept.name" :value="dept.name" />
                     </el-select>

@@ -137,6 +137,18 @@ const allMenus = [
     title: '权限管理',
     icon: Key,
     roles: ['school_admin'],
+    children: [
+      {
+        path: '/permission',
+        title: '角色权限',
+        roles: ['school_admin'],
+      },
+      {
+        path: '/permission/users',
+        title: '用户管理',
+        roles: ['school_admin'],
+      },
+    ],
   },
 ]
 

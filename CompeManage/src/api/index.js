@@ -18,6 +18,10 @@ export const api = {
   // 分配权限给角色
   assignPermissions: (data) => post('/api/perm/role/assign_perm', data),
 
+  // ==================== 用户管理相关 ====================
+  getAllUsers: (params) => get('/api/perm/user/list', params),
+  assignUserRole: (id, data) => put(`/api/perm/user/${id}/role`, data),
+
   // ==================== 学院相关 ====================
   getCollegeList: () => get('/api/college/list'),
 

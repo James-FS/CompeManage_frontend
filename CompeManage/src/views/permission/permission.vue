@@ -99,7 +99,16 @@ async function handleSaveClick() {
     })
 
     if (res.code === 200) {
-      ElMessage.success('权限分配成功')
+      if (res.data?.cache_refreshed === false) {
+        if (res.data?.manual_follow_up_required) {
+          const ttlSeconds = res.data?.cache_ttl_seconds || 300
+          ElMessage.warning(`权限已保存，但部分缓存刷新和重试入队失败；旧权限最迟约 ${Math.ceil(ttlSeconds / 60)} 分钟后失效`)
+        } else {
+          ElMessage.warning('权限已保存，部分用户缓存正在后台重试刷新')
+        }
+      } else {
+        ElMessage.success('权限分配成功')
+      }
       await fetchRoles()
     }
   } catch (error) {
