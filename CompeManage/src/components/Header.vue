@@ -9,7 +9,7 @@ const userStore = useUserStore();
 
 const handleLogout = () => {
   userStore.logout();
-  router.push('/login');
+  router.push({ path: '/login', query: { method: 'password' } });
 }
 </script>
 
