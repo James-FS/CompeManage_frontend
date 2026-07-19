@@ -34,7 +34,12 @@ const handleLogin = async () => {
             try {
                 await userStore.login(loginForm)
                 ElMessage.success(`你好，${userStore.userInfo.name}`)
-                router.push('/home')
+                // 专家角色跳转到专家评审页面，其他角色跳转到首页
+                if (userStore.role === 'expert') {
+                  router.push('/review/expert')
+                } else {
+                  router.push('/home')
+                }
             } catch (error) {
                 // 网络层错误已在请求拦截器中提示，避免登录页重复弹窗
                 if (error?.message === 'Network Error' || (!error?.response && error?.request)) {
@@ -105,9 +110,7 @@ onMounted(() => {
         <div class="login-box">
             <div class="login-left">
                 <div class="logo-area">
-                    <el-icon :size="60" color="white">
-                        <Trophy />
-                    </el-icon>
+                    <img src="/gzhu3.png" alt="广州大学" class="login-logo" />
                     <h2>学科竞赛管理系统</h2>
                     <p>Academic Competition Management System</p>
                 </div>
@@ -192,6 +195,11 @@ onMounted(() => {
             p {
                 font-size: 14px;
                 opacity: 0.8;
+            }
+
+            .login-logo {
+                width: 210px;
+                height: auto;
             }
         }
     }

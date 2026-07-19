@@ -18,8 +18,15 @@ export const api = {
   // 分配权限给角色
   assignPermissions: (data) => post('/api/perm/role/assign_perm', data),
 
+  // ==================== 用户管理相关 ====================
+  getAllUsers: (params) => get('/api/perm/user/list', params),
+  assignUserRole: (id, data) => put(`/api/perm/user/${id}/role`, data),
+
   // ==================== 学院相关 ====================
   getCollegeList: () => get('/api/college/list'),
+
+  // ==================== 部门相关 ====================
+  getDepartmentList: () => get('/api/department/list'),
 
   // ==================== 竞赛相关 ====================
   getCompetitionList: (params) => get('/api/comp/list', params),
@@ -102,7 +109,74 @@ export const api = {
   // ==================== 通用上传 ====================
   uploadFile: (data) => post('/api/upload', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
 
-  
+  // ==================== 专家评审相关 ====================
+  // 管理员
+  getReviewCompList: (params) => get('/api/review/comp/list', params),
+  getExpertList: (params) => get('/api/review/expert/list', params),
+  getReviewTaskList: (params) => get('/api/review/task/list', params),
+  assignReviewTask: (data) => post('/api/review/task/assign', data),
+  initReviewTasks: (data) => post('/api/review/task/init', data),
+  deleteReviewTask: (id, params) => del(`/api/review/task/${id}`, params),
+  getReviewProgress: (params) => get('/api/review/progress', params),
+  getReviewResultList: (params) => get('/api/review/result/list', params),
+  confirmReviewResult: (data) => post('/api/review/result/confirm', data),
+  // 专家
+  getMyReviewTasks: (params) => get('/api/review/my/tasks', params),
+  getMyReviewWorks: (params) => get('/api/review/my/works', params),
+  getReviewWorkDetail: (regId, params) => get(`/api/review/my/works/${regId}`, params),
+  submitReview: (data) => post('/api/review/submit', data),
+  updateReview: (id, data) => put(`/api/review/submit/${id}`, data),
+
+  // ==================== 文件下载/预览（受控接口，带 Bearer Token）====================
+  // url 是后端返回的 /api/file/download/<type>/<md5>_<name> 格式
+  // preview=true 走内嵌（图片/PDF 浏览器内打开，docx 等不可内嵌类型仍下载）
+  // preview=false 强制下载，文件名取自 Content-Disposition
+  // fallbackName 是后端拿不到文件名时的兜底
+  downloadFile: async (url, preview = true, fallbackName = '') => {
+    const fullUrl = url
+    const token = localStorage.getItem('token')
+
+    // 先同步打开窗口，避免异步 fetch 后浏览器拦截弹窗
+    const previewWindow = preview ? window.open('', '_blank') : null
+
+    const res = await fetch(fullUrl, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+    if (!res.ok) {
+      if (previewWindow) previewWindow.close()
+      throw new Error(`下载失败: ${res.status}`)
+    }
+
+    const disp = res.headers.get('Content-Disposition') || ''
+    const match = /filename\*?=(?:UTF-8'')?([^;]+)/i.exec(disp)
+    let fileName = fallbackName
+    if (match) {
+      fileName = decodeURIComponent(match[1].replace(/^"|"$/g, '').trim())
+    }
+
+    const blob = await res.blob()
+    const canInline = /^(image\/|application\/pdf)/i.test(blob.type)
+
+    if (preview && canInline) {
+      const blobUrl = URL.createObjectURL(blob)
+      if (previewWindow) {
+        previewWindow.location.href = blobUrl
+      } else {
+        window.open(blobUrl, '_blank')
+      }
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000)
+    } else {
+      if (previewWindow) previewWindow.close()
+      const blobUrl = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = blobUrl
+      a.download = fileName
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000)
+    }
+  },
 }
 
 export default api

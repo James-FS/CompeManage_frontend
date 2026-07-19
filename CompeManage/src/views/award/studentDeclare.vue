@@ -2,8 +2,8 @@
 import { reactive, ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { 
-  ArrowLeft, Trophy, UploadFilled, InfoFilled, Plus, Delete, User, Postcard, Iphone, Message 
+import {
+  ArrowLeft, Trophy, UploadFilled, InfoFilled, Plus, Delete, User, Postcard, Iphone, Message, Document
 } from '@element-plus/icons-vue'
 import api from '@/api'
 import { debounce } from '@/utils/debounce'
@@ -16,6 +16,18 @@ const isSubmitting = ref(false)
 // 搜索相关
 const searchLoading = ref(false)
 const compOptions = ref([]) // 搜索结果列表
+
+// 判断是否为 PDF 文件
+const isPdfFile = computed(() => {
+  return form.certImage && form.certImage.toLowerCase().endsWith('.pdf')
+})
+
+// 从 URL 中提取文件名
+function getFileName(url) {
+  if (!url) return ''
+  const parts = url.split('/')
+  return parts[parts.length - 1] || '证明材料.pdf'
+}
 
 // ==================== 学生选择相关变量 ====================
 const studentDialogVisible = ref(false)
@@ -258,6 +270,7 @@ const handleSubmit = async () => {
           comp_id: form.compID,
           award_level: form.awardLevel,
           award_name: form.awardSpecific,
+          award_date: form.awardDate,
           team_name: form.teamName || '个人参赛',
           proof_url: form.certImage,
           members: [
@@ -626,12 +639,16 @@ onMounted(() => {
                 class="cert-uploader"
                 action="/api/upload"
                 :headers="uploadHeaders"
-                :data="{type:'award_cert'}" 
+                :data="{type:'award_cert'}"
                 :show-file-list="false"
                 :on-success="handleUploadSuccess"
                 accept=".jpg,.png,.jpeg,.pdf"
               >
-                <img v-if="form.certImage" :src="form.certImage" class="cert-img" />
+                <img v-if="form.certImage && !isPdfFile" :src="form.certImage" class="cert-img" />
+                <div v-else-if="form.certImage && isPdfFile" class="pdf-info">
+                  <el-icon class="pdf-icon"><Document /></el-icon>
+                  <span class="pdf-name">{{ getFileName(form.certImage) }}</span>
+                </div>
                 <div v-else class="upload-area">
                   <el-icon class="upload-icon"><UploadFilled /></el-icon>
                   <div class="upload-text">点击上传证明材料</div>
@@ -1034,6 +1051,33 @@ onMounted(() => {
   background-color: #f5f7fa;
   border: 1px solid #e4e7ed;
   border-radius: 6px;
+}
+
+.pdf-info {
+  width: 100%;
+  height: 220px;
+  border: 2px dashed #dcdfe6;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background-color: #fafafa;
+
+  .pdf-icon {
+    font-size: 48px;
+    color: #c0c4cc;
+    margin-bottom: 12px;
+  }
+
+  .pdf-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #606266;
+    padding: 0 20px;
+    word-break: break-all;
+    text-align: center;
+  }
 }
 
 .form-footer {

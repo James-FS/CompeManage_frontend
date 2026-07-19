@@ -95,9 +95,22 @@ const loadColleges = async () => {
     }
 };
 
+const departmentList = ref([])
+
+async function loadDepartments() {
+    try {
+        const res = await api.getDepartmentList()
+        if (res.code === 0 || res.code === 200) {
+            departmentList.value = res.data || []
+        }
+    } catch (e) {
+        console.error('加载部门列表失败', e)
+    }
+}
+
 // 组件挂载时初始化
 onMounted(() => {
-    initializeYears(); loadColleges();    // 从路由参数中读取年份，如果有的话直接填充
+    initializeYears(); loadColleges(); loadDepartments();    // 从路由参数中读取年份，如果有的话直接填充
     if (route.query.year) {
         form.year = route.query.year;
     }
@@ -246,6 +259,7 @@ const searchForm = reactive({
 const openManagerSelect = () => {
     currentManagerEditIndex.value = -1; // 标记为手动新增
     managerDialogVisible.value = true;
+    managerCurrentPage.value = 1;
     getManagerList(); // 打开时获取一次列表
 };
 
@@ -253,6 +267,7 @@ const openManagerSelect = () => {
 const openManagerSelectForImport = (index) => {
     currentManagerEditIndex.value = index; // 标记为复用列表中的第index项
     managerDialogVisible.value = true;
+    managerCurrentPage.value = 1;
     getManagerList(); // 打开时获取一次列表
 };
 
@@ -282,8 +297,14 @@ const getManagerList = () => {
 };
 
 const debouncedSearch = debounce(() => {
+    managerCurrentPage.value = 1;
     getManagerList();
 }, 500);
+
+const onFilterChange = () => {
+    managerCurrentPage.value = 1;
+    getManagerList();
+};
 
 // 分页数据
 const managerCurrentPage = ref(1);
@@ -849,29 +870,26 @@ const queryManagerByWorkId = async (row) => {
             <el-form :inline="true" :model="searchForm" class="search-form-inline">
                 <el-form-item label="姓名">
                     <el-input v-model="searchForm.name" placeholder="输入姓名" clearable @input="debouncedSearch"
-                        @clear="getManagerList" style="width: 120px;" />
+                        @clear="onFilterChange" style="width: 120px;" />
                 </el-form-item>
                 <el-form-item label="工号">
                     <el-input v-model="searchForm.work_id" placeholder="输入工号" clearable @input="debouncedSearch"
-                        @clear="getManagerList" style="width: 120px;" />
+                        @clear="onFilterChange" style="width: 120px;" />
                 </el-form-item>
-                <el-form-item label="所属学院">
-                    <el-select v-model="searchForm.college" placeholder="选择学院" clearable @change="getManagerList"
-                        @clear="getManagerList" style="width: 180px;">
-                        <el-option label="计算机科学与网络工程学院" value="计算机科学与网络工程学院" />
-                        <el-option label="电子信息工程学院" value="电子信息工程学院" />
-                        <el-option label="经济管理学院" value="经济管理学院" />
+                <el-form-item label="所属部门">
+                    <el-select v-model="searchForm.college" placeholder="选择部门" clearable filterable
+                        @change="onFilterChange" @clear="onFilterChange"
+                        popper-class="dept-select-popper" style="width: 330px;">
+                        <el-option v-for="dept in departmentList" :key="dept.id"
+                            :label="dept.name" :value="dept.name" />
                     </el-select>
-                </el-form-item>
-                <el-form-item>
-                    <el-button @click="resetSearch">重置</el-button>
                 </el-form-item>
             </el-form>
         </div>
         <el-table :data="teacherList" border stripe v-loading="managerLoading" height="350" style="width: 100%">
             <el-table-column prop="work_id" label="工号" width="120" align="center" />
             <el-table-column prop="name" label="姓名" width="120" align="center" />
-            <el-table-column prop="college" label="所属学院" min-width="200" align="center" />
+            <el-table-column prop="college" label="所属部门" min-width="200" align="center" />
             <el-table-column label="操作" width="100" align="center" fixed="right">
                 <template #default="{ row }">
                     <el-button type="primary" link @click="selectTeacher(row)">选择</el-button>

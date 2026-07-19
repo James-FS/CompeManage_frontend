@@ -125,12 +125,16 @@ const handleReject = async () => {
 }
 
 // --- 证书预览 ---
-const openCertificate = () => {
+const openCertificate = async () => {
   if (!detail.value.cert_image) return ElMessage.warning('暂无证书图片')
-  const url = detail.value.cert_image.startsWith('http')
-    ? detail.value.cert_image
-    : `http://localhost:8080${detail.value.cert_image}`
-  window.open(url, '_blank')
+
+  try {
+    // 走预览分支（api 内已封装 window.open(blobUrl, '_blank')）
+    await api.downloadFile(detail.value.cert_image, true)
+  } catch (error) {
+    ElMessage.error('证书预览失败：' + (error.message || '未知错误'))
+    console.error(error)
+  }
 }
 
 onMounted(() => {
