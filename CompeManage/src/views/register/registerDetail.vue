@@ -1103,7 +1103,8 @@ onMounted(async () => {
 
 <style scoped lang="scss">
 .page-wrapper {
-  min-height: 100vh;
+  /* 页面在顶栏+面包屑(约110px)之下，100vh 会固定多出滚动量 */
+  min-height: calc(100vh - 110px);
   background-color: var(--background-color);
 }
 

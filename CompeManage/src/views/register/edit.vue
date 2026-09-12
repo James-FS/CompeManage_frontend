@@ -143,7 +143,8 @@ onMounted(() => {
   flex-direction: column;
   background-color: var(--background-color);
   padding: var(--container-padding);
-  min-height: 100vh;
+  /* 页面渲染在顶栏+面包屑(约110px)之下，用 100vh 会固定多出 ~110px 滚动量 */
+  min-height: calc(100vh - 110px);
 }
 
 .page-header {

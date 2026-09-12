@@ -5,8 +5,18 @@ import api from '@/api'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Edit, Delete, ArrowLeft, DocumentChecked, DocumentRemove } from '@element-plus/icons-vue'
 import { formatTime } from '@/utils/format'
+import { useUserStore } from '@/stores/user'
 const route = useRoute()
 const router = useRouter()
+const userStore = useUserStore()
+
+// P0-3：归属判断——校/院管理员不受限；其他角色仅可操作自己发布的通知。
+// 存量通知（publisher_id 为空）对非管理员隐藏操作按钮。
+const canOperateNotice = (row) => {
+  const role = userStore.role
+  if (role === 'school_admin' || role === 'college_admin') return true
+  return row.publisher_id != null && row.publisher_id === userStore.userInfo?.id
+}
 
 // 1. 状态定义
 const loading = ref(false)
@@ -174,8 +184,9 @@ async function handlePublish(row) {
         <el-table-column label="操作" width="240" fixed="right" align="center">
           <template #default="{ row }">
             <div class="action-buttons">
-              <!-- 编辑按钮 -->
+              <!-- 编辑按钮（P0-3：仅管理员或通知归属人可见） -->
               <el-button 
+                v-if="canOperateNotice(row)"
                 link 
                 type="primary" 
                 size="small" 
@@ -187,7 +198,7 @@ async function handlePublish(row) {
 
               <!-- 发布/撤回按钮 - 根据状态显示 -->
               <el-button
-                v-if="row.status === 0"
+                v-if="row.status === 0 && canOperateNotice(row)"
                 link
                 type="success"
                 size="small"
@@ -198,7 +209,7 @@ async function handlePublish(row) {
               </el-button>
 
               <el-button
-                v-else
+                v-else-if="canOperateNotice(row)"
                 link
                 type="warning"
                 size="small"
@@ -208,8 +219,9 @@ async function handlePublish(row) {
                 <span>撤回</span>
               </el-button>
 
-              <!-- 删除按钮 -->
+              <!-- 删除按钮（P0-3：仅管理员或通知归属人可见） -->
               <el-button 
+                v-if="canOperateNotice(row)"
                 link 
                 type="danger" 
                 size="small" 
