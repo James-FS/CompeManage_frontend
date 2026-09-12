@@ -19,7 +19,7 @@ const routes = [
         component: () => import('@/views/home.vue'),
         meta: {
           title: '首页',
-          roles: ['school_admin', 'college_admin', 'competition_manager', 'student', 'teacher'],
+          roles: ['school_admin', 'college_admin', 'competition_manager', 'student', 'teacher', 'expert'],
         },
       },
     ],
@@ -34,7 +34,7 @@ const routes = [
         component: () => import('@/views/competition/list.vue'),
         meta: {
           title: '赛事目录',
-          roles: ['school_admin', 'college_admin', 'competition_manager', 'student', 'teacher'],
+          roles: ['school_admin', 'college_admin', 'competition_manager', 'student', 'teacher', 'expert'],
         },
       },
       {
@@ -341,11 +341,72 @@ const routes = [
     children: [
       {
         path: '',
-        name: 'ExpertReview',
+        name: 'ReviewDashboard',
         component: () => import('@/views/review/index.vue'),
         meta: {
           title: '专家评审',
           roles: ['school_admin', 'college_admin', 'competition_manager'],
+        },
+      },
+      {
+        path: 'progress/:compId',
+        name: 'ReviewProgress',
+        component: () => import('@/views/review/progress.vue'),
+        props: true,
+        meta: {
+          title: '评审进度',
+          roles: ['school_admin', 'college_admin', 'competition_manager'],
+          parent: 'ReviewDashboard',
+          activeMenu: '/review',
+          hidden: true,
+        },
+      },
+      {
+        path: 'result/:compId',
+        name: 'ReviewResult',
+        component: () => import('@/views/review/result.vue'),
+        props: true,
+        meta: {
+          title: '评审结果',
+          roles: ['school_admin', 'college_admin', 'competition_manager'],
+          parent: 'ReviewDashboard',
+          activeMenu: '/review',
+          hidden: true,
+        },
+      },
+      {
+        path: 'expert',
+        name: 'ExpertReview',
+        component: () => import('@/views/review/expert.vue'),
+        meta: {
+          title: '专家评审',
+          roles: ['expert'],
+        },
+      },
+      {
+        path: 'expert/works/:compId',
+        name: 'ExpertWorks',
+        component: () => import('@/views/review/expertWorks.vue'),
+        props: true,
+        meta: {
+          title: '作品列表',
+          roles: ['expert'],
+          parent: 'ExpertReview',
+          activeMenu: '/review/expert',
+          hidden: true,
+        },
+      },
+      {
+        path: 'expert/score/:regId',
+        name: 'ExpertScore',
+        component: () => import('@/views/review/expertScore.vue'),
+        props: true,
+        meta: {
+          title: '评审打分',
+          roles: ['expert'],
+          parent: 'ExpertWorks',
+          activeMenu: '/review/expert',
+          hidden: true,
         },
       },
     ],
@@ -358,7 +419,13 @@ const routes = [
         path: '',
         name: 'permission',
         component: () => import('@/views/permission/permission.vue'),
-        meta: { title: '权限管理' },
+        meta: { title: '角色权限', roles: ['school_admin'] },
+      },
+      {
+        path: 'users',
+        name: 'UserManage',
+        component: () => import('@/views/permission/userManage.vue'),
+        meta: { title: '用户管理', roles: ['school_admin'] },
       },
     ],
   },
@@ -452,8 +519,17 @@ router.beforeEach((to, from, next) => {
   }
   document.title = pageTitle
 
+  // 判断是否为生产环境（服务器部署）
+  const isProduction = import.meta.env.PROD
+
   // 白名单页面放行
   if (to.path === '/login') {
+    // 生产环境：直接跳转到 CAS 认证（除非是 CAS 回调或明确请求密码登录）
+    if (isProduction && !to.query.token && to.query.method !== 'password') {
+      window.location.href = '/api/cas/login'
+      return
+    }
+    // 开发环境或 CAS 回调或管理员密码登录：放行
     next()
     return
   }
@@ -461,6 +537,12 @@ router.beforeEach((to, from, next) => {
   // 检查是否登录
   const token = localStorage.getItem('token')
   if (!token) {
+    // 生产环境：直接跳转到 CAS 认证
+    if (isProduction) {
+      window.location.href = '/api/cas/login'
+      return
+    }
+    // 开发环境：跳转到登录页面
     next('/login')
     return
   }
@@ -468,7 +550,11 @@ router.beforeEach((to, from, next) => {
   // 确保角色已经被设置
   if (!userStore.role) {
     console.warn('请重新登录')
-    next('/login')
+    if (isProduction) {
+      window.location.href = '/api/cas/login'
+    } else {
+      next('/login')
+    }
     return
   }
 

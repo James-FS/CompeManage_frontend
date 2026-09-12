@@ -9,15 +9,18 @@ const userStore = useUserStore();
 
 const handleLogout = () => {
   userStore.logout();
-  router.push('/login');
+  router.push({ path: '/login', query: { method: 'password' } });
 }
 </script>
 
 <template>
     <div class="header-container">
-        <el-text  size="large" class="header-title">
-            学科竞赛管理系统
-        </el-text>
+        <div class="header-left">
+            <img src="/gzhu2.png" alt="广州大学" class="header-logo" />
+            <el-text size="large" class="header-title">
+                学科竞赛管理系统
+            </el-text>
+        </div>
         <div class="header-dashboard">
             <el-dropdown @command="handleLogout">
               <el-icon :size="20" style="cursor: pointer; color: black;"><User /></el-icon>
@@ -41,9 +44,21 @@ const handleLogout = () => {
     padding:0 20px;
     background-color: #13C2C2;
     height:60px;
+    .header-left{
+        display: flex;
+        align-items: center;
+        gap:20px;
+    }
+    .header-logo{
+        height:48px;
+        width:auto;
+        vertical-align: middle;
+    }
     .header-title{
         color:#ffffff;
         font-weight:600;
+        font-size:20px;
+        line-height: normal;
     }
     .header-dashboard{
         display: flex;

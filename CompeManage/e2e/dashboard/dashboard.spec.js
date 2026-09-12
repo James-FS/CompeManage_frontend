@@ -1,21 +1,7 @@
 import { test, expect } from 'playwright-test-coverage'
-
-const TEST_USER = {
-  username: 'T2023001',
-  password: '123',
-  role: 'school_admin',
-}
+import { login } from '../helpers/auth'
 
 const DASHBOARD_URL = '/#/statistics/dashboard'
-
-async function login(page) {
-  await page.goto('/#/login')
-  await page.waitForLoadState('networkidle')
-  await page.fill('input[placeholder="请输入用户名"]', TEST_USER.username)
-  await page.fill('input[placeholder="请输入密码"]', TEST_USER.password)
-  await page.locator('.el-button:has-text("立即登录")').click()
-  await page.waitForURL((url) => url.hash.includes('home'), { timeout: 10000 })
-}
 
 async function waitForDashboardLoad(page) {
   // 等待主要统计数据接口返回（主接口或 fallback 接口任一完成即可）

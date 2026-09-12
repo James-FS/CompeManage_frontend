@@ -1,4 +1,5 @@
 import { test, expect } from 'playwright-test-coverage'
+import { login } from '../helpers/auth'
 
 const ADMIN_USER = { username: 'T2023001', password: '123', role: 'school_admin' }
 const STUDENT_USER = { username: 'S2024001', password: '123' }
@@ -10,14 +11,7 @@ function uniqueCompName(prefix) {
 
 // ==================== 辅助函数 ====================
 
-async function login(page, user) {
-  await page.goto('/#/login')
-  await page.waitForLoadState('networkidle')
-  await page.fill('input[placeholder="请输入用户名"]', user.username)
-  await page.fill('input[placeholder="请输入密码"]', user.password)
-  await page.locator('.el-button:has-text("立即登录")').click()
-  await page.waitForURL((url) => url.hash.includes('home'), { timeout: 10000 })
-}
+
 
 async function getAuthToken(page) {
   return await page.evaluate(() => localStorage.getItem('token'))
@@ -217,16 +211,11 @@ async function setupWorkAuditData(browser, compName, teamName) {
   await saveRegConfig(page, adminToken, compId)
 
   // 3. 学生登录并提交报名
-  await page.goto('/#/login')
-  await page.waitForLoadState('networkidle')
   await page.evaluate(() => {
     localStorage.removeItem('token')
     localStorage.removeItem('userInfo')
   })
-  await page.fill('input[placeholder="请输入用户名"]', STUDENT_USER.username)
-  await page.fill('input[placeholder="请输入密码"]', STUDENT_USER.password)
-  await page.locator('.el-button:has-text("立即登录")').click()
-  await page.waitForURL((url) => url.hash.includes('home'), { timeout: 10000 })
+  await login(page, STUDENT_USER)
 
   const studentToken = await getAuthToken(page)
   const regResp = await submitRegistration(page, studentToken, compId, teamName)
@@ -234,16 +223,11 @@ async function setupWorkAuditData(browser, compName, teamName) {
 
   // 4. 管理员审核通过
   // 切回管理员
-  await page.goto('/#/login')
-  await page.waitForLoadState('networkidle')
   await page.evaluate(() => {
     localStorage.removeItem('token')
     localStorage.removeItem('userInfo')
   })
-  await page.fill('input[placeholder="请输入用户名"]', ADMIN_USER.username)
-  await page.fill('input[placeholder="请输入密码"]', ADMIN_USER.password)
-  await page.locator('.el-button:has-text("立即登录")').click()
-  await page.waitForURL((url) => url.hash.includes('home'), { timeout: 10000 })
+  await login(page, ADMIN_USER)
 
   const adminToken2 = await getAuthToken(page)
 
@@ -262,16 +246,11 @@ async function setupWorkAuditData(browser, compName, teamName) {
   }
 
   // 5. 学生提交作品
-  await page.goto('/#/login')
-  await page.waitForLoadState('networkidle')
   await page.evaluate(() => {
     localStorage.removeItem('token')
     localStorage.removeItem('userInfo')
   })
-  await page.fill('input[placeholder="请输入用户名"]', STUDENT_USER.username)
-  await page.fill('input[placeholder="请输入密码"]', STUDENT_USER.password)
-  await page.locator('.el-button:has-text("立即登录")').click()
-  await page.waitForURL((url) => url.hash.includes('home'), { timeout: 10000 })
+  await login(page, STUDENT_USER)
 
   const studentToken2 = await getAuthToken(page)
   if (finalRegId) {

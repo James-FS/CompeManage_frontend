@@ -854,7 +854,8 @@ onMounted(() => {
 /* 页面背景等原有样式保留 */
 .paper-container {
   background-color: #f0f2f5;
-  min-height: 100vh;
+  /* 页面在顶栏+面包屑(约110px)之下，100vh 会固定多出滚动量 */
+  min-height: calc(100vh - 110px);
   padding: 30px 20px;
   display: flex;
   justify-content: center;

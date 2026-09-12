@@ -59,6 +59,7 @@ const typeOptions = [
 ];
 
 const collegeList = ref([]);
+const departmentList = ref([]);
 
 // 负责人弹窗相关
 const managerDialogVisible = ref(false); // 控制弹窗显示
@@ -78,6 +79,7 @@ const searchForm = reactive({
 // 生命周期
 onMounted(async () => {
     await loadColleges();
+    loadDepartments();
     // 如果有 id 参数，则加载申报详情（编辑模式）
     const declareId = route.query.id;
     if (declareId) {
@@ -99,6 +101,17 @@ const loadColleges = async () => {
         ElMessage.error('加载学院列表失败');
     }
 };
+
+async function loadDepartments() {
+    try {
+        const res = await api.getDepartmentList()
+        if (res.code === 0 || res.code === 200) {
+            departmentList.value = res.data || []
+        }
+    } catch (e) {
+        console.error('加载部门列表失败', e)
+    }
+}
 
 // 加载申报详情（编辑模式）
 const loadDeclareDetail = async (id) => {
@@ -228,6 +241,16 @@ const getDisplayFileName = (url) => {
     return fileName;
 };
 
+const downloadDeclareFile = async (url) => {
+    try {
+        // api.downloadFile 内部已封装 window.open(blobUrl, '_blank')，不要接收返回值
+        await api.downloadFile(url, true);
+    } catch (error) {
+        ElMessage.error('文件打开失败：' + (error.message || '未知错误'));
+        console.error(error);
+    }
+};
+
 const parseAttachmentUrls = (urlStr) => {
     if (!urlStr) return [];
     return urlStr.split(',').filter(Boolean).map((url) => ({
@@ -284,7 +307,10 @@ const handleRemoveFile = (index) => {
 // 打开负责人选择弹窗
 const openManagerSelect = () => {
     managerDialogVisible.value = true;
-    getManagerList(); // 打开时获取一次列表
+    managerCurrentPage.value = 1;
+    // P2-A：数据源为全体教职工（约万人），打开时不自动加载，先输入姓名/工号再查询
+    teacherList.value = [];
+    managerTotal.value = 0;
 };
 
 // 获取赛事负责人列表接口
@@ -312,8 +338,14 @@ const getManagerList = () => {
 };
 
 const debouncedSearch = debounce(() => {
+    managerCurrentPage.value = 1;
     getManagerList();
 }, 500);
+
+const onFilterChange = () => {
+    managerCurrentPage.value = 1;
+    getManagerList();
+};
 
 // 分页处理
 const handleManagerSizeChange = (val) => {
@@ -341,7 +373,11 @@ const selectTeacher = (row) => {
     form.manager = row.name; // 回填姓名
     form.manager_id = row.id; // 保存负责人ID
     managerDialogVisible.value = false; // 关闭弹窗
-    ElMessage.success(`已选择负责人：${row.name}`);
+    if (row.role_code === 'teacher') {
+        ElMessage.success(`已选择负责人：${row.name}（提交后该教师将自动设为赛事负责人）`);
+    } else {
+        ElMessage.success(`已选择负责人：${row.name}`);
+    }
 };
 </script>
 
@@ -437,7 +473,7 @@ const selectTeacher = (row) => {
                                         <div v-for="(fileItem, index) in form.attachments" :key="index" class="file-item">
                                             <span>已选择: {{ fileItem.name || getDisplayFileName(fileItem.url) }}</span>
                                             <div class="file-actions">
-                                                <el-link v-if="fileItem.url" :href="fileItem.url" target="_blank" download>
+                                                <el-link v-if="fileItem.url" @click="downloadDeclareFile(fileItem.url)">
                                                     下载
                                                 </el-link>
                                                 <el-button v-if="!isReadOnly" link type="danger" @click="handleRemoveFile(index)">移除</el-button>
@@ -463,41 +499,44 @@ const selectTeacher = (row) => {
         </div>
     </div>
     <!-- 负责人选择弹窗 -->
-    <el-dialog v-model="managerDialogVisible" title="选择赛事负责人" width="800px" aligin-center append-to-body>
+    <el-dialog v-model="managerDialogVisible" title="选择负责人（教职工）" width="800px" aligin-center append-to-body>
         <div class="search-bar">
             <el-form :inline="true" :model="searchForm" class="search-form-inline">
                 <el-form-item label="姓名">
                     <el-input v-model="searchForm.name" placeholder="输入姓名" clearable @input="debouncedSearch"
-                        @clear="getManagerList" style="width: 120px;" />
+                        @clear="onFilterChange" style="width: 120px;" />
                 </el-form-item>
                 <el-form-item label="工号">
                     <el-input v-model="searchForm.work_id" placeholder="输入工号" clearable @input="debouncedSearch"
-                        @clear="getManagerList" style="width: 120px;" />
+                        @clear="onFilterChange" style="width: 120px;" />
                 </el-form-item>
-                <el-form-item label="所属学院">
-                    <el-select v-model="searchForm.college" placeholder="选择学院" clearable @change="getManagerList"
-                        @clear="getManagerList" style="width: 180px;">
-                        <el-option label="计算机科学与网络工程学院" value="计算机科学与网络工程学院" />
-                        <el-option label="电子信息工程学院" value="电子信息工程学院" />
-                        <el-option label="经济管理学院" value="经济管理学院" />
+                <el-form-item label="所属部门">
+                    <el-select v-model="searchForm.college" placeholder="选择部门" clearable filterable
+                        @change="onFilterChange" @clear="onFilterChange"
+                        popper-class="dept-select-popper" style="width: 330px;">
+                        <el-option v-for="dept in departmentList" :key="dept.id"
+                            :label="dept.name" :value="dept.name" />
                     </el-select>
-                </el-form-item>
-                <el-form-item>
-                    <el-button @click="resetSearch">重置</el-button>
                 </el-form-item>
             </el-form>
         </div>
         <el-table :data="teacherList" border stripe v-loading="managerLoading" height="350" style="width: 100%">
             <el-table-column prop="work_id" label="工号" width="120" align="center" />
             <el-table-column prop="name" label="姓名" width="120" align="center" />
-            <el-table-column prop="college" label="所属学院" min-width="200" align="center" />
+            <el-table-column prop="college" label="所属部门" min-width="200" align="center" />
+            <el-table-column label="当前角色" width="120" align="center">
+                <template #default="{ row }">
+                    <el-tag v-if="row.role_code === 'competition_manager'" type="warning" size="small">赛事负责人</el-tag>
+                    <el-tag v-else type="info" size="small">老师</el-tag>
+                </template>
+            </el-table-column>
             <el-table-column label="操作" width="100" align="center" fixed="right">
                 <template #default="{ row }">
                     <el-button type="primary" link @click="selectTeacher(row)">选择</el-button>
                 </template>
             </el-table-column>
             <template #empty>
-                <el-empty description="暂无数据" />
+                <el-empty description="请输入姓名或工号查询教职工" />
             </template>
         </el-table>
         <div class="pagination-wrapper">

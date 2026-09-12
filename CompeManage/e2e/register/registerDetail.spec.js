@@ -1,25 +1,11 @@
 import { test, expect } from 'playwright-test-coverage'
+import { login } from '../helpers/auth'
 
 // 测试用户 - student
-const TEST_USER = {
-  username: 'S2024001',
-  password: '123',
-  role: 'student'
-}
+
 
 // 辅助函数：登录
-async function login(page) {
-  await page.goto('/#/login')
-  await page.waitForLoadState('networkidle')
 
-  await page.fill('input[placeholder="请输入用户名"]', TEST_USER.username)
-  await page.fill('input[placeholder="请输入密码"]', TEST_USER.password)
-  await page.locator('.el-button:has-text("立即登录")').click()
-
-  await page.waitForURL(url => url.hash.includes('home') || url.hash.includes('register'), {
-    timeout: 10000
-  })
-}
 
 // 辅助函数：进入报名详情页（需要赛事ID）
 async function navigateToRegisterDetail(page, compId = 1) {

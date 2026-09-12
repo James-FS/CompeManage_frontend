@@ -99,7 +99,16 @@ async function handleSaveClick() {
     })
 
     if (res.code === 200) {
-      ElMessage.success('权限分配成功')
+      if (res.data?.cache_refreshed === false) {
+        if (res.data?.manual_follow_up_required) {
+          const ttlSeconds = res.data?.cache_ttl_seconds || 300
+          ElMessage.warning(`权限已保存，但部分缓存刷新和重试入队失败；旧权限最迟约 ${Math.ceil(ttlSeconds / 60)} 分钟后失效`)
+        } else {
+          ElMessage.warning('权限已保存，部分用户缓存正在后台重试刷新')
+        }
+      } else {
+        ElMessage.success('权限分配成功')
+      }
       await fetchRoles()
     }
   } catch (error) {
@@ -202,16 +211,23 @@ onMounted(() => {
 <style lang="scss" scoped>
 .rbac-container {
   display: flex;
-  gap: 16px;
+  gap: 15px;
   height: calc(100vh - 110px);
+  /* 与赛事目录/用户管理等页面统一：四周留白 + 页面底色 */
+  padding: 20px;
+  box-sizing: border-box;
+  background-color: var(--background-color);
 }
 
 .role-panel {
   width: 300px;
-  height: 100%; 
+  height: 100%;
   display: flex;
   flex-direction: column;
   border: none;
+  /* 与其他页面内容卡一致的阴影和圆角 */
+  box-shadow: var(--card-shadow);
+  border-radius: 4px;
 }
 
 :deep(.el-card__body) {
@@ -279,11 +295,14 @@ onMounted(() => {
 }
 
 .permission-panel {
-  flex: 1; 
-  height: 100%; 
+  flex: 1;
+  height: 100%;
   display: flex;
   flex-direction: column;
   border: none;
+  /* 与其他页面内容卡一致的阴影和圆角 */
+  box-shadow: var(--card-shadow);
+  border-radius: 4px;
 
   .scroll-content {
     flex: 1;

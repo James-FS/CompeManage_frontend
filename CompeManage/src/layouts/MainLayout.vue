@@ -16,19 +16,19 @@ const allMenus = [
     path: '/home',
     title: '首页',
     icon: House,
-    roles: ['school_admin', 'college_admin', 'competition_manager', 'student', 'teacher'],
+    roles: ['school_admin', 'college_admin', 'competition_manager', 'student', 'teacher', 'expert'],
   },
   {
     path: '/competition',
     title: '赛事管理',
     icon: Trophy,
     // 只要有任意子菜单权限，就显示父菜单
-    roles: ['school_admin', 'college_admin', 'competition_manager', 'student', 'teacher'],
+    roles: ['school_admin', 'college_admin', 'competition_manager', 'student', 'teacher', 'expert'],
     children: [
       {
         path: '/competition/list',
         title: '赛事目录',
-        roles: ['school_admin', 'college_admin', 'competition_manager', 'student', 'teacher'],
+        roles: ['school_admin', 'college_admin', 'competition_manager', 'student', 'teacher', 'expert'],
       },
       {
         path: '/competition/audit',
@@ -101,6 +101,12 @@ const allMenus = [
     icon: DocumentChecked,
   },
   {
+    path: '/review/expert',
+    title: '专家评审',
+    roles: ['expert'],
+    icon: DocumentChecked,
+  },
+  {
     path: '/summary',
     title: '赛事总结',
     roles: ['school_admin', 'college_admin', 'competition_manager'],
@@ -131,6 +137,18 @@ const allMenus = [
     title: '权限管理',
     icon: Key,
     roles: ['school_admin'],
+    children: [
+      {
+        path: '/permission',
+        title: '角色权限',
+        roles: ['school_admin'],
+      },
+      {
+        path: '/permission/users',
+        title: '用户管理',
+        roles: ['school_admin'],
+      },
+    ],
   },
 ]
 

@@ -1,24 +1,14 @@
 import { test, expect } from 'playwright-test-coverage'
+import { login } from '../helpers/auth'
 
-const TEST_USER = {
-  username: 'T2023001',
-  password: '123',
-  role: 'school_admin',
-}
+
 
 const COMP_NAME = `E2E发布通知测试_${Date.now()}`
 const NOTICE_TITLE = `测试通知_${Date.now()}`
 const NOTICE_CONTENT = '这是一条 E2E 自动化测试发布的通知正文内容。'
 
 // 辅助函数：登录
-async function login(page) {
-  await page.goto('/#/login')
-  await page.waitForLoadState('networkidle')
-  await page.fill('input[placeholder="请输入用户名"]', TEST_USER.username)
-  await page.fill('input[placeholder="请输入密码"]', TEST_USER.password)
-  await page.locator('.el-button:has-text("立即登录")').click()
-  await page.waitForURL((url) => url.hash.includes('home'), { timeout: 10000 })
-}
+
 
 // 辅助函数：打开 Element Plus 下拉并选择
 async function selectElOption(page, formFieldLabel, optionText) {

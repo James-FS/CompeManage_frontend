@@ -12,6 +12,7 @@ const compId = route.params.id;
 const formRef = ref(null);
 const loading = ref(false);
 const collegeList = ref([]);
+const departmentList = ref([]);
 
 const form = reactive({
     comp_name: '',
@@ -57,6 +58,17 @@ const loadColleges = async () => {
         console.error('加载学院失败:', error);
     }
 };
+
+async function loadDepartments() {
+    try {
+        const res = await api.getDepartmentList()
+        if (res.code === 0 || res.code === 200) {
+            departmentList.value = res.data || []
+        }
+    } catch (e) {
+        console.error('加载部门列表失败', e)
+    }
+}
 
 const loadDetail = async () => {
     if (!compId) {
@@ -123,16 +135,28 @@ const debouncedSearch = debounce(() => {
     getManagerList();
 }, 500);
 
+const onFilterChange = () => {
+    managerCurrentPage.value = 1;
+    getManagerList();
+};
+
 const openManagerSelect = () => {
     managerDialogVisible.value = true;
-    getManagerList();
+    managerCurrentPage.value = 1;
+    // P2-A：数据源为全体教职工（约万人），打开时不自动加载，先输入姓名/工号再查询
+    teacherList.value = [];
+    managerTotal.value = 0;
 };
 
 const selectTeacher = (row) => {
     form.manager = row.name;
     form.manager_id = row.id;
     managerDialogVisible.value = false;
-    ElMessage.success(`已选择负责人：${row.name}`);
+    if (row.role_code === 'teacher') {
+        ElMessage.success(`已选择负责人：${row.name}（保存后该教师将自动设为赛事负责人）`);
+    } else {
+        ElMessage.success(`已选择负责人：${row.name}`);
+    }
 };
 
 const handleManagerSizeChange = (val) => {
@@ -194,6 +218,7 @@ const handleCancel = () => {
 
 onMounted(async () => {
     await loadColleges();
+    loadDepartments();
     if (compId) {
         await loadDetail();
     }
@@ -279,41 +304,44 @@ onMounted(async () => {
         </el-card>
     </div>
 
-    <el-dialog v-model="managerDialogVisible" title="选择赛事负责人" width="800px" aligin-center append-to-body>
+    <el-dialog v-model="managerDialogVisible" title="选择负责人（教职工）" width="800px" aligin-center append-to-body>
         <div class="search-bar">
             <el-form :inline="true" :model="searchForm" class="search-form-inline">
                 <el-form-item label="姓名">
                     <el-input v-model="searchForm.name" placeholder="输入姓名" clearable @input="debouncedSearch"
-                        @clear="getManagerList" style="width: 120px;" />
+                        @clear="onFilterChange" style="width: 120px;" />
                 </el-form-item>
                 <el-form-item label="工号">
                     <el-input v-model="searchForm.work_id" placeholder="输入工号" clearable @input="debouncedSearch"
-                        @clear="getManagerList" style="width: 120px;" />
+                        @clear="onFilterChange" style="width: 120px;" />
                 </el-form-item>
-                <el-form-item label="所属学院">
-                    <el-select v-model="searchForm.college" placeholder="选择学院" clearable @change="getManagerList"
-                        @clear="getManagerList" style="width: 180px;">
-                        <el-option label="计算机科学与网络工程学院" value="计算机科学与网络工程学院" />
-                        <el-option label="电子信息工程学院" value="电子信息工程学院" />
-                        <el-option label="经济管理学院" value="经济管理学院" />
+                <el-form-item label="所属部门">
+                    <el-select v-model="searchForm.college" placeholder="选择部门" clearable filterable
+                        @change="onFilterChange" @clear="onFilterChange"
+                        popper-class="dept-select-popper" style="width: 330px;">
+                        <el-option v-for="dept in departmentList" :key="dept.id"
+                            :label="dept.name" :value="dept.name" />
                     </el-select>
-                </el-form-item>
-                <el-form-item>
-                    <el-button @click="resetSearch">重置</el-button>
                 </el-form-item>
             </el-form>
         </div>
         <el-table :data="teacherList" border stripe v-loading="managerLoading" height="350" style="width: 100%">
             <el-table-column prop="work_id" label="工号" width="120" align="center" />
             <el-table-column prop="name" label="姓名" width="120" align="center" />
-            <el-table-column prop="college" label="所属学院" min-width="200" align="center" />
+            <el-table-column prop="college" label="所属部门" min-width="200" align="center" />
+            <el-table-column label="当前角色" width="120" align="center">
+                <template #default="{ row }">
+                    <el-tag v-if="row.role_code === 'competition_manager'" type="warning" size="small">赛事负责人</el-tag>
+                    <el-tag v-else type="info" size="small">老师</el-tag>
+                </template>
+            </el-table-column>
             <el-table-column label="操作" width="100" align="center" fixed="right">
                 <template #default="{ row }">
                     <el-button type="primary" link @click="selectTeacher(row)">选择</el-button>
                 </template>
             </el-table-column>
             <template #empty>
-                <el-empty description="暂无数据" />
+                <el-empty description="请输入姓名或工号查询教职工" />
             </template>
         </el-table>
         <div class="pagination-wrapper">
@@ -341,7 +369,17 @@ onMounted(async () => {
 }
 
 .search-bar {
-    margin-bottom: 12px;
+    margin-bottom: 15px;
+
+    :deep(.el-form--inline .el-form-item) {
+        margin-right: 15px;
+    }
+
+    :deep(.el-form--inline) {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+    }
 }
 
 .pagination-wrapper {
