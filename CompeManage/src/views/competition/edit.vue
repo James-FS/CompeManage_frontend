@@ -143,14 +143,20 @@ const onFilterChange = () => {
 const openManagerSelect = () => {
     managerDialogVisible.value = true;
     managerCurrentPage.value = 1;
-    getManagerList();
+    // P2-A：数据源为全体教职工（约万人），打开时不自动加载，先输入姓名/工号再查询
+    teacherList.value = [];
+    managerTotal.value = 0;
 };
 
 const selectTeacher = (row) => {
     form.manager = row.name;
     form.manager_id = row.id;
     managerDialogVisible.value = false;
-    ElMessage.success(`已选择负责人：${row.name}`);
+    if (row.role_code === 'teacher') {
+        ElMessage.success(`已选择负责人：${row.name}（保存后该教师将自动设为赛事负责人）`);
+    } else {
+        ElMessage.success(`已选择负责人：${row.name}`);
+    }
 };
 
 const handleManagerSizeChange = (val) => {
@@ -298,7 +304,7 @@ onMounted(async () => {
         </el-card>
     </div>
 
-    <el-dialog v-model="managerDialogVisible" title="选择赛事负责人" width="800px" aligin-center append-to-body>
+    <el-dialog v-model="managerDialogVisible" title="选择负责人（教职工）" width="800px" aligin-center append-to-body>
         <div class="search-bar">
             <el-form :inline="true" :model="searchForm" class="search-form-inline">
                 <el-form-item label="姓名">
@@ -323,13 +329,19 @@ onMounted(async () => {
             <el-table-column prop="work_id" label="工号" width="120" align="center" />
             <el-table-column prop="name" label="姓名" width="120" align="center" />
             <el-table-column prop="college" label="所属部门" min-width="200" align="center" />
+            <el-table-column label="当前角色" width="120" align="center">
+                <template #default="{ row }">
+                    <el-tag v-if="row.role_code === 'competition_manager'" type="warning" size="small">赛事负责人</el-tag>
+                    <el-tag v-else type="info" size="small">老师</el-tag>
+                </template>
+            </el-table-column>
             <el-table-column label="操作" width="100" align="center" fixed="right">
                 <template #default="{ row }">
                     <el-button type="primary" link @click="selectTeacher(row)">选择</el-button>
                 </template>
             </el-table-column>
             <template #empty>
-                <el-empty description="暂无数据" />
+                <el-empty description="请输入姓名或工号查询教职工" />
             </template>
         </el-table>
         <div class="pagination-wrapper">

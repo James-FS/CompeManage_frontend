@@ -260,7 +260,9 @@ const openManagerSelect = () => {
     currentManagerEditIndex.value = -1; // 标记为手动新增
     managerDialogVisible.value = true;
     managerCurrentPage.value = 1;
-    getManagerList(); // 打开时获取一次列表
+    // P2-A：数据源为全体教职工（约万人），打开时不自动加载，先输入姓名/工号再查询
+    teacherList.value = [];
+    managerTotal.value = 0;
 };
 
 // 在复用列表中打开负责人选择弹窗
@@ -268,7 +270,9 @@ const openManagerSelectForImport = (index) => {
     currentManagerEditIndex.value = index; // 标记为复用列表中的第index项
     managerDialogVisible.value = true;
     managerCurrentPage.value = 1;
-    getManagerList(); // 打开时获取一次列表
+    // P2-A：打开时不自动加载，先输入姓名/工号再查询
+    teacherList.value = [];
+    managerTotal.value = 0;
 };
 
 // 获取赛事负责人列表接口 
@@ -353,7 +357,11 @@ const selectTeacher = (row) => {
         }
     }
     managerDialogVisible.value = false;
-    ElMessage.success(`已选择负责人：${row.name}`);
+    if (row.role_code === 'teacher') {
+        ElMessage.success(`已选择负责人：${row.name}（保存后该教师将自动设为赛事负责人）`);
+    } else {
+        ElMessage.success(`已选择负责人：${row.name}`);
+    }
 };
 
 
@@ -540,7 +548,7 @@ const queryManagerByWorkId = async (row) => {
             row.manager_id = teacher.id; // 自动回填ID
             ElMessage.success(`已匹配负责人：${teacher.name}`);
         } else {
-            ElMessage.warning(`未找到工号为 ${row.work_id} 的教师`);
+            ElMessage.warning(`工号 ${row.work_id} 未匹配到教职工，请点击选择按钮手工指定`);
             // 可以选择清空姓名，或者保留Excel里的原值
             row.manager_id = '';
         }
@@ -865,7 +873,7 @@ const queryManagerByWorkId = async (row) => {
         </div>
     </div>
     <!-- 负责人选择弹窗 -->
-    <el-dialog v-model="managerDialogVisible" title="选择赛事负责人" width="800px" aligin-center append-to-body>
+    <el-dialog v-model="managerDialogVisible" title="选择负责人（教职工）" width="800px" aligin-center append-to-body>
         <div class="search-bar">
             <el-form :inline="true" :model="searchForm" class="search-form-inline">
                 <el-form-item label="姓名">
@@ -890,13 +898,19 @@ const queryManagerByWorkId = async (row) => {
             <el-table-column prop="work_id" label="工号" width="120" align="center" />
             <el-table-column prop="name" label="姓名" width="120" align="center" />
             <el-table-column prop="college" label="所属部门" min-width="200" align="center" />
+            <el-table-column label="当前角色" width="120" align="center">
+                <template #default="{ row }">
+                    <el-tag v-if="row.role_code === 'competition_manager'" type="warning" size="small">赛事负责人</el-tag>
+                    <el-tag v-else type="info" size="small">老师</el-tag>
+                </template>
+            </el-table-column>
             <el-table-column label="操作" width="100" align="center" fixed="right">
                 <template #default="{ row }">
                     <el-button type="primary" link @click="selectTeacher(row)">选择</el-button>
                 </template>
             </el-table-column>
             <template #empty>
-                <el-empty description="暂无数据" />
+                <el-empty description="请输入姓名或工号查询教职工" />
             </template>
         </el-table>
         <div class="pagination-wrapper">

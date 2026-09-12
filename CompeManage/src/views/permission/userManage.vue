@@ -217,34 +217,41 @@ onMounted(async () => {
 
 <template>
   <div class="user-manage-page" v-loading="loading">
-    <el-card class="filter-card" shadow="never">
-      <div class="filter-row">
-        <el-input
-          v-model="filters.search"
-          clearable
-          placeholder="搜索账号、姓名或所属单位"
-          :prefix-icon="Search"
-          class="search-input"
-          @input="debouncedSearch"
-          @clear="debouncedSearch"
-        />
-        <el-select v-model="filters.role_id" clearable placeholder="角色" @change="handleFilterChange">
-          <el-option v-for="role in roleList" :key="role.id" :label="role.role_name" :value="role.id" />
-        </el-select>
-        <el-select v-model="filters.identity_type" clearable placeholder="人员身份" @change="handleFilterChange">
-          <el-option v-for="item in identityOptions" :key="item.value" :label="item.label" :value="item.value" />
-        </el-select>
-        <el-select
-          v-model="filters.managed_college_id"
-          clearable
-          filterable
-          placeholder="管理学院"
-          @change="handleFilterChange"
-        >
-          <el-option v-for="college in collegeList" :key="college.id" :label="college.name" :value="college.id" />
-        </el-select>
-      </div>
-    </el-card>
+    <div class="filter-card">
+      <el-form :inline="true" class="filter-form" label-width="90px" label-position="right">
+        <el-form-item label="关键字">
+          <el-input
+            v-model="filters.search"
+            clearable
+            placeholder="账号、姓名或所属单位"
+            :prefix-icon="Search"
+            @input="debouncedSearch"
+            @clear="debouncedSearch"
+          />
+        </el-form-item>
+        <el-form-item label="角色">
+          <el-select v-model="filters.role_id" clearable placeholder="请选择角色" @change="handleFilterChange">
+            <el-option v-for="role in roleList" :key="role.id" :label="role.role_name" :value="role.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="人员身份">
+          <el-select v-model="filters.identity_type" clearable placeholder="请选择身份" @change="handleFilterChange">
+            <el-option v-for="item in identityOptions" :key="item.value" :label="item.label" :value="item.value" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="管理学院">
+          <el-select
+            v-model="filters.managed_college_id"
+            clearable
+            filterable
+            placeholder="请选择学院"
+            @change="handleFilterChange"
+          >
+            <el-option v-for="college in collegeList" :key="college.id" :label="college.name" :value="college.id" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+    </div>
 
     <div class="content-grid">
       <el-card class="user-panel" shadow="never">
@@ -283,7 +290,8 @@ onMounted(async () => {
         <el-pagination
           class="pagination"
           background
-          layout="total, sizes, prev, pager, next"
+          layout="prev, pager, next"
+          :pager-count="5"
           :total="total"
           :current-page="filters.page"
           :page-size="filters.page_size"
@@ -367,36 +375,83 @@ onMounted(async () => {
 .user-manage-page {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  min-height: calc(100vh - 110px);
+  gap: 15px;
+  width: 100%;
+  height: 100%;
+  padding: 20px;
+  box-sizing: border-box;
+  background-color: var(--background-color);
 }
 
-.filter-card :deep(.el-card__body) { padding: 16px; }
-.filter-row { display: flex; flex-wrap: wrap; gap: 12px; }
-.filter-row .el-select { width: 190px; }
-.search-input { width: min(360px, 100%); }
+/* 与赛事目录等页面统一的筛选卡样式：白底+卡片阴影+圆角 */
+.filter-card {
+  box-sizing: border-box;
+  padding: 20px 20px 10px;
+  background-color: #ffffff;
+  box-shadow: var(--card-shadow);
+  border-radius: 4px;
+}
+
+.filter-form :deep(.el-form-item) { margin-bottom: 15px; margin-left: 15px; }
+.filter-form :deep(.el-input),
+.filter-form :deep(.el-select) { width: 220px; }
 
 .content-grid {
   display: grid;
-  grid-template-columns: minmax(340px, 430px) minmax(0, 1fr);
+  /* 左列固定宽度，不随内容伸缩，避免选中不同用户时右侧面板跟着变宽变窄；
+     min-height:0 防止 flex 子项被内容撑破页面高度；
+     行高 minmax(0,1fr) 让两个面板严格等于剩余空间，列表在卡片内滚动 */
+  grid-template-columns: 420px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   gap: 16px;
   flex: 1;
+  min-height: 0;
 }
 
 .user-panel,
-.editor-panel { min-height: 620px; border: none; }
+.editor-panel {
+  border: none;
+  /* 与赛事目录内容卡一致的阴影和圆角 */
+  box-shadow: var(--card-shadow);
+  border-radius: 4px;
+}
+
+/* 用户列表卡片填满行高，列表区滚动、分页固定底部 */
+.user-panel { display: flex; flex-direction: column; overflow: hidden; }
+.user-panel :deep(.el-card__body) {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* 角色配置面板内容超高时在面板内滚动，不撑破页面 */
+.editor-panel { display: flex; flex-direction: column; overflow: hidden; }
+.editor-panel :deep(.el-card__body) {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
 .panel-title { display: flex; align-items: center; gap: 8px; font-weight: 700; }
 .editor-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .actions { display: flex; gap: 8px; }
 
 .user-list {
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: calc(100vh - 280px);
   overflow-y: auto;
   padding-right: 4px;
+  /* 细滚动条，避免默认粗滚动条及出现/消失引起的宽度跳动 */
+  scrollbar-width: thin;
+  scrollbar-color: #c0c4cc transparent;
 }
+.user-list::-webkit-scrollbar { width: 6px; }
+.user-list::-webkit-scrollbar-thumb { background-color: #dcdfe6; border-radius: 3px; }
+.user-list::-webkit-scrollbar-track { background: transparent; }
 
 .user-item {
   width: 100%;
@@ -411,13 +466,24 @@ onMounted(async () => {
 }
 .user-item:hover { border-color: var(--el-color-primary-light-5); background: var(--el-color-primary-light-9); }
 .user-item.active { border-color: var(--el-color-primary); background: var(--el-color-primary-light-9); }
-.user-main { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
-.user-main span { color: var(--el-text-color-secondary); font-size: 13px; }
+.user-main { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 8px; min-width: 0; }
+.user-main strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.user-main span { flex-shrink: 0; color: var(--el-text-color-secondary); font-size: 13px; }
 .user-meta { display: flex; flex-wrap: wrap; gap: 6px; }
-.pagination { justify-content: center; margin-top: 16px; }
+/* .pagination 类直接挂在 el-pagination 根元素上（flex 容器），
+   布局只保留 prev/pager/next 一行，居中显示 */
+.pagination {
+  justify-content: center;
+  margin-top: 16px;
+  flex-shrink: 0;
+}
 
 .self-alert { margin-bottom: 16px; }
 .user-descriptions { margin-bottom: 24px; }
+/* 固定用户信息表的列宽：table-layout:fixed + 标签列定宽，
+   切换用户时表格竖线不再随姓名/单位长短左右移动 */
+.user-descriptions :deep(.el-descriptions__table) { width: 100%; table-layout: fixed; }
+.user-descriptions :deep(.el-descriptions__table .el-descriptions__label) { width: 22%; }
 .form-section { margin-top: 24px; }
 .form-section h3 { margin: 0 0 14px; font-size: 15px; }
 .form-section :deep(.el-radio-group) { width: 100%; }
@@ -439,7 +505,9 @@ onMounted(async () => {
 }
 
 @media (max-width: 640px) {
-  .filter-row > * { width: 100% !important; }
+  .filter-form :deep(.el-form-item) { margin-left: 0; width: 100%; }
+  .filter-form :deep(.el-input),
+  .filter-form :deep(.el-select) { width: 100% !important; }
   .role-grid { grid-template-columns: 1fr; }
   .editor-header { align-items: flex-start; flex-direction: column; }
 }
