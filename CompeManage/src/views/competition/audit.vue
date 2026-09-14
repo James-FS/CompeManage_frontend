@@ -29,7 +29,7 @@ const handleReset = () => {
     
     // 重置分页
     current_page.value = 1;
-    page_size.value = 10;
+    page_size.value = 8;
     
     // 重新搜索
     handleSearch();
@@ -48,7 +48,7 @@ const handleSelectionChange = (val) => {
 
 // 分页数据
 const current_page = ref(1);
-const page_size = ref(10);
+const page_size = ref(8);
 const total = ref(0);
 
 // 分页处理
@@ -420,30 +420,32 @@ watch(() => activeTab.value, () => {
                 </div>
             </div>
 
-            <el-table v-loading="loading" :data="filteredTableData" stripe height="calc(100vh - 390px)"  style="width: 100%"
+            <div class="table-flex-wrap">
+            <el-table v-loading="loading" :data="filteredTableData" stripe height="100%"  style="width: 100%"
                 @selection-change="handleSelectionChange">
-                <el-table-column type="selection" width="50" align="center" />
-                <el-table-column label="状态" width="80" align="center">
+                <el-table-column type="selection" width="40" align="center" />
+                <el-table-column label="状态" width="70" align="center">
                     <template #default="{ row }">
                         <el-tag :type="getStatusTagType(row.audit_status)" effect="plain" disable-transitions="true">
                             {{ getStatusText(row.audit_status) }}
                         </el-tag>
                     </template>
                 </el-table-column>
-                <el-table-column prop="comp_name" label="赛事名称" min-width="220" show-overflow-tooltip align="center"/>
-                <el-table-column prop="comp_level" label="级别" width="100" align="center" />
-                <el-table-column prop="college" label="申报学院" width="160" align="center" />
-                <el-table-column v-if="currentRole === 'school_admin'" prop="applicant" label="申报人" width="100" align="center" />
-                <el-table-column prop="manager" label="赛事负责人" width="100" align="center" />
-                <el-table-column prop="apply_time" label="申报时间" width="120" align="center" />
-                <el-table-column label="备注/原因" min-width="150" show-overflow-tooltip align="center">
+                <!-- 列宽合计控制在 980px 内（卡片可用宽度），避免表格出现横向滚动条 -->
+                <el-table-column prop="comp_name" label="赛事名称" min-width="120" show-overflow-tooltip align="center"/>
+                <el-table-column prop="comp_level" label="级别" width="70" align="center" />
+                <el-table-column prop="college" label="申报学院" min-width="110" show-overflow-tooltip align="center" />
+                <el-table-column v-if="currentRole === 'school_admin'" prop="applicant" label="申报人" width="80" align="center" />
+                <el-table-column prop="manager" label="赛事负责人" width="95" align="center" />
+                <el-table-column prop="apply_time" label="申报时间" min-width="100" show-overflow-tooltip align="center" />
+                <el-table-column label="备注/原因" min-width="110" show-overflow-tooltip align="center">
                     <template #default="{ row }">
                         <span v-if="row.audit_status === 3" class="text-danger">{{ row.audit_comment }}</span>
                         <span v-else class="text-gray">-</span>
                     </template>
                 </el-table-column>
 
-                <el-table-column label="操作" width="220" align="center" fixed="right">
+                <el-table-column label="操作" width="180" align="center" fixed="right">
                     <template #default="{ row }">
                         <div v-if="currentRole === 'school_admin' && row.audit_status === 1">
                             <el-button link type="info" :icon="View" @click="handleViewDetail(row)">详情</el-button>
@@ -471,9 +473,10 @@ watch(() => activeTab.value, () => {
                     <el-empty description="暂无数据" />
                 </template>
             </el-table>
+            </div>
             <div class="pagination-wrapper">
                 <el-pagination v-model:current-page="current_page" v-model:page-size="page_size"
-                    :page-sizes="[10, 20, 30, 50]" layout="total, sizes, prev, pager, next, jumper" :total="total"
+                    :page-sizes="[8, 10, 20, 30, 50]" layout="total, sizes, prev, pager, next, jumper" :total="total"
                     @size-change="handleSizeChange" @current-change="handleCurrentChange" />
             </div>
         </div>
@@ -497,9 +500,13 @@ watch(() => activeTab.value, () => {
 
 <style scoped lang="scss">
 .audit-container {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 110px);
     padding: 20px;
-    min-height: 100%;
     box-sizing: border-box;
+    background-color: var(--background-color);
+    overflow: hidden;
 }
 
 .filter-card{
@@ -513,7 +520,25 @@ watch(() => activeTab.value, () => {
     padding: 20px 20px 10px 20px;
     border-radius: 4px;
     box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
-    
+    /* 卡片填满页面剩余高度，内部区域各自滚动，页面本身不出现滚动条 */
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* 表格自适应容器：填满卡片剩余空间，表格高度由布局精确分配，
+   不依赖 calc 魔数，规避不同浏览器字体度量/像素取整差异导致的滚动条 */
+.table-flex-wrap {
+    flex: 1;
+    min-height: 0;
+}
+
+.custom-tabs,
+.toolbar,
+.pagination-wrapper {
+    flex-shrink: 0;
 }
 
 .filter-card {
@@ -527,6 +552,21 @@ watch(() => activeTab.value, () => {
 .toolbar {
     display: flex;
     justify-content: space-between;
+}
+
+/* 表格空状态压缩：默认 el-empty(含大图)约 334px 高，超过表体高度会产生内部纵向滚动条 */
+.audit-container :deep(.el-table__empty-text) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    overflow: hidden;
+}
+.audit-container :deep(.el-table__empty-text .el-empty) {
+    padding: 16px 0;
+}
+.audit-container :deep(.el-table__empty-text .el-empty__image) {
+    width: 100px;
 }
 
 .text-danger {

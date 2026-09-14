@@ -122,7 +122,8 @@ onMounted(async() => {
   display: flex;
   justify-content: center;
   width: 100%;
-  min-height: 100vh;
+  /* 页面在顶栏+面包屑(约110px)之下，100vh 会固定多出滚动量 */
+  min-height: calc(100vh - 110px);
   background-color: #dcfce7;
   padding: 20px;
   background-image: radial-gradient(#13c2c2 1px, transparent 1px);

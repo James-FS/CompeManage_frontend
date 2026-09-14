@@ -211,16 +211,23 @@ onMounted(() => {
 <style lang="scss" scoped>
 .rbac-container {
   display: flex;
-  gap: 16px;
+  gap: 15px;
   height: calc(100vh - 110px);
+  /* 与赛事目录/用户管理等页面统一：四周留白 + 页面底色 */
+  padding: 20px;
+  box-sizing: border-box;
+  background-color: var(--background-color);
 }
 
 .role-panel {
   width: 300px;
-  height: 100%; 
+  height: 100%;
   display: flex;
   flex-direction: column;
   border: none;
+  /* 与其他页面内容卡一致的阴影和圆角 */
+  box-shadow: var(--card-shadow);
+  border-radius: 4px;
 }
 
 :deep(.el-card__body) {
@@ -288,11 +295,14 @@ onMounted(() => {
 }
 
 .permission-panel {
-  flex: 1; 
-  height: 100%; 
+  flex: 1;
+  height: 100%;
   display: flex;
   flex-direction: column;
   border: none;
+  /* 与其他页面内容卡一致的阴影和圆角 */
+  box-shadow: var(--card-shadow);
+  border-radius: 4px;
 
   .scroll-content {
     flex: 1;
