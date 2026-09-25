@@ -14,6 +14,7 @@ import {
 
 const router = useRouter()
 const compList = ref([])
+const loading = ref(false)
 
 const queryParams = ref({
   page: 1,
@@ -32,19 +33,20 @@ function NavigateToRegister(compID) {
 }
 
 async function fetchCompList() {
+  loading.value = true
   try {
     const response = await api.getCompetitionList(queryParams.value)
     if (response.code == 200) {
       compList.value = response.data.list.map((item) => {
-        const detail = item.detail || {} 
+        const detail = item.detail || {}
         const timeState = getTimeState(
-          detail.reg_start_time, 
+          detail.reg_start_time,
           detail.reg_end_time
         )
-        
+
         return {
-          ...item, 
-          detail: detail, 
+          ...item,
+          detail: detail,
           timeState,
           timeRange: formatTimeRange(detail.reg_start_time, detail.reg_end_time),
         }
@@ -53,6 +55,8 @@ async function fetchCompList() {
     }
   } catch (error) {
     ElMessage.error(error.message || '获取竞赛列表失败')
+  } finally {
+    loading.value = false
   }
 }
 
@@ -135,7 +139,8 @@ onMounted(() => {
       </div>
     </div>
 
-    <div class="comp-list">
+    <div v-loading="loading" class="comp-list">
+      <el-empty v-if="!loading && compList.length === 0" description="暂无可报名的赛事" />
       <div class="comp-item" v-for="item in compList" :key="item.id">
         <div class="comp-info">
           <div class="name-row">

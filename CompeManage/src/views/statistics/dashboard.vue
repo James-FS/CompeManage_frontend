@@ -651,6 +651,9 @@ onBeforeUnmount(() => {
                 <el-button link type="primary" @click="goPage(`/summary/summary/view/${scope.row.id}`)">查看</el-button>
               </template>
             </el-table-column>
+            <template #empty>
+              <el-empty description="暂无数据" />
+            </template>
           </el-table>
         </el-card>
       </el-col>

@@ -261,13 +261,13 @@ onMounted(() => {
         <el-table-column type="selection" width="50" align="center" />
         <!-- <el-table-column prop="id" label="ID" width="60" align="center" /> -->
 
-        <el-table-column label="赛事名称" min-width="180" show-overflow-tooltip align="center">
+        <el-table-column label="赛事名称" min-width="170" show-overflow-tooltip align="center">
           <template #default="{ row }">
             <span class="comp-text">{{ row.comp_name }}</span>
           </template>
         </el-table-column>
 
-        <el-table-column label="负责人" width="160" align="center">
+        <el-table-column label="负责人" width="130" align="center">
           <template #default="{ row }">
             <div class="leader-cell">
               <span class="name">{{ row.leader_name }}</span>
@@ -276,11 +276,11 @@ onMounted(() => {
           </template>
         </el-table-column>
 
-        <el-table-column prop="phone" label="电话" width="130" show-overflow-tooltip align="center" />
+        <el-table-column prop="phone" label="电话" width="120" show-overflow-tooltip align="center" />
 
-        <el-table-column prop="email" label="邮箱" width="180" show-overflow-tooltip align="center" />
+        <el-table-column prop="email" label="邮箱" width="150" show-overflow-tooltip align="center" />
 
-        <el-table-column label="指导老师" width="140" show-overflow-tooltip align="center">
+        <el-table-column label="指导老师" width="120" show-overflow-tooltip align="center">
           <template #default="{ row }">
             <span>{{ getAdvisorName(row) }}</span>
           </template>
@@ -297,7 +297,7 @@ onMounted(() => {
           </template>
         </el-table-column>
 
-        <el-table-column label="操作" width="150" align="center" fixed="right">
+        <el-table-column label="操作" width="130" align="center" fixed="right">
           <template #default="{ row }">
             <el-button link class="btn-detail" @click="NavigateToDetail(row)">详情</el-button>
             <el-button v-if="row.status === 0" link class="btn-pass" @click="handleQuickPass(row)">

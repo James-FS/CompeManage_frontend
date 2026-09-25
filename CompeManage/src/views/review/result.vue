@@ -100,7 +100,7 @@ onMounted(loadData)
     </div>
 
     <div class="result-table" v-loading="loading">
-      <el-table :data="resultList" stripe style="width: 100%" empty-text="暂无评审结果">
+      <el-table :data="resultList" stripe style="width: 100%">
         <el-table-column prop="rank" label="排名" width="70" align="center" />
         <el-table-column prop="team_name" label="团队名称" min-width="150" align="center" />
         <el-table-column label="成员" min-width="180" align="center">
@@ -124,6 +124,9 @@ onMounted(loadData)
             </div>
           </template>
         </el-table-column>
+        <template #empty>
+          <el-empty description="暂无评审结果" />
+        </template>
       </el-table>
     </div>
   </div>
