@@ -1,5 +1,6 @@
 import { test, expect } from 'playwright-test-coverage'
 import { login } from '../helpers/auth'
+import { pickManager } from '../helpers/manager'
 
 const ADMIN_USER = { username: 'T2023001', password: '123', role: 'school_admin' }
 const STUDENT_USER = { username: 'S2024001', password: '123' }
@@ -36,25 +37,8 @@ async function selectElOption(page, formFieldLabel, optionText) {
 }
 
 async function selectManager(page) {
-  const managerRespPromise = page.waitForResponse(
-    (resp) => resp.url().includes('/api/comp/manager/list') && resp.status() === 200,
-    { timeout: 10000 }
-  )
-
-  const managerInput = page.locator('.manager-input input')
-  await managerInput.click()
-
-  const managerDialog = page.locator('.el-dialog:has-text("选择赛事负责人")')
-  await expect(managerDialog).toBeVisible({ timeout: 10000 })
-
-  await managerRespPromise
-  await page.waitForTimeout(800)
-
-  const firstRow = managerDialog.locator('.el-table__body tr').first()
-  await expect(firstRow).toBeVisible({ timeout: 5000 })
-  await firstRow.locator('button:has-text("选择")').click()
-
-  await expect(managerDialog).not.toBeVisible({ timeout: 5000 })
+  // 新版负责人弹窗打开时不自动加载列表，需先搜索（见 helpers/manager.js）
+  await pickManager(page, { entry: 'manager-input' })
 }
 
 // 通过 UI 创建指定名称的赛事
@@ -98,7 +82,7 @@ async function createCompetitionWithName(page, compName) {
 
   const createResp = await createRespPromise
   const createData = await createResp.json()
-  const id = createData.data?.data?.id || createData.data?.id || createData.data?.ID
+  const id = createData.data?.competition?.id || createData.data?.data?.id || createData.data?.id || createData.data?.ID
   console.log(`赛事 "${compName}" 创建成功, ID: ${id}`)
   expect(id).toBeDefined()
 

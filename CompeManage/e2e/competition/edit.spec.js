@@ -1,5 +1,6 @@
 import { test, expect } from 'playwright-test-coverage'
 import { login } from '../helpers/auth'
+import { searchAndPickManager } from '../helpers/manager'
 
 // 测试用户 - school_admin
 
@@ -21,31 +22,11 @@ async function selectElOption(page, labelText, optionText) {
 
 // 辅助函数：选择赛事负责人
 async function selectManager(page, managerName) {
+  // 新版负责人弹窗为教职工池搜索（打开时不自动加载，"系统管理员"已不在可选池中），
+  // 统一搜索默认关键词并选择第一行（见 helpers/manager.js）
   await page.locator('input[placeholder="请选择赛事负责人"]').click()
-  await page.waitForSelector('.el-dialog:visible', { timeout: 5000 })
-  await page.waitForLoadState('networkidle')
-  await page.waitForTimeout(800)
-
-  const rows = page.locator('.el-dialog .el-table__body tr')
-  let targetRow = rows.filter({ hasText: managerName }).first()
-  let rowVisible = await targetRow.isVisible().catch(() => false)
-
-  if (!rowVisible) {
-    console.log(`未找到精确匹配 "${managerName}"，尝试选择第一行`)
-    targetRow = rows.first()
-    rowVisible = await targetRow.isVisible().catch(() => false)
-  }
-
-  if (rowVisible) {
-    const selectBtn = targetRow.locator('button:has-text("选择")')
-    await selectBtn.click()
-    await page.waitForTimeout(600)
-    const dialogVisible = await page.locator('.el-dialog:visible').isVisible().catch(() => false)
-    expect(dialogVisible).toBe(false)
-  } else {
-    await page.locator('.el-dialog__headerbtn').click()
-    throw new Error('无法找到可选择的负责人行')
-  }
+  await page.locator('.el-dialog:visible').first().waitFor({ state: 'visible', timeout: 5000 })
+  await searchAndPickManager(page)
 }
 
 // 辅助函数：创建一个测试赛事并返回 compId
@@ -85,7 +66,7 @@ async function createTestCompetition(page) {
   const data = await resp.json()
   expect(data.code).toBe(200)
 
-  const compId = data.data?.data?.id || data.data?.id
+  const compId = data.data?.competition?.id || data.data?.data?.id || data.data?.id
   expect(compId).toBeDefined()
 
   return { compId, compName }

@@ -1,5 +1,6 @@
 import { test, expect } from 'playwright-test-coverage'
 import { login } from '../helpers/auth'
+import { pickManager } from '../helpers/manager'
 
 // 测试用户 - school_admin
 
@@ -19,16 +20,8 @@ async function selectElOption(page, formFieldLabel, optionText) {
 
 // 辅助函数：选择赛事负责人
 async function selectManager(page) {
-  const managerRespPromise = page.waitForResponse(
-    resp => resp.url().includes('/api/comp/manager/list') && resp.status() === 200,
-    { timeout: 10000 }
-  )
-  await page.locator('.manager-input input').click()
-  await expect(page.locator('.el-dialog:has-text("选择赛事负责人")')).toBeVisible({ timeout: 10000 })
-  await managerRespPromise
-  await page.waitForTimeout(800)
-  await page.locator('.el-dialog .el-table__body tr').first().locator('button:has-text("选择")').click()
-  await page.waitForTimeout(500)
+  // 新版负责人弹窗打开时不自动加载列表，需先搜索（见 helpers/manager.js）
+  await pickManager(page, { entry: 'manager-input' })
 }
 
 // 辅助函数：创建赛事并进入通知管理页
@@ -65,7 +58,7 @@ async function createCompetitionAndGoToNoticeDetail(page) {
   await page.locator('button:has-text("创建")').first().click()
   const createResp = await createRespPromise
   const createData = await createResp.json()
-  const compId = createData.data?.data?.id || createData.data?.id
+  const compId = createData.data?.competition?.id || createData.data?.data?.id || createData.data?.id
 
   await page.waitForURL(/\/competition\/list/, { timeout: 10000 })
   await page.waitForTimeout(500)

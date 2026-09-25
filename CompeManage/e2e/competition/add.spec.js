@@ -1,5 +1,6 @@
 import { test, expect } from 'playwright-test-coverage'
 import { login } from '../helpers/auth'
+import { searchAndPickManager } from '../helpers/manager'
 import * as XLSX from 'xlsx'
 
 // 测试用户 - school_admin
@@ -29,45 +30,11 @@ async function selectElOption(page, labelText, optionText) {
 
 // 辅助函数：选择赛事负责人
 async function selectManager(page, managerName) {
-  // 点击负责人输入框打开弹窗
+  // 新版负责人弹窗为教职工池搜索（打开时不自动加载，"系统管理员"已不在可选池中），
+  // 统一搜索默认关键词并选择第一行（见 helpers/manager.js）
   await page.locator('input[placeholder="请选择赛事负责人"]').click()
-
-  // 等待弹窗出现
-  await page.waitForSelector('.el-dialog:visible', { timeout: 5000 })
-
-  // 等待网络请求完成（负责人列表加载）
-  await page.waitForLoadState('networkidle')
-  await page.waitForTimeout(800)
-
-  // 在弹窗中查找并选择
-  // 方法：找包含该名称的行，然后点击该行的"选择"按钮
-  const rows = page.locator('.el-dialog .el-table__body tr')
-
-  // 尝试精确匹配
-  let targetRow = rows.filter({ hasText: managerName }).first()
-  let rowVisible = await targetRow.isVisible().catch(() => false)
-
-  // 如果精确名称没找到，尝试模糊匹配或选择第一行
-  if (!rowVisible) {
-    console.log(`未找到精确匹配 "${managerName}"，尝试选择第一行`)
-    targetRow = rows.first()
-    rowVisible = await targetRow.isVisible().catch(() => false)
-  }
-
-  if (rowVisible) {
-    // 点击该行的"选择"按钮
-    const selectBtn = targetRow.locator('button:has-text("选择")')
-    await selectBtn.click()
-    await page.waitForTimeout(600)
-
-    // 验证弹窗已关闭
-    const dialogVisible = await page.locator('.el-dialog:visible').isVisible().catch(() => false)
-    expect(dialogVisible).toBe(false)
-  } else {
-    // 关闭弹窗
-    await page.locator('.el-dialog__headerbtn').click()
-    throw new Error('无法找到可选择的负责人行')
-  }
+  await page.locator('.el-dialog:visible').first().waitFor({ state: 'visible', timeout: 5000 })
+  await searchAndPickManager(page)
 }
 
 // 生成测试用 Excel 文件
