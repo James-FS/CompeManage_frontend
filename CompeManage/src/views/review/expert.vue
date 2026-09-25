@@ -43,7 +43,7 @@ onMounted(loadData)
     <div class="page-title">我的评审任务</div>
 
     <div class="task-table" v-loading="loading">
-      <el-table :data="taskList" stripe style="width: 100%" empty-text="暂无评审任务">
+      <el-table :data="taskList" stripe style="width: 100%">
         <el-table-column prop="comp_name" label="赛事名称" min-width="200" align="center" show-overflow-tooltip />
         <el-table-column prop="comp_level" label="赛事级别" width="100" align="center" />
         <el-table-column label="状态" width="100" align="center">
@@ -71,6 +71,9 @@ onMounted(loadData)
             <el-button type="primary" size="small" @click="handleEnter(row)">进入评审</el-button>
           </template>
         </el-table-column>
+        <template #empty>
+          <el-empty description="暂无评审任务" />
+        </template>
       </el-table>
 
       <div class="pagination-wrapper">
