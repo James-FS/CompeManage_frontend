@@ -124,6 +124,9 @@ const loadBannerCounts = async () => {
   if (role.value === 'school_admin') {
     const pendingRes = await api.getPendingDeclares({ page: 1, page_size: 1 })
     bannerCounts.todo = pendingRes?.data?.total || 0
+  } else if (role.value === 'student') {
+    // 学生没有赛事申报待办，且无 declare:list 权限，直接置 0 避免无意义的 403 弹窗
+    bannerCounts.todo = 0
   } else {
     try {
       const pendingRes = await api.getMyPendingDeclares({ page: 1, page_size: 1 })

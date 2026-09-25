@@ -13,6 +13,7 @@ import {
 const router = useRouter()
 
 const compList = ref([])
+const loading = ref(false)
 
 const queryParams = ref({
   page: 1,
@@ -22,7 +23,7 @@ const queryParams = ref({
   is_reg: true,
 })
 
-let total = ref(100)
+let total = ref(0)
 
 // 按钮操作逻辑
 function NavigateToSettings(compID) {
@@ -34,6 +35,7 @@ function NavigateToNotice(compID) {
 }
 
 async function fetchCompList() {
+  loading.value = true
   try {
     const response = await api.getCompetitionList(queryParams.value)
     if (response.code == 200) {
@@ -53,6 +55,8 @@ async function fetchCompList() {
     }
   } catch (error) {
     ElMessage.error(error.message || '获取竞赛列表失败')
+  } finally {
+    loading.value = false
   }
 }
 
@@ -64,7 +68,8 @@ onMounted(() => {
 <template>
   <div class="page-container">
 
-    <div class="comp-list">
+    <div v-loading="loading" class="comp-list">
+      <el-empty v-if="!loading && compList.length === 0" description="暂无负责的赛事" />
       <div class="comp-item" v-for="item in compList" :key="item.id">
         <div class="comp-info">
           <div class="name-row">

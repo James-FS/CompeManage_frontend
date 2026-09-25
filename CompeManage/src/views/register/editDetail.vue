@@ -636,6 +636,9 @@ onMounted(() => {
             <el-table-column prop="username" label="工号" width="120" align="center" />
             <el-table-column prop="name" label="姓名" width="120" align="center" />
             <el-table-column prop="college" label="所属学院" min-width="160" align="center" show-overflow-tooltip />
+            <template #empty>
+              <el-empty description="请输入姓名或工号查询专家" :image-size="80" />
+            </template>
           </el-table>
           <div class="expert-pagination">
             <el-pagination

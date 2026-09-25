@@ -66,7 +66,7 @@ onMounted(loadData)
     </div>
 
     <div class="works-table" v-loading="loading">
-      <el-table :data="workList" stripe style="width: 100%" empty-text="暂无作品数据">
+      <el-table :data="workList" stripe style="width: 100%">
         <el-table-column v-if="!isIndividualComp" prop="team_name" label="团队名称" min-width="180" align="center" />
         <el-table-column prop="leader_name" :label="isIndividualComp ? '参赛者' : '队长'" min-width="140" align="center" />
         <el-table-column label="作品链接" min-width="140" align="center">
@@ -96,6 +96,9 @@ onMounted(loadData)
             </el-button>
           </template>
         </el-table-column>
+        <template #empty>
+          <el-empty description="暂无作品数据" />
+        </template>
       </el-table>
 
       <div class="pagination-wrapper">
