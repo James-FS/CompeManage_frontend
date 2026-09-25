@@ -71,7 +71,7 @@ test.describe('通知详情页面 - 基本功能', () => {
     await page.locator('button:has-text("创建")').first().click()
     const createResp = await createRespPromise
     const createData = await createResp.json()
-    const compId = createData.data?.data?.id || createData.data?.id
+    const compId = createData.data?.competition?.id || createData.data?.data?.id || createData.data?.id
 
     await page.waitForURL(/\/competition\/list/, { timeout: 10000 })
     await page.waitForTimeout(500)

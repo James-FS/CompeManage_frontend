@@ -25,7 +25,7 @@ test.describe('通知列表页面 - 基本功能', () => {
     // 验证搜索区域
     await expect(page.locator('.search-input')).toBeVisible()
     await expect(page.locator('.date-input')).toBeVisible()
-    await expect(page.locator('button:has-text("查询")')).toBeVisible()
+    await expect(page.locator('button:has-text("搜索")')).toBeVisible()
     await expect(page.locator('button:has-text("重置")')).toBeVisible()
 
     // 验证表格
@@ -81,7 +81,7 @@ test.describe('通知列表页面 - 搜索与重置', () => {
     // 输入搜索关键词
     const searchInput = page.locator('.search-input input')
     await searchInput.fill('测试')
-    await page.locator('button:has-text("查询")').click()
+    await page.locator('button:has-text("搜索")').click()
     await page.waitForLoadState('networkidle')
     await page.waitForTimeout(500)
 
@@ -114,7 +114,7 @@ test.describe('通知列表页面 - 搜索与重置', () => {
     // 进行搜索
     const searchInput = page.locator('.search-input input')
     await searchInput.fill('不存在的关键词_' + Date.now())
-    await page.locator('button:has-text("查询")').click()
+    await page.locator('button:has-text("搜索")').click()
     await page.waitForLoadState('networkidle')
     await page.waitForTimeout(500)
 

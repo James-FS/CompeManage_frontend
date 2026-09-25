@@ -21,6 +21,20 @@ export async function login(page, user, options = {}) {
   const u = user || DEFAULT_USER
   const timeout = options.timeout || 15000
 
+  // 移除 Vue DevTools 悬浮按钮（Vue 应用挂载后才创建，用观察器持续清除），
+  // 避免其遮挡页面底部元素（分页等）导致点击被拦截
+  await page.addInitScript(() => {
+    const removeDevtools = () => {
+      const el = document.getElementById('__vue-devtools-container__')
+      if (el) el.remove()
+    }
+    removeDevtools()
+    new MutationObserver(removeDevtools).observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+    })
+  })
+
   await page.goto('/#/login')
   await page.waitForLoadState('networkidle')
 
@@ -40,4 +54,9 @@ export async function login(page, user, options = {}) {
     timeout,
   })
   await page.waitForLoadState('networkidle')
+
+  // 登录落地后直接移除 DevTools 悬浮容器（其遮挡底部内容会拦截点击）
+  await page
+    .evaluate(() => document.getElementById('__vue-devtools-container__')?.remove())
+    .catch(() => {})
 }

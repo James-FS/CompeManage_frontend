@@ -109,7 +109,7 @@ test.describe('报名设置功能测试', () => {
     // 获取新创建的赛事 ID
     const createResp = await createRespPromise
     const createData = await createResp.json()
-    const compId = createData.data?.data?.id || createData.data?.id
+    const compId = createData.data?.competition?.id || createData.data?.data?.id || createData.data?.id
     console.log(`新赛事创建成功, ID: ${compId}`)
     expect(compId).toBeDefined()
 

@@ -1,5 +1,6 @@
 import { test, expect } from 'playwright-test-coverage'
 import { login } from '../helpers/auth'
+import { pickManager } from '../helpers/manager'
 
 
 
@@ -23,25 +24,8 @@ async function selectElOption(page, formFieldLabel, optionText) {
 
 // 辅助函数：选择赛事负责人
 async function selectManager(page) {
-  const managerRespPromise = page.waitForResponse(
-    (resp) => resp.url().includes('/api/comp/manager/list') && resp.status() === 200,
-    { timeout: 10000 }
-  )
-
-  const managerInput = page.locator('.manager-input input')
-  await managerInput.click()
-
-  const managerDialog = page.locator('.el-dialog:has-text("选择赛事负责人")')
-  await expect(managerDialog).toBeVisible({ timeout: 10000 })
-
-  await managerRespPromise
-  await page.waitForTimeout(800)
-
-  const firstRow = managerDialog.locator('.el-table__body tr').first()
-  await expect(firstRow).toBeVisible({ timeout: 5000 })
-  await firstRow.locator('button:has-text("选择")').click()
-
-  await expect(managerDialog).not.toBeVisible({ timeout: 5000 })
+  // 新版负责人弹窗打开时不自动加载列表，需先搜索（见 helpers/manager.js）
+  await pickManager(page, { entry: 'manager-input' })
 }
 
 test.describe('赛事通知发布 E2E 测试', () => {
@@ -106,7 +90,7 @@ test.describe('赛事通知发布 E2E 测试', () => {
 
     const createResp = await createRespPromise
     const createData = await createResp.json()
-    const compId = createData.data?.data?.id || createData.data?.id
+    const compId = createData.data?.competition?.id || createData.data?.data?.id || createData.data?.id
     console.log(`新赛事创建成功, ID: ${compId}`)
     expect(compId).toBeDefined()
 
@@ -295,7 +279,7 @@ test.describe('赛事通知发布 E2E 测试', () => {
     await page.locator('button:has-text("创建")').first().click()
     const createResp = await createRespPromise
     const createData = await createResp.json()
-    const compId = createData.data?.data?.id || createData.data?.id
+    const compId = createData.data?.competition?.id || createData.data?.data?.id || createData.data?.id
 
     await page.waitForURL(/\/competition\/list/, { timeout: 10000 })
     await page.waitForTimeout(500)
@@ -403,7 +387,7 @@ test.describe('赛事通知发布 E2E 测试', () => {
     await page.locator('button:has-text("创建")').first().click()
     const createResp = await createRespPromise
     const createData = await createResp.json()
-    const compId = createData.data?.data?.id || createData.data?.id
+    const compId = createData.data?.competition?.id || createData.data?.data?.id || createData.data?.id
 
     await page.waitForURL(/\/competition\/list/, { timeout: 10000 })
     await page.waitForTimeout(500)
