@@ -70,7 +70,7 @@ onMounted(loadData)
     </div>
 
     <div class="expert-table" v-loading="loading">
-      <el-table :data="experts" stripe style="width: 100%" empty-text="暂无专家评审数据">
+      <el-table :data="experts" stripe style="width: 100%">
         <el-table-column prop="expert_name" label="专家姓名" width="120" align="center" />
         <el-table-column prop="expert_username" label="工号" width="120" align="center" />
         <el-table-column label="评审进度" min-width="300" align="center">
@@ -93,6 +93,9 @@ onMounted(loadData)
             </el-tag>
           </template>
         </el-table-column>
+        <template #empty>
+          <el-empty description="暂无专家评审数据" />
+        </template>
       </el-table>
     </div>
   </div>

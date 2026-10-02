@@ -733,6 +733,9 @@ const queryManagerByWorkId = async (row) => {
                                             @click="removeImportItem($index)" />
                                     </template>
                                 </el-table-column>
+                                <template #empty>
+                                    <el-empty description="请先上传 Excel 文件导入数据" :image-size="80" />
+                                </template>
                             </el-table>
                             <div class="step-footer">
                                 <el-button @click="step = 1" :icon="ArrowLeft">上一步</el-button>

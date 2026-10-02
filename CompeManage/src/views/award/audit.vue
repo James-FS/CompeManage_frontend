@@ -215,7 +215,7 @@ onMounted(() => {
 
         <el-form-item class="filter-actions">
           <el-button type="primary" class="search-btn" :icon="Search" @click="fetchAwardList">
-            查询
+            搜索
           </el-button>
           <el-button :icon="Refresh" @click="handleReset">重置</el-button>
         </el-form-item>

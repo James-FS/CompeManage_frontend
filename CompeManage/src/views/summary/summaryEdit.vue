@@ -227,6 +227,9 @@ onMounted(() => {
                   <el-tag size="small" effect="plain">{{ row.count }}</el-tag>
                 </template>
               </el-table-column>
+              <template #empty>
+                <el-empty description="暂无获奖数据" :image-size="60" />
+              </template>
             </el-table>
           </el-card>
           <div class="stats-summary">
@@ -262,6 +265,9 @@ onMounted(() => {
                         <el-button type="danger" :icon="Delete" circle size="small" @click="removeExpenseRow($index)" />
                     </template>
                 </el-table-column>
+                <template #empty>
+                    <el-empty description="暂无经费记录，请点击下方按钮添加" :image-size="60" />
+                </template>
              </el-table>
              <div class="table-footer">
                 <el-button type="primary" plain :icon="Plus"  style="width: 100%" @click="addExpenseRow">添加经费明细</el-button>

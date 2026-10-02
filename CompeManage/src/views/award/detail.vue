@@ -388,8 +388,8 @@ onMounted(() => {
 
         <div class="dialog-section">
           <div class="section-title">团队成员（共 {{ currentTeamMembers.length }} 人）</div>
-          <div v-if="currentTeamMembers.length === 0" class="empty-members">
-            暂无成员信息
+          <div v-if="currentTeamMembers.length === 0">
+            <el-empty description="暂无成员信息" :image-size="80" />
           </div>
           <el-table v-else :data="currentTeamMembers" border stripe style="width: 100%">
             <el-table-column type="index" label="序号" width="60" align="center" />
@@ -556,14 +556,6 @@ onMounted(() => {
       border-radius: 4px;
     }
 
-    .empty-members {
-      text-align: center;
-      padding: 30px;
-      background: #f5f7fa;
-      border-radius: 4px;
-      color: #909399;
-      font-size: 13px;
-    }
   }
 }
 </style>

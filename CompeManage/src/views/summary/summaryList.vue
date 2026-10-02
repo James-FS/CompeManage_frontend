@@ -188,25 +188,25 @@ onMounted(() => {
             </div>
 
             <el-table v-loading="loading" :data="tableData" stripe style="width: 100%" height="calc(100vh - 400px)" >
-                <el-table-column prop="comp_name" label="赛事名称" min-width="200" show-overflow-tooltip align="center" />
-                <el-table-column prop="organizer" label="主办单位" min-width="150" show-overflow-tooltip align="center" />
-                <el-table-column prop="undertaker" label="承办单位" min-width="150" show-overflow-tooltip align="center" />
-                <el-table-column label="所属学院" min-width="150" align="center" show-overflow-tooltip>
+                <el-table-column prop="comp_name" label="赛事名称" min-width="160" show-overflow-tooltip align="center" />
+                <el-table-column prop="organizer" label="主办单位" min-width="120" show-overflow-tooltip align="center" />
+                <el-table-column prop="undertaker" label="承办单位" min-width="120" show-overflow-tooltip align="center" />
+                <el-table-column label="所属学院" min-width="140" align="center" show-overflow-tooltip>
                     <template #default="scope">
                         {{ scope.row.college_info?.name || '-' }}
                     </template>
                 </el-table-column>
-                <el-table-column prop="manager" label="赛事负责人" width="150" align="center" />
-                <el-table-column prop="end_time" label="结束时间" width="150" sortable align="center" />
+                <el-table-column prop="manager" label="赛事负责人" width="130" align="center" />
+                <el-table-column prop="end_time" label="结束时间" width="140" sortable align="center" />
 
-                <el-table-column label="总结状态" width="120" align="center">
+                <el-table-column label="总结状态" width="100" align="center">
                     <template #default="scope">
                         <el-tag v-if="scope.row.summary_status === 1" type="success">已归档</el-tag>
                         <el-tag v-else type="warning">未总结</el-tag>
                     </template>
                 </el-table-column>
 
-                <el-table-column label="操作" width="150" align="center" fixed="right">
+                <el-table-column label="操作" width="130" align="center" fixed="right">
                     <template #default="scope">
                         <el-button v-if="scope.row.summary_status === 0" type="primary" link :icon="Edit"
                             @click="handleEdit(scope.row)">

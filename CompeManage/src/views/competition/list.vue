@@ -591,42 +591,42 @@ onMounted(() => {
                         {{ scope.row.comp_code || '-' }}
                     </template>
                 </el-table-column> -->
-                <el-table-column label="赛事名称" min-width="200" show-overflow-tooltip align="center">
+                <el-table-column label="赛事名称" min-width="150" show-overflow-tooltip align="center">
                     <template #default="scope">
                         {{ scope.row.comp_name || '-' }}
                     </template>
                 </el-table-column>
-                <el-table-column label="赛事级别" width="100" align="center">
+                <el-table-column label="赛事级别" width="90" align="center">
                     <template #default="scope">
                         {{ scope.row.comp_level || '-' }}
                     </template>
                 </el-table-column>
-                <el-table-column label="主办单位" min-width="150" align="center" show-overflow-tooltip>
+                <el-table-column label="主办单位" min-width="110" align="center" show-overflow-tooltip>
                     <template #default="scope">
                         {{ scope.row.organizer || '-' }}
                     </template>
                 </el-table-column>
-                <el-table-column label="承办单位" min-width="150" align="center" show-overflow-tooltip>
+                <el-table-column label="承办单位" min-width="110" align="center" show-overflow-tooltip>
                     <template #default="scope">
                         {{ scope.row.undertaker || '-' }}
                     </template>
                 </el-table-column>
-                <el-table-column label="赛事负责人" width="120" align="center">
+                <el-table-column label="赛事负责人" width="100" align="center">
                     <template #default="scope">
                         {{ scope.row.manager?.realname || '-' }}
                     </template>
                 </el-table-column>
-                <el-table-column label="所属学院" width="200" align="center">
+                <el-table-column label="所属学院" min-width="140" align="center" show-overflow-tooltip>
                     <template #default="scope">
                         {{ scope.row.college_info?.name || '-' }}
                     </template>
                 </el-table-column>
-                <el-table-column label="项目来源" min-width="90" align="center">
+                <el-table-column label="项目来源" min-width="80" align="center">
                     <template #default="scope">
                         {{ getSourceText(scope.row.source) }}
                     </template>
                 </el-table-column>
-                <el-table-column label="状态" width="90" align="center">
+                <el-table-column label="状态" width="80" align="center">
                     <template #default="scope">
                         <el-tag :type="scope.row.status === 1 ? 'success' : 'info'" size="small" effect="plain">{{
                             scope.row.status === 1 ? '进行中' : scope.row.status === 2 ? '已结束' : '未开始' }}</el-tag>

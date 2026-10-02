@@ -554,21 +554,6 @@ watch(() => activeTab.value, () => {
     justify-content: space-between;
 }
 
-/* 表格空状态压缩：默认 el-empty(含大图)约 334px 高，超过表体高度会产生内部纵向滚动条 */
-.audit-container :deep(.el-table__empty-text) {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    overflow: hidden;
-}
-.audit-container :deep(.el-table__empty-text .el-empty) {
-    padding: 16px 0;
-}
-.audit-container :deep(.el-table__empty-text .el-empty__image) {
-    width: 100px;
-}
-
 .text-danger {
     color: var(--el-color-danger);
 }

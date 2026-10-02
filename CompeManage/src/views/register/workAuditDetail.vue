@@ -120,6 +120,9 @@ onMounted(() => {
               <el-tag v-else type="info" size="small">队员</el-tag>
             </template>
           </el-table-column>
+          <template #empty>
+            <el-empty description="暂无成员信息" :image-size="80" />
+          </template>
         </el-table>
       </div>
 

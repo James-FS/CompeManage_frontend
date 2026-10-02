@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, User, UserFilled } from '@element-plus/icons-vue'
+import { User, UserFilled } from '@element-plus/icons-vue'
 import api from '@/api'
 import { debounce } from '@/utils/debounce'
 import { useUserStore } from '@/stores/user'
@@ -223,8 +223,7 @@ onMounted(async () => {
           <el-input
             v-model="filters.search"
             clearable
-            placeholder="账号、姓名或所属单位"
-            :prefix-icon="Search"
+            placeholder="请输入账号、姓名或所属单位"
             @input="debouncedSearch"
             @clear="debouncedSearch"
           />

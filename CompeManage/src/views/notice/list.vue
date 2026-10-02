@@ -127,7 +127,7 @@ onMounted(() => {
                         class="date-input"
             />
 
-            <el-button type="primary" :icon="Search" @click="handleSearch">查询</el-button>
+            <el-button type="primary" :icon="Search" @click="handleSearch">搜索</el-button>
             <el-button :icon="Refresh" @click="ResetFilter">重置</el-button>
         </div>
       </div>

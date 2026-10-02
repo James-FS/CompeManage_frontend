@@ -196,6 +196,9 @@ onMounted(() => {
                     <el-table :data="detailData.award_list" stripe style="width: 100%" size="small">
                         <el-table-column prop="level" label="奖项等级" />
                         <el-table-column prop="count" label="人数" align="right" />
+                        <template #empty>
+                            <el-empty description="暂无获奖数据" :image-size="60" />
+                        </template>
                     </el-table>
                 </el-card>
 
@@ -204,6 +207,9 @@ onMounted(() => {
                     <el-table :data="detailData.expense_list" stripe style="width: 100%" size="small" show-summary>
                         <el-table-column prop="usage" label="用途" show-overflow-tooltip />
                         <el-table-column prop="amount" label="金额" align="right" width="80"/>
+                        <template #empty>
+                            <el-empty description="暂无经费记录" :image-size="60" />
+                        </template>
                     </el-table>
                 </el-card>
             </el-col>
