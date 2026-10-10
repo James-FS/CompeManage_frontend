@@ -21,6 +21,7 @@ const stats = reactive({
   totalRegistrations: 0,
   pendingAudits: 0,
   totalAwards: 0,
+  totalAwardStudents: 0,
   registrationPassRate: 0,
   summaryArchiveRate: 0
 })
@@ -226,6 +227,7 @@ const normalizeDashboardPayload = (payload) => {
   stats.totalRegistrations = safeNumber(summary.total_registrations)
   stats.pendingAudits = safeNumber(summary.pending_audits)
   stats.totalAwards = safeNumber(summary.total_awards)
+  stats.totalAwardStudents = safeNumber(summary.total_award_students)
   stats.registrationPassRate = safeNumber(summary.registration_pass_rate)
   stats.summaryArchiveRate = safeNumber(summary.summary_archive_rate)
 
@@ -279,13 +281,13 @@ const normalizeDashboardPayload = (payload) => {
   initOrUpdateChart('trend', trendChartRef, {
     title: { text: '近6个月趋势', textStyle: { fontSize: 14 } },
     tooltip: { trigger: 'axis' },
-    legend: { data: ['报名数', '获奖数'], right: 10, top: 8 },
+    legend: { data: ['报名数', '团队奖项数'], right: 10, top: 8 },
     grid: { left: 40, right: 20, bottom: 35, top: 45 },
     xAxis: { type: 'category', data: trendMonths },
     yAxis: { type: 'value' },
     series: [
       { name: '报名数', type: 'line', smooth: true, data: trendRegs },
-      { name: '获奖数', type: 'line', smooth: true, data: trendAwards }
+      { name: '团队奖项数', type: 'line', smooth: true, data: trendAwards }
     ]
   })
 
@@ -349,13 +351,13 @@ const renderCharts = ({ competitionList, registerList, awardList, funnelData }) 
   initOrUpdateChart('trend', trendChartRef, {
     title: { text: '近6个月趋势', textStyle: { fontSize: 14 } },
     tooltip: { trigger: 'axis' },
-    legend: { data: ['报名数', '获奖数'], right: 10, top: 8 },
+    legend: { data: ['报名数', '团队奖项数'], right: 10, top: 8 },
     grid: { left: 40, right: 20, bottom: 35, top: 45 },
     xAxis: { type: 'category', data: trendData.months },
     yAxis: { type: 'value' },
     series: [
       { name: '报名数', type: 'line', smooth: true, data: trendData.regSeries },
-      { name: '获奖数', type: 'line', smooth: true, data: trendData.awardSeries }
+      { name: '团队奖项数', type: 'line', smooth: true, data: trendData.awardSeries }
     ]
   })
 
@@ -525,7 +527,7 @@ onBeforeUnmount(() => {
         totalCompetitions: ['赛事总数', 'comp', Histogram],
         totalRegistrations: ['报名总数', 'reg', User],
         pendingAudits: ['待审核项', 'audit', Timer],
-        totalAwards: ['已通过获奖', 'award', Trophy],
+        totalAwards: ['已通过团队奖项', 'award', Trophy],
         registrationPassRate: ['报名通过率', 'rate', CircleCheckFilled],
         summaryArchiveRate: ['总结归档率', 'archive', DataLine]
       }" :key="key">
@@ -543,6 +545,7 @@ onBeforeUnmount(() => {
       </el-col>
     </el-row>
 
+    <p style="color: #606266; margin: 12px 0">已通过获奖学生人次：{{ stats.totalAwardStudents }}；团队奖项与学生人数分别统计，未报名获奖也计入。</p>
     <el-row :gutter="16" class="chart-row">
       <el-col :span="8">
         <el-card header="竞赛级别分布" shadow="never">
@@ -632,13 +635,9 @@ onBeforeUnmount(() => {
                 {{ getCompetitionCollege(scope.row) }}
               </template>
             </el-table-column>
-            <el-table-column prop="reg_count" label="报名人数" width="120" align="center" sortable />
-            <el-table-column prop="award_count" label="获奖人数" width="120" align="center" sortable />
-            <el-table-column label="获奖转化率" width="120" align="center">
-              <template #default="scope">
-                {{ ratioToPercent(scope.row.award_count, scope.row.reg_count) }}%
-              </template>
-            </el-table-column>
+            <el-table-column prop="reg_count" label="报名数" width="120" align="center" sortable />
+            <el-table-column prop="award_count" label="获奖学生人次" width="120" align="center" sortable />
+            <el-table-column prop="award_team_count" label="团队奖项数" width="120" align="center" sortable />
             <el-table-column label="总结归档" width="120" align="center">
               <template #default="scope">
                 <el-tag :type="scope.row.summary_status === 1 ? 'success' : 'info'">

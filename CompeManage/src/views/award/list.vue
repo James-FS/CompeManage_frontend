@@ -80,11 +80,9 @@ async function downloadTemplate(id) {
 // 3. 导入成功回调
 const handleUploadSuccess = (response, uploadFile) => {
   if (response.code === 200) {
-    ElMessage.success(response.msg || `成功导入: ${uploadFile.name}`)
-    // 导入成功后，可以刷新一下列表（虽然列表数据可能不变，但这是一个好习惯）
-    // 或者什么都不做，直接跳转详情查看
+    ElMessage.success(response.message || `成功导入: ${uploadFile.name}`)
   } else {
-    ElMessage.error(response.msg || '导入失败')
+    ElMessage.error(response.message || '导入失败')
   }
 }
 
