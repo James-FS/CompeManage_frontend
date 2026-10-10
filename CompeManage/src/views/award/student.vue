@@ -86,8 +86,8 @@ const awardStats = computed(() => {
 const getAwardStatusTag = (status) => awardStatusMap[status] || { type: 'info', text: '未知状态' }
 const getAwardSourceTag = (source) => awardSourceMap[source] || { type: 'info', text: '未标注' }
 
-const getAwardCompName = (award) => award.comp_name || award?.register?.competition?.comp_name || '未关联赛事'
-const getAwardTeamName = (award) => award.team_name || award?.register?.team_name || '个人参赛'
+const getAwardCompName = (award) => award.comp_name || award?.competition?.comp_name || award?.register?.competition?.comp_name || '未关联赛事'
+const getAwardTeamName = (award) => award.project_name || award.team_name || award?.register?.team_name || '个人参赛'
 
 const formatDateTime = (value) => {
   if (!value) return '--'
