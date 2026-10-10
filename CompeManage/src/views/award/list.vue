@@ -3,9 +3,11 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Download, Upload, Trophy, Calendar, User } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import { useUserStore } from '@/stores/user'
 import api from '@/api' // 引入 API
 
 const router = useRouter()
+const userStore = useUserStore()
 const compList = ref([])
 const loading = ref(false)
 const queryParams = ref({
@@ -97,11 +99,67 @@ const goDetail = (id) => {
   router.push({ name: 'AwardDetail', params: { id } })
 }
 
+// 5. 导出附件1（项目一览）/ 附件2（学生一览），year 为空导出全部
+const exportYear = ref('')
+const exporting = ref(false)
+async function downloadExport(kind) {
+  exporting.value = true
+  try {
+    const res = kind === 'projects' ? await api.exportAwardProjects(exportYear.value || '') : await api.exportAwardStudents(exportYear.value || '')
+    // Blob 类型为 JSON 说明后端报错
+    if (res.type === 'application/json') {
+      const reader = new FileReader()
+      reader.onload = () => {
+        try {
+          const errorJson = JSON.parse(reader.result)
+          ElMessage.error(errorJson.msg || errorJson.message || '导出失败')
+        } catch {
+          ElMessage.error('导出失败')
+        }
+      }
+      reader.readAsText(res)
+      return
+    }
+    const blob = new Blob([res], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const link = document.createElement('a')
+    link.href = window.URL.createObjectURL(blob)
+    const yearSuffix = exportYear.value ? `_${exportYear.value}` : ''
+    link.download = kind === 'projects' ? `获奖项目一览表${yearSuffix}.xlsx` : `获奖学生一览表${yearSuffix}.xlsx`
+    link.style.display = 'none'
+    document.body.appendChild(link)
+    link.click()
+    window.URL.revokeObjectURL(link.href)
+    document.body.removeChild(link)
+    ElMessage.success('导出成功')
+  } catch (error) {
+    console.error(error)
+    ElMessage.error('网络请求失败')
+  } finally {
+    exporting.value = false
+  }
+}
+
 onMounted(fetchList)
 </script>
 
 <template>
   <div class="page-container">
+    <div v-if="userStore.role === 'school_admin'" class="export-bar">
+      <el-date-picker
+        v-model="exportYear"
+        type="year"
+        placeholder="全部年份"
+        value-format="YYYY"
+        clearable
+        style="width: 130px"
+      />
+      <el-button type="success" :icon="Download" :loading="exporting" @click="downloadExport('projects')">
+        导出附件1（项目一览表）
+      </el-button>
+      <el-button type="primary" :icon="Download" :loading="exporting" @click="downloadExport('students')">
+        导出附件2（学生一览表）
+      </el-button>
+    </div>
     <div class="comp-list" v-loading="loading">
       <el-empty v-if="compList.length === 0 && !loading" description="暂无负责的赛事" />
 
@@ -202,6 +260,13 @@ onMounted(fetchList)
   flex-direction: column;
   background-color: var(--background-color);
   padding: 20px;
+}
+
+.export-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
 .comp-list {
