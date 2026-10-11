@@ -43,7 +43,7 @@ const saveTeam = async () => {
     await put(`/api/award/teams/${teamEdit.value.id}`, teamEdit.value)
     teamEdit.value = null
     await fetchData()
-    ElMessage.success('团队奖项已更新')
+    ElMessage.success('获奖信息已更新')
   } catch (e) { ElMessage.error(errorMessage(e)) }
   finally { saving.value = false }
 }
@@ -95,13 +95,13 @@ onMounted(async () => {
         <el-button type="success" :icon="Download" @click="handleExport">导出 Excel</el-button>
       </div>
       <el-table :data="pagedTeams" v-loading="loading" border style="margin-top: 18px" max-height="calc(100vh - 260px)">
-        <el-table-column type="index" label="序号" width="65" />
-        <el-table-column prop="project_name" label="参赛项目名称" min-width="240" show-overflow-tooltip />
-        <el-table-column prop="award_category" label="获奖类别" width="120" />
-        <el-table-column prop="award_name" label="获奖等级" width="140" />
-        <el-table-column prop="award_month" label="获奖时间" width="140" />
-        <el-table-column label="获奖成员" min-width="240"><template #default="{ row }"><el-button link type="primary" @click="memberTeam = row">{{ row.members.map(m => m.name).join('、') || '历史成员待核对' }}（{{ row.members.length }}人）</el-button></template></el-table-column>
-        <el-table-column label="操作" width="140"><template #default="{ row }"><el-button v-if="row.can_edit_team" link type="primary" :icon="Edit" @click="openTeam(row)">修改团队奖项</el-button></template></el-table-column>
+        <el-table-column type="index" label="序号" width="65" align="center" />
+        <el-table-column prop="project_name" label="参赛项目名称" min-width="240" show-overflow-tooltip align="center" />
+        <el-table-column prop="award_category" label="获奖类别" width="120" align="center" />
+        <el-table-column prop="award_name" label="获奖等级" width="140" align="center" />
+        <el-table-column prop="award_month" label="获奖时间" width="140" align="center" />
+        <el-table-column label="获奖成员" min-width="240" align="center"><template #default="{ row }"><el-button link type="primary" @click="memberTeam = row">{{ row.members.map(m => m.name).join('、') || '历史成员待核对' }}（{{ row.members.length }}人）</el-button></template></el-table-column>
+        <el-table-column label="操作" width="140" align="center"><template #default="{ row }"><el-button v-if="row.can_edit_team" link type="primary" :icon="Edit" @click="openTeam(row)">修改获奖信息</el-button></template></el-table-column>
       </el-table>
       <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="filteredTeams.length" :page-sizes="[10,20,50]" layout="total, sizes, prev, pager, next" style="margin-top: 18px; justify-content: flex-end" />
     </el-card>
@@ -119,7 +119,7 @@ onMounted(async () => {
         </el-table>
       </template>
     </el-dialog>
-    <el-dialog :model-value="!!teamEdit" title="修改团队奖项" width="560px" @close="teamEdit = null">
+    <el-dialog :model-value="!!teamEdit" title="修改获奖信息" width="560px" @close="teamEdit = null">
       <template v-if="teamEdit">
         <el-alert title="修改将影响该团队所有获奖成员。不同学院提交的信息不会被删除。" type="info" :closable="false" />
         <el-form label-width="110px" style="margin-top: 18px">
