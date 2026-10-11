@@ -240,7 +240,12 @@ const handleLink = (item) => {
     return
   }
 
-  router.push(path)
+  // 面包屑父级路由可能带路径参数（如 /award/detail/:id），
+  // 用当前路由的同名参数回填，避免把 ":id" 占位符字面量当作参数值跳转
+  const resolved = path.includes(':')
+    ? path.replace(/:([A-Za-z0-9_]+)/g, (raw, key) => route.params[key] ?? raw)
+    : path
+  router.push(resolved)
 }
 
 // 获取面包屑项的显示标题
