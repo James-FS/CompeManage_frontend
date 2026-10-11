@@ -31,3 +31,19 @@
 .dept-select-popper {
     max-width: 350px !important;
 }
+
+/* ================== 列表页统一筛选卡片 ==================
+   所有带筛选区的列表页共用：模板写 <div class="filter-card">，
+   内部放 <el-form :inline="true">。勿在组件 scoped 样式里重复定义，
+   个别多行表单需要行间距时可在页面内局部覆盖。 */
+.filter-card {
+    box-sizing: border-box;
+    background-color: #fff;
+    padding: var(--item-padding);
+    border-radius: var(--card-radius);
+    box-shadow: var(--card-shadow);
+    margin-bottom: 16px;
+}
+.filter-card .el-form-item {
+    margin-bottom: 0;
+}

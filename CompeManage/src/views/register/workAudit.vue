@@ -90,21 +90,21 @@ onMounted(() => {
 
 <template>
   <div class="competition-container">
-    <div class="search-container">
-      <el-form :inline="true" :model="queryForm" class="search-form" label-width="100px" label-position="right">
+    <div class="filter-card">
+      <el-form :inline="true" :model="queryForm" class="search-form">
         <el-form-item label="赛事名称">
-          <el-input v-model="queryForm.comp_name" placeholder="请输入赛事名称" clearable style="width: 220px" />
+          <el-input v-model="queryForm.comp_name" placeholder="请输入赛事名称" clearable style="width: 220px" @keyup.enter="fetchCompList" @clear="fetchCompList" />
         </el-form-item>
         <el-form-item label="赛事负责人">
-          <el-input v-model="queryForm.manager" placeholder="请输入负责人" clearable style="width: 220px" />
+          <el-input v-model="queryForm.manager" placeholder="请输入负责人" clearable style="width: 220px" @keyup.enter="fetchCompList" @clear="fetchCompList" />
         </el-form-item>
         <el-form-item label="所属学院">
-          <el-select v-model="queryForm.college" placeholder="请选择所属学院" clearable style="width: 220px">
+          <el-select v-model="queryForm.college" placeholder="请选择所属学院" clearable style="width: 220px" @change="fetchCompList">
             <el-option v-for="college in collegeList" :key="college.id" :label="college.name" :value="college.name" />
           </el-select>
         </el-form-item>
         <el-form-item label="赛事状态">
-          <el-select v-model="queryForm.status" placeholder="请选择赛事状态" clearable style="width: 220px">
+          <el-select v-model="queryForm.status" placeholder="请选择赛事状态" clearable style="width: 220px" @change="fetchCompList">
             <el-option label="未开始" value="0" />
             <el-option label="进行中" value="1" />
             <el-option label="已结束" value="2" />
@@ -178,18 +178,11 @@ onMounted(() => {
   box-sizing: border-box;
 }
 
-.search-container {
-  box-sizing: border-box;
-  margin-bottom: 15px;
-  padding: 20px 20px 10px 20px;
-  background-color: #ffffff;
-  box-shadow: var(--card-shadow);
-  border-radius: var(--card-radius);
-
+/* 筛选卡片外壳用全局 .filter-card；此页筛选条件多会换行，仅保留行间距与按钮位覆盖 */
+.filter-card {
   .search-form {
     .el-form-item {
       margin-bottom: 15px;
-      margin-left: 15px;
     }
 
     .search-actions {

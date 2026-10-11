@@ -67,7 +67,7 @@ onMounted(() => {
 
 <template>
   <div class="competition-container">
-    <div class="search-container">
+    <div class="filter-card">
       <div class="header-row">
         <div class="title-text">{{ compName || '当前赛事' }}</div>
       </div>
@@ -128,15 +128,7 @@ onMounted(() => {
   box-sizing: border-box;
 }
 
-.search-container {
-  box-sizing: border-box;
-  margin-bottom: 15px;
-  padding: var(--container-padding);
-  background-color: #ffffff;
-  box-shadow: var(--card-shadow);
-  border-radius: var(--card-radius);
-}
-
+/* 筛选卡片外壳用全局 .filter-card */
 .header-row {
   display: flex;
   justify-content: space-between;

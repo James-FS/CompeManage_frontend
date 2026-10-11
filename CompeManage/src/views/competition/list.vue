@@ -57,6 +57,26 @@ const router = useRouter();
 // 用户角色
 const userStore = useUserStore();
 
+// 按账号记住年度选择，刷新或重新进入页面时恢复。
+const selectedYearKey = `competition:selected-year:${userStore.userInfo.id || userStore.userInfo.username || 'default'}`;
+const readSelectedYear = () => {
+    try {
+        return localStorage.getItem(selectedYearKey) || '';
+    } catch {
+        return '';
+    }
+};
+const selectYear = (year) => {
+    currentYear.value = year;
+    searchForm.year = year;
+    try {
+        if (year) localStorage.setItem(selectedYearKey, year);
+        else localStorage.removeItem(selectedYearKey);
+    } catch {
+        // 浏览器禁用存储时，仍允许正常切换和查询年度。
+    }
+};
+
 // 新增赛事
 const handleAddCompetition = () => {
     router.push({ name: 'CompetitionAdd', query: { year: currentYear.value } });
@@ -74,8 +94,7 @@ const handleDeclare = () => {
 
 // 年份切换
 const handleYearSwitch = (year) => {
-    currentYear.value = year;
-    searchForm.year = year;
+    selectYear(year);
 
     // 重置分页到第一页
     current_page.value = 1;
@@ -84,145 +103,116 @@ const handleYearSwitch = (year) => {
     handleSearch();
 };
 
-// 年份管理数据
-const currentYear = ref(new Date().getFullYear().toString()); // 当前选中的年份（系统当前年份）
-const yearList = ref(['2026', '2025', '2024', '2023']); // 可选年份列表
-// 弹窗控制
+// 年度目录由后端保存，空目录也会保留。
+const currentYear = ref(readSelectedYear());
+const yearList = ref([]);
 const yearManageVisible = ref(false);
 const newYearInput = ref('');
-// 构造表格数据（包装对象支持行内编辑）
 const yearTableData = ref([]);
+const yearLoading = ref(false);
+const yearSaving = ref(false);
 
-// 1. 下拉菜单指令处理
-const handleYearCommand = (command) => {
-    if (command === 'manage_years') {
-        openManageDialog();
-    } else {
-        handleYearSwitch(command);
+const rebuildYearTable = () => {
+    yearTableData.value = yearList.value.map(year => ({ year, editValue: year, isEditing: false }));
+};
+
+const loadYears = async (preferredYear = currentYear.value || new Date().getFullYear().toString()) => {
+    yearLoading.value = true;
+    try {
+        const response = await api.getCompetitionYears();
+        yearList.value = (response.data?.years || []).map(String);
+        selectYear(yearList.value.includes(preferredYear) ? preferredYear
+            : yearList.value[0] || '');
+        rebuildYearTable();
+    } finally {
+        yearLoading.value = false;
     }
 };
 
-// 2. 打开管理弹窗
 const openManageDialog = () => {
-    // 将简单数组转换为对象数组，方便管理编辑状态
-    yearTableData.value = yearList.value.map(year => ({
-        year: year,
-        editValue: year,
-        isEditing: false
-    }));
+    if (userStore.role !== 'school_admin') return;
+    rebuildYearTable();
     newYearInput.value = '';
     yearManageVisible.value = true;
 };
 
-// 3. 弹窗内：新增年份
-const handleAddYearInDialog = () => {
+const handleYearCommand = (command) => {
+    if (command === 'manage_years') openManageDialog();
+    else handleYearSwitch(command);
+};
+
+const isValidYear = (year) => /^[1-9]\d{3}$/.test(year);
+
+const handleAddYearInDialog = async () => {
+    if (yearSaving.value || yearLoading.value) return;
     const year = newYearInput.value.trim();
-    // 简单正则校验：4位数字
-    if (!/^\d{4}$/.test(year)) {
-        ElMessage.warning('请输入正确的4位年份格式');
-        return;
+    if (!isValidYear(year)) return ElMessage.warning('请输入1000至9999的4位年份');
+    if (yearList.value.includes(year)) return ElMessage.warning('该年度目录已存在');
+    yearSaving.value = true;
+    try {
+        await api.createCompetitionYear({ year });
+        newYearInput.value = '';
+        await loadYears();
+        current_page.value = 1;
+        await handleSearch();
+        ElMessage.success('添加成功');
+    } catch (error) {
+        console.error('新增年度失败：', error);
+    } finally {
+        yearSaving.value = false;
     }
-    if (yearList.value.includes(year)) {
-        ElMessage.warning('该年份目录已存在');
-        return;
-    }
-
-    // 更新原始列表和表格数据
-    yearList.value.unshift(year); // 加到最前面
-    yearTableData.value.unshift({
-        year: year,
-        editValue: year,
-        isEditing: false
-    });
-
-    newYearInput.value = '';
-    ElMessage.success('添加成功');
 };
 
-// 4. 弹窗内：修改年份（开始编辑）
 const handleStartEdit = (index) => {
-    // 重置其他行，保证同时只编辑一行
     yearTableData.value.forEach(item => item.isEditing = false);
-    yearTableData.value[index].isEditing = true;
-    yearTableData.value[index].editValue = yearTableData.value[index].year;
+    const row = yearTableData.value[index];
+    row.isEditing = true;
+    row.editValue = row.year;
 };
 
-// 5. 弹窗内：保存修改
-const handleSaveEdit = (index) => {
+const handleSaveEdit = async (index) => {
+    if (yearSaving.value || yearLoading.value) return;
     const row = yearTableData.value[index];
     const newYear = row.editValue.trim();
-    const oldYear = row.year;
-
-    if (!/^\d{4}$/.test(newYear)) {
-        ElMessage.warning('年份格式不正确');
-        return;
+    if (!isValidYear(newYear)) return ElMessage.warning('请输入1000至9999的4位年份');
+    if (newYear === row.year) { row.isEditing = false; return; }
+    if (yearList.value.includes(newYear)) return ElMessage.warning('该年度目录已存在');
+    yearSaving.value = true;
+    try {
+        await api.updateCompetitionYear(row.year, { year: newYear });
+        await loadYears(currentYear.value === row.year ? newYear : currentYear.value);
+        current_page.value = 1;
+        await handleSearch();
+        ElMessage.success('修改成功');
+    } catch (error) {
+        console.error('修改年度失败：', error);
+    } finally {
+        yearSaving.value = false;
     }
-    // 如果改成了和其他行一样的年份
-    if (newYear !== oldYear && yearList.value.includes(newYear)) {
-        ElMessage.warning('该年份已存在，无法重复');
-        return;
-    }
-
-    // TODO: 这里应该调用后端接口修改年份名称
-    // api.updateYear({ old: oldYear, new: newYear }).then(...)
-
-    // 更新前端数据
-    const listIndex = yearList.value.indexOf(oldYear);
-    if (listIndex !== -1) {
-        yearList.value[listIndex] = newYear;
-    }
-    row.year = newYear;
-    row.isEditing = false;
-
-    // 如果当前选中的就是被修改的年份，同步更新选中状态
-    if (currentYear.value === oldYear) {
-        currentYear.value = newYear;
-        searchForm.year = newYear;
-    }
-
-    ElMessage.success('修改成功');
 };
 
-// 6. 弹窗内：取消编辑
 const handleCancelEdit = (index) => {
     yearTableData.value[index].isEditing = false;
 };
 
-// 7. 弹窗内：删除年份
-const handleDeleteYear = (year) => {
-    // 模拟检查：如果该年份下有数据（这里仅演示，实际应根据API或当前加载的数据判断）
-    // 严格来说，应该调用一个 checkDataExist(year) 的接口
-    if (year === '2025' && tableData.value.length > 0) {
-        ElMessage.error('该年度目录下包含赛事数据，禁止删除！请先清空该年度下的赛事。');
-        return;
-    }
-
-    ElMessageBox.confirm(
-        `确定要删除 ${year} 年度目录吗？`,
-        '警告',
-        { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
-    ).then(() => {
-        // 从原始列表移除
-        const index = yearList.value.indexOf(year);
-        if (index > -1) yearList.value.splice(index, 1);
-
-        // 从表格移除
-        const tableIndex = yearTableData.value.findIndex(item => item.year === year);
-        if (tableIndex > -1) yearTableData.value.splice(tableIndex, 1);
-
-        // 如果删除了当前选中的年份，自动切换到最新的年份
-        if (currentYear.value === year) {
-            const nextYear = yearList.value[0] || '';
-            if (nextYear) handleYearSwitch(nextYear);
-        }
-
+const handleDeleteYear = async (year) => {
+    if (yearSaving.value || yearLoading.value) return;
+    // 确认期间也禁用其他写操作，避免重复请求。
+    yearSaving.value = true;
+    try {
+        await ElMessageBox.confirm(`确定要删除 ${year} 年度目录吗？`, '警告', {
+            confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning'
+        });
+        await api.deleteCompetitionYear(year);
+        await loadYears();
+        current_page.value = 1;
+        await handleSearch();
         ElMessage.success('删除成功');
-    }).catch(() => { });
-};
-
-// 8. 关闭弹窗时的收尾
-const handleManageClose = () => {
-    // 这里可以再次确保 yearList 和 yearTableData 同步，或者做一些清理
+    } catch (error) {
+        if (error !== 'cancel' && error !== 'close') console.error('删除年度失败：', error);
+    } finally {
+        yearSaving.value = false;
+    }
 };
 
 // 跳转编辑页
@@ -383,7 +373,7 @@ const handleExport = async () => {
 // 分页数据
 const current_page = ref(1);
 const page_size = ref(10);
-const total = ref(100);
+const total = ref(0);
 
 //分页处理
 const handleSizeChange = (val) => {
@@ -397,6 +387,11 @@ const handleCurrentChange = (val) => {
 
 // 搜索功能
 const handleSearch = async () => {
+    if (!currentYear.value) {
+        tableData.value = [];
+        total.value = 0;
+        return;
+    }
     loading.value = true;
     try {
         // 构建查询参数
@@ -459,9 +454,14 @@ const loadCollegeList = async () => {
 };
 
 // 页面加载时初始化数据
-onMounted(() => {
+onMounted(async () => {
     loadCollegeList();
-    handleSearch();
+    try {
+        await loadYears();
+        await handleSearch();
+    } catch (error) {
+        console.error('加载年度目录失败：', error);
+    }
 });
 
 </script>
@@ -469,32 +469,32 @@ onMounted(() => {
 <template>
     <div class="competition-container">
         <!-- 赛事列表头部搜索栏 -->
-        <div class="search-container">
-            <el-form :inline="true" :model="searchForm" class="search-form" label-width="100px" label-position="right">
+        <div class="filter-card">
+            <el-form :inline="true" :model="searchForm" class="search-form">
                 <el-form-item label="赛事名称">
                     <el-input v-model="searchForm.comp_name" placeholder="请输入赛事名称" clearable="true" style="width:220px"
-                        maxlength="20"></el-input>
+                        maxlength="20" @keyup.enter="handleSearch" @clear="handleSearch"></el-input>
                 </el-form-item>
                 <el-form-item label="赛事级别">
                     <el-select v-model="searchForm.comp_level" placeholder="请选择赛事级别" clearable="true"
-                        style="width: 220px">
+                        style="width: 220px" @change="handleSearch">
                         <el-option label="校级" value="校级"></el-option>
                         <el-option label="省级" value="省级"></el-option>
                         <el-option label="国家级" value="国家级"></el-option>
                     </el-select>
                 </el-form-item>
                 <el-form-item label="所属学院">
-                    <el-select v-model="searchForm.college" placeholder="请选择所属学院" clearable="true" style="width: 220px">
+                    <el-select v-model="searchForm.college" placeholder="请选择所属学院" clearable="true" style="width: 220px" @change="handleSearch">
                         <el-option v-for="college in collegeList" :key="college.id" :label="college.name"
                             :value="college.name"></el-option>
                     </el-select>
                 </el-form-item>
                 <el-form-item label="赛事负责人">
                     <el-input v-model="searchForm.manager" placeholder="请输入赛事负责人" clearable="true" style="width:220px"
-                        maxlength="20"></el-input>
+                        maxlength="20" @keyup.enter="handleSearch" @clear="handleSearch"></el-input>
                 </el-form-item>
                 <el-form-item label="赛事状态">
-                    <el-select v-model="searchForm.status" placeholder="请选择赛事状态" clearable="true" style="width: 220px;">
+                    <el-select v-model="searchForm.status" placeholder="请选择赛事状态" clearable="true" style="width: 220px;" @change="handleSearch">
                         <el-option label="未开始" value="未开始"></el-option>
                         <el-option label="进行中" value="进行中"></el-option>
                         <el-option label="已结束" value="已结束"></el-option>
@@ -512,21 +512,21 @@ onMounted(() => {
             <div class="table-toolbar">
                 <div class="left-actions">
                     <el-button v-if="userStore.role === 'school_admin'" type="primary" :icon="Plus"
-                        @click="handleAddCompetition">新增赛事</el-button>
+                        :disabled="!currentYear || yearLoading" @click="handleAddCompetition">新增赛事</el-button>
                     <el-button v-if="userStore.role === 'college_admin'" type="primary" :icon="Plus"
                         @click="handleDeclare">
                         赛事申报
                     </el-button>
                     <el-button v-if="userStore.role === 'school_admin'" type="danger" plain :icon="Delete"
                         @click="handleBatchDelete">批量删除</el-button>
-                    <el-button type="info" plain :icon="Download" @click="handleExport">导出数据</el-button>
+                    <el-button type="info" plain :icon="Download" :disabled="!currentYear || yearLoading" @click="handleExport">导出数据</el-button>
                     <el-button v-if="userStore.role === 'school_admin'" type="default" :icon="Upload"
-                        plain @click="handleImport">导入数据</el-button>
+                        plain :disabled="!currentYear || yearLoading" @click="handleImport">导入数据</el-button>
                 </div>
                 <div class="right-info">
                     <el-dropdown trigger="click" @command="handleYearCommand">
                         <div class="year-switch-tag">
-                            <span class="tag-text">当前：{{ currentYear }}年度赛事</span>
+                            <span class="tag-text">{{ currentYear ? `当前：${currentYear}年度赛事` : '暂无年度目录' }}</span>
                             <el-icon class="tag-icon">
                                 <ArrowDown />
                             </el-icon>
@@ -538,7 +538,7 @@ onMounted(() => {
                                     :class="{ 'is-active': currentYear === year }">
                                     {{ year }}年度
                                 </el-dropdown-item>
-                                <el-dropdown-item divided command="manage_years">
+                                <el-dropdown-item v-if="userStore.role === 'school_admin'" divided command="manage_years">
                                     <el-icon>
                                         <Setting />
                                     </el-icon> 管理年度目录
@@ -548,18 +548,19 @@ onMounted(() => {
                     </el-dropdown>
                 </div>
             </div>
-            <el-dialog v-model="yearManageVisible" title="年度目录管理" width="500px" align-center
-                @closed="handleManageClose">
+            <el-dialog v-model="yearManageVisible" title="年度目录管理" width="500px" align-center :close-on-click-modal="!yearSaving"
+                :close-on-press-escape="!yearSaving" :show-close="!yearSaving">
+                <el-alert title="仅空年度允许修改或删除；包含可恢复的已删除赛事也不能操作。" type="info" :closable="false" style="margin-bottom: 16px" />
                 <div class="manage-header" style="margin-bottom: 20px; display: flex; gap: 10px;">
-                    <el-input v-model="newYearInput" placeholder="输入年份 (如 2026)" style="flex: 1" maxlength="4"
+                    <el-input :disabled="yearSaving || yearLoading" v-model="newYearInput" placeholder="输入年份 (如 2026)" style="flex: 1" maxlength="4"
                         clearable />
-                    <el-button type="primary" :icon="Plus" @click="handleAddYearInDialog">新增年份</el-button>
+                    <el-button type="primary" :icon="Plus" :loading="yearSaving" :disabled="yearLoading" @click="handleAddYearInDialog">新增年份</el-button>
                 </div>
 
-                <el-table :data="yearTableData" border stripe style="width: 100%" max-height="400">
+                <el-table v-loading="yearLoading || yearSaving" :data="yearTableData" border stripe style="width: 100%" max-height="400">
                     <el-table-column prop="year" label="年份目录" align="center">
                         <template #default="scope">
-                            <el-input v-if="scope.row.isEditing" v-model="scope.row.editValue" size="small" autofocus />
+                            <el-input :disabled="yearSaving" v-if="scope.row.isEditing" v-model="scope.row.editValue" size="small" autofocus />
                             <span v-else>{{ scope.row.year }}年度</span>
                         </template>
                     </el-table-column>
@@ -662,18 +663,11 @@ onMounted(() => {
     box-sizing: border-box;
 }
 
-.search-container {
-    box-sizing: border-box;
-    margin-bottom: 15px;
-    padding: 20px 20px 10px 20px;
-    background-color: #ffffff;
-    box-shadow: var(--card-shadow);
-    border-radius: var(--card-radius);
-
+/* 筛选卡片外壳用全局 .filter-card；此页筛选条件多会换行，仅保留行间距与按钮位覆盖 */
+.filter-card {
     .search-form {
         .el-form-item {
             margin-bottom: 15px;
-            margin-left: 15px;
         }
 
         .search-actions {

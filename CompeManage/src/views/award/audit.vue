@@ -181,19 +181,19 @@ onMounted(() => {
   <div class="list-container">
     <!-- 筛选卡片 -->
     <div class="filter-card">
-      <el-form :inline="true" :model="queryForm" class="filter-form" label-width="70px" label-position="right">
+      <el-form :inline="true" :model="queryForm" class="filter-form">
         <el-form-item label="赛事名称">
           <el-input v-model="queryForm.comp_name" placeholder="请输入赛事名称" style="width: 200px" clearable
-            @keyup.enter="fetchAwardList" />
+            @keyup.enter="fetchAwardList" @clear="fetchAwardList" />
         </el-form-item>
 
         <el-form-item label="学生姓名">
-          <el-input v-model="queryForm.keyword" placeholder="请输入姓名或学号" style="width: 180px"
-            @keyup.enter="fetchAwardList" />
+          <el-input v-model="queryForm.keyword" placeholder="请输入姓名或学号" style="width: 180px" clearable
+            @keyup.enter="fetchAwardList" @clear="fetchAwardList" />
         </el-form-item>
 
         <el-form-item label="获奖等级">
-          <el-select v-model="queryForm.award_level" placeholder="全部" style="width: 140px" clearable>
+          <el-select v-model="queryForm.award_level" placeholder="全部" style="width: 140px" clearable @change="fetchAwardList">
             <el-option label="国家级一等奖" value="国家级一等奖" />
             <el-option label="国家级二等奖" value="国家级二等奖" />
             <el-option label="国家级三等奖" value="国家级三等奖" />
@@ -206,7 +206,7 @@ onMounted(() => {
         </el-form-item>
 
         <el-form-item label="审核状态">
-          <el-select v-model="queryForm.status" placeholder="全部" style="width: 120px" clearable>
+          <el-select v-model="queryForm.status" placeholder="全部" style="width: 120px" clearable @change="fetchAwardList">
             <el-option label="待审核" :value="0" />
             <el-option label="已通过" :value="1" />
             <el-option label="已驳回" :value="2" />
@@ -347,22 +347,6 @@ onMounted(() => {
   background-color: #f0f2f5;
   padding: var(--container-padding);
   gap: 12px;
-}
-
-.filter-card {
-  box-sizing: border-box;
-  background: #fff;
-  padding: 20px 20px 10px 20px;
-  border-radius: var(--card-radius);
-  box-shadow: var(--card-shadow);
-
-  .filter-form {
-    :deep(.el-form-item) {
-      margin-bottom: 12px;
-      margin-right: 24px;
-    }
-
-  }
 }
 
 .action-bar {
