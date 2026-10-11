@@ -13,6 +13,7 @@
     "preview": "vite preview",
     "format": "prettier --write --experimental-cli src/",
     "test": "playwright test",
+    "test:award-flow": "playwright test --config=playwright.flow.config.js",
     "test:coverage": "npm run build:coverage && nyc --reporter=text --reporter=html --report-dir=coverage playwright test"
   },
   "dependencies": {
