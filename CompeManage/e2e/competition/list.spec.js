@@ -38,7 +38,7 @@ test.describe('赛事目录页面测试', () => {
   });
 
   test('页面基本元素验证', async ({ page }) => {
-    await expect(page.locator('.search-container')).toBeVisible();
+    await expect(page.locator('.filter-card')).toBeVisible();
     await expect(page.locator('.search-form')).toBeVisible();
     await expect(page.locator('.table-toolbar')).toBeVisible();
     await expect(page.locator('.el-table')).toBeVisible();
