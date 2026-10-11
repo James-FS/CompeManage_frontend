@@ -15,6 +15,16 @@ async function waitForListLoaded(page) {
   await page.waitForSelector('.comp-list, .el-empty', { timeout: 15000 })
 }
 
+// 辅助函数：在筛选卡片中操作下拉筛选并等待列表刷新
+async function selectFilter(page, label, optionText) {
+  const formItem = page.locator('.filter-card .el-form-item').filter({ hasText: label })
+  await formItem.locator('.el-select').click()
+  await page.getByRole('option', { name: optionText, exact: true }).click()
+  await page.waitForLoadState('networkidle')
+  await page.waitForTimeout(500)
+  return formItem
+}
+
 test.describe('报名列表页面测试', () => {
   test.beforeEach(async ({ page }) => {
     await loginAndNavigate(page)
@@ -24,19 +34,12 @@ test.describe('报名列表页面测试', () => {
   test('页面基本元素验证', async ({ page }) => {
     // 验证搜索区域
     await expect(page.locator('input[placeholder="搜索赛事名称"]')).toBeVisible()
-    await expect(page.locator('.filter-panel button:has-text("搜索")')).toBeVisible()
+    await expect(page.locator('.filter-card button:has-text("搜索")')).toBeVisible()
+    await expect(page.locator('.filter-card button:has-text("重置")')).toBeVisible()
 
-    // 验证筛选区域
-    await expect(page.locator('.filter-label:has-text("赛事级别：")')).toBeVisible()
-    await expect(page.locator('.filter-label:has-text("赛事状态：")')).toBeVisible()
-
-    // 验证级别筛选标签
-    const levelTags = page.locator('.level-row .filter-tag')
-    await expect(levelTags).toHaveCount(4) // 全部、国家级、省级、校级
-
-    // 验证状态筛选标签
-    const statusTags = page.locator('.status-row .filter-tag')
-    await expect(statusTags).toHaveCount(4) // 全部、未开始、报名中、已结束
+    // 验证筛选下拉
+    await expect(page.locator('.filter-card .el-form-item').filter({ hasText: '赛事级别' }).locator('.el-select')).toBeVisible()
+    await expect(page.locator('.filter-card .el-form-item').filter({ hasText: '状态' }).locator('.el-select')).toBeVisible()
 
     // 验证分页组件
     await expect(page.locator('.el-pagination')).toBeVisible()
@@ -48,7 +51,7 @@ test.describe('报名列表页面测试', () => {
     await searchInput.fill('测试')
 
     // 点击搜索按钮
-    await page.locator('.filter-panel button:has-text("搜索")').click()
+    await page.locator('.filter-card button:has-text("搜索")').click()
     await page.waitForLoadState('networkidle')
 
     // 等待搜索结果
@@ -74,7 +77,7 @@ test.describe('报名列表页面测试', () => {
   test('搜索功能 - 清空搜索', async ({ page }) => {
     const searchInput = page.locator('input[placeholder="搜索赛事名称"]')
     await searchInput.fill('测试')
-    await page.locator('.filter-panel button:has-text("搜索")').click()
+    await page.locator('.filter-card button:has-text("搜索")').click()
     await page.waitForLoadState('networkidle')
 
     // 先让输入框获得焦点，触发清除按钮显示
@@ -90,83 +93,57 @@ test.describe('报名列表页面测试', () => {
   })
 
   test('级别筛选 - 选择国家级', async ({ page }) => {
-    // 点击国家级筛选
-    await page.locator('.level-row .filter-tag:has-text("国家级")').click()
-    await page.waitForLoadState('networkidle')
-
-    // 验证选中状态
-    await expect(page.locator('.level-row .filter-tag:has-text("国家级")')).toHaveClass(/active/)
-
-    // 验证筛选确实生效（检查是否有列表元素或分页变化）
+    const formItem = await selectFilter(page, '赛事级别', '国家级')
+    await expect(formItem.locator('.el-select')).toContainText('国家级')
     await page.waitForTimeout(500)
   })
 
   test('级别筛选 - 选择省级', async ({ page }) => {
-    await page.locator('.level-row .filter-tag:has-text("省级")').click()
-    await page.waitForLoadState('networkidle')
-    await page.waitForTimeout(500)
-
-    await expect(page.locator('.level-row .filter-tag:has-text("省级")')).toHaveClass(/active/)
+    const formItem = await selectFilter(page, '赛事级别', '省级')
+    await expect(formItem.locator('.el-select')).toContainText('省级')
   })
 
   test('级别筛选 - 选择校级', async ({ page }) => {
-    await page.locator('.level-row .filter-tag:has-text("校级")').click()
-    await page.waitForLoadState('networkidle')
-    await page.waitForTimeout(500)
-
-    await expect(page.locator('.level-row .filter-tag:has-text("校级")')).toHaveClass(/active/)
+    const formItem = await selectFilter(page, '赛事级别', '校级')
+    await expect(formItem.locator('.el-select')).toContainText('校级')
   })
 
-  test('级别筛选 - 选择全部', async ({ page }) => {
-    // 先选择一个非全部的选项
-    await page.locator('.level-row .filter-tag:has-text("省级")').click()
+  test('级别筛选 - 重置后恢复全部', async ({ page }) => {
+    await selectFilter(page, '赛事级别', '省级')
+
+    // 重置后下拉恢复"全部级别"占位符
+    await page.locator('.filter-card button:has-text("重置")').click()
     await page.waitForLoadState('networkidle')
     await page.waitForTimeout(500)
 
-    // 再选择全部
-    await page.locator('.level-row .filter-tag:has-text("全部")').click()
-    await page.waitForLoadState('networkidle')
-    await page.waitForTimeout(500)
-
-    await expect(page.locator('.level-row .filter-tag:has-text("全部")')).toHaveClass(/active/)
+    const formItem = page.locator('.filter-card .el-form-item').filter({ hasText: '赛事级别' })
+    await expect(formItem.locator('.el-select')).not.toContainText('省级')
   })
 
   test('状态筛选 - 选择未开始', async ({ page }) => {
-    await page.locator('.status-row .filter-tag:has-text("未开始")').click()
-    await page.waitForLoadState('networkidle')
-    await page.waitForTimeout(500)
-
-    await expect(page.locator('.status-row .filter-tag:has-text("未开始")')).toHaveClass(/active/)
+    const formItem = await selectFilter(page, '状态', '未开始')
+    await expect(formItem.locator('.el-select')).toContainText('未开始')
   })
 
   test('状态筛选 - 选择报名中', async ({ page }) => {
-    await page.locator('.status-row .filter-tag:has-text("报名中")').click()
-    await page.waitForLoadState('networkidle')
-    await page.waitForTimeout(500)
-
-    await expect(page.locator('.status-row .filter-tag:has-text("报名中")')).toHaveClass(/active/)
+    const formItem = await selectFilter(page, '状态', '报名中')
+    await expect(formItem.locator('.el-select')).toContainText('报名中')
   })
 
   test('状态筛选 - 选择已结束', async ({ page }) => {
-    await page.locator('.status-row .filter-tag:has-text("已结束")').click()
-    await page.waitForLoadState('networkidle')
-    await page.waitForTimeout(500)
-
-    await expect(page.locator('.status-row .filter-tag:has-text("已结束")')).toHaveClass(/active/)
+    const formItem = await selectFilter(page, '状态', '已结束')
+    await expect(formItem.locator('.el-select')).toContainText('已结束')
   })
 
-  test('状态筛选 - 选择全部', async ({ page }) => {
-    // 先选择一个非全部的选项
-    await page.locator('.status-row .filter-tag:has-text("报名中")').click()
+  test('状态筛选 - 重置后恢复全部', async ({ page }) => {
+    await selectFilter(page, '状态', '报名中')
+
+    await page.locator('.filter-card button:has-text("重置")').click()
     await page.waitForLoadState('networkidle')
     await page.waitForTimeout(500)
 
-    // 再选择全部
-    await page.locator('.status-row .filter-tag:has-text("全部")').click()
-    await page.waitForLoadState('networkidle')
-    await page.waitForTimeout(500)
-
-    await expect(page.locator('.status-row .filter-tag:has-text("全部")')).toHaveClass(/active/)
+    const formItem = page.locator('.filter-card .el-form-item').filter({ hasText: '状态' })
+    await expect(formItem.locator('.el-select')).not.toContainText('报名中')
   })
 
   test('竞赛卡片 - 验证卡片元素', async ({ page }) => {
@@ -280,10 +257,11 @@ test.describe('报名列表页面测试', () => {
 
       if (isVisible) {
         await sizeSelect.click()
-        await page.waitForSelector('.el-select-dropdown', { timeout: 5000 })
+        // 筛选卡也有 el-select，必须取最后打开的（分页条数的）下拉
+        const dropdown = page.locator('.el-select-dropdown').last()
+        await dropdown.waitFor({ state: 'visible', timeout: 5000 })
 
         // 选择第二项（20条）
-        const dropdown = page.locator('.el-select-dropdown').last()
         const options = dropdown.locator('.el-select-dropdown__item')
         const count = await options.count()
 
@@ -297,31 +275,24 @@ test.describe('报名列表页面测试', () => {
   })
 
   test('筛选联动 - 级别和状态同时筛选', async ({ page }) => {
-    // 选择省级
-    await page.locator('.level-row .filter-tag:has-text("省级")').click()
-    await page.waitForLoadState('networkidle')
-
-    // 选择报名中
-    await page.locator('.status-row .filter-tag:has-text("报名中")').click()
-    await page.waitForLoadState('networkidle')
+    const levelItem = await selectFilter(page, '赛事级别', '省级')
+    const statusItem = await selectFilter(page, '状态', '报名中')
 
     // 验证两个筛选条件都选中
-    await expect(page.locator('.level-row .filter-tag:has-text("省级")')).toHaveClass(/active/)
-    await expect(page.locator('.status-row .filter-tag:has-text("报名中")')).toHaveClass(/active/)
+    await expect(levelItem.locator('.el-select')).toContainText('省级')
+    await expect(statusItem.locator('.el-select')).toContainText('报名中')
   })
 
   test('筛选联动 - 切换级别后重新搜索', async ({ page }) => {
     // 先搜索
     const searchInput = page.locator('input[placeholder="搜索赛事名称"]')
     await searchInput.fill('测试')
-    await page.locator('.filter-panel button:has-text("搜索")').click()
+    await page.locator('.filter-card button:has-text("搜索")').click()
     await page.waitForLoadState('networkidle')
     await page.waitForTimeout(500)
 
     // 再选择级别
-    await page.locator('.level-row .filter-tag:has-text("校级")').click()
-    await page.waitForLoadState('networkidle')
-    await page.waitForTimeout(500)
+    await selectFilter(page, '赛事级别', '校级')
 
     // 验证列表更新
     const hasList = await page.locator('.comp-list').isVisible().catch(() => false)
@@ -365,7 +336,7 @@ test.describe('报名列表页面测试', () => {
     // 使用一个不可能匹配的值进行搜索
     const searchInput = page.locator('input[placeholder="搜索赛事名称"]')
     await searchInput.fill('这是一个不可能存在的赛事名称XYZ123456')
-    await page.locator('.filter-panel button:has-text("搜索")').click()
+    await page.locator('.filter-card button:has-text("搜索")').click()
     await page.waitForLoadState('networkidle')
     await page.waitForTimeout(1000)
 
@@ -380,9 +351,9 @@ test.describe('报名列表页面测试', () => {
       expect(count).toBe(0)
     }
 
-    // 如果显示空状态
+    // 如果显示空状态（页面空状态文案为"暂无可报名的赛事"）
     if (hasEmpty) {
-      await expect(page.locator('.el-empty')).toContainText(/暂无数据/)
+      await expect(page.locator('.el-empty')).toContainText(/暂无可报名的赛事/)
     }
   })
 })

@@ -180,7 +180,7 @@ onMounted(() => {
 <template>
   <div class="list-container">
     <div class="filter-card">
-      <el-form :inline="true" :model="queryForm" class="filter-form"  label-width="100px" label-position="right">
+      <el-form :inline="true" :model="queryForm" class="filter-form">
         <el-form-item label="赛事名称">
           <el-input
             v-model="queryForm.comp_name"
@@ -188,11 +188,12 @@ onMounted(() => {
             style="width: 220px"
             clearable
             @keyup.enter="fetchRegList"
+            @clear="fetchRegList"
           />
         </el-form-item>
 
         <el-form-item label="审核状态">
-          <el-select v-model="queryForm.status" placeholder="全部" style="width: 180px" clearable>
+          <el-select v-model="queryForm.status" placeholder="全部" style="width: 180px" clearable @change="fetchRegList">
             <el-option label="待审核" :value="0" />
             <el-option label="已通过" :value="1" />
             <el-option label="已驳回" :value="2" />
@@ -204,7 +205,9 @@ onMounted(() => {
             v-model="queryForm.keyword"
             placeholder="请输入赛事负责人"
             style="width: 200px"
+            clearable
             @keyup.enter="fetchRegList"
+            @clear="fetchRegList"
           />
         </el-form-item>
 
@@ -213,7 +216,9 @@ onMounted(() => {
             v-model="queryForm.phone"
             placeholder="请输入联系电话"
             style="width: 200px"
+            clearable
             @keyup.enter="fetchRegList"
+            @clear="fetchRegList"
           />
         </el-form-item>
 
@@ -362,21 +367,6 @@ onMounted(() => {
   background-color: #f0f2f5;
   padding: var(--container-padding);
   gap: 12px;
-}
-
-.filter-card {
-  box-sizing: border-box;
-  background: #fff;
-  padding: 20px 20px 10px 20px; 
-  border-radius: var(--card-radius);
-  box-shadow: var(--card-shadow);
-
-  .filter-form {
-
-    :deep(.el-form-item.filter-actions) {
-      margin-left: 30px;
-    }
-  }
 }
 
 .action-bar {

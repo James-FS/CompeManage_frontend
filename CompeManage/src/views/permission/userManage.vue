@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { User, UserFilled } from '@element-plus/icons-vue'
+import { User, UserFilled, Search, Refresh } from '@element-plus/icons-vue'
 import api from '@/api'
 import { debounce } from '@/utils/debounce'
 import { useUserStore } from '@/stores/user'
@@ -137,6 +137,15 @@ function handleFilterChange() {
   loadUsers({ preserveSelection: false })
 }
 
+function handleFilterReset() {
+  filters.search = ''
+  filters.role_id = undefined
+  filters.identity_type = undefined
+  filters.managed_college_id = undefined
+  filters.page = 1
+  loadUsers({ preserveSelection: false })
+}
+
 function handlePageChange(page) {
   filters.page = page
   loadUsers({ preserveSelection: false })
@@ -218,7 +227,7 @@ onMounted(async () => {
 <template>
   <div class="user-manage-page" v-loading="loading">
     <div class="filter-card">
-      <el-form :inline="true" class="filter-form" label-width="90px" label-position="right">
+      <el-form :inline="true" class="filter-form">
         <el-form-item label="关键字">
           <el-input
             v-model="filters.search"
@@ -226,6 +235,7 @@ onMounted(async () => {
             placeholder="请输入账号、姓名或所属单位"
             @input="debouncedSearch"
             @clear="debouncedSearch"
+            @keyup.enter="debouncedSearch"
           />
         </el-form-item>
         <el-form-item label="角色">
@@ -248,6 +258,10 @@ onMounted(async () => {
           >
             <el-option v-for="college in collegeList" :key="college.id" :label="college.name" :value="college.id" />
           </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" :icon="Search" @click="debouncedSearch">搜索</el-button>
+          <el-button :icon="Refresh" @click="handleFilterReset">重置</el-button>
         </el-form-item>
       </el-form>
     </div>
@@ -382,16 +396,8 @@ onMounted(async () => {
   background-color: var(--background-color);
 }
 
-/* 与赛事目录等页面统一的筛选卡样式：白底+卡片阴影+圆角 */
-.filter-card {
-  box-sizing: border-box;
-  padding: 20px 20px 10px;
-  background-color: #ffffff;
-  box-shadow: var(--card-shadow);
-  border-radius: var(--card-radius);
-}
-
-.filter-form :deep(.el-form-item) { margin-bottom: 15px; margin-left: 15px; }
+/* 筛选卡片外壳用全局 .filter-card；此页筛选条件多会换行，仅保留行间距覆盖 */
+.filter-form :deep(.el-form-item) { margin-bottom: 15px; }
 .filter-form :deep(.el-input),
 .filter-form :deep(.el-select) { width: 220px; }
 

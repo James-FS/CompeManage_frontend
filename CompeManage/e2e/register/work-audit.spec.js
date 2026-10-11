@@ -92,13 +92,16 @@ async function createCompetitionWithName(page, compName) {
   return id
 }
 
-// 保存报名配置（包含作品提交时间窗口）
+// 保存报名配置（包含作品提交时间窗口与评审时间窗口）
 async function saveRegConfig(page, token, competitionId) {
   const now = new Date()
   const regStart = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString()
   const regEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
   const submitStart = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString()
   const submitEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
+  // 评审时间必须传，否则后端写入零值日期 '0000-00-00' 被 MySQL 拒绝（Error 1292）
+  const reviewStart = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString()
+  const reviewEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
 
   const response = await apiRequest(page, 'post', '/api/reg/config', token, {
     comp_id: competitionId,
@@ -109,6 +112,8 @@ async function saveRegConfig(page, token, competitionId) {
     reg_end_time: regEnd,
     submit_start_time: submitStart,
     submit_end_time: submitEnd,
+    review_start_time: reviewStart,
+    review_end_time: reviewEnd,
     grade_requirement: [1, 2, 3, 4],
     need_advisor: 1,
     need_attachment: 0,
@@ -279,7 +284,7 @@ test.describe('作品审核 E2E 测试', () => {
 
     // 验证页面结构
     await expect(page.locator('.el-table')).toBeVisible()
-    await expect(page.locator('.search-container')).toBeVisible()
+    await expect(page.locator('.filter-card')).toBeVisible()
 
     // 验证测试赛事出现在列表中
     const targetRow = page.locator('.el-table__body tr').filter({ hasText: compName }).first()
