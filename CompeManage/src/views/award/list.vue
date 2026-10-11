@@ -99,7 +99,7 @@ const goDetail = (id) => {
   router.push({ name: 'AwardDetail', params: { id } })
 }
 
-// 5. 导出附件1（项目一览）/ 附件2（学生一览），year 为空导出全部
+// 5. 按赛事年份导出省级以上获奖附件，留空则按年份分别生成工作表
 const exportYear = ref('')
 const exporting = ref(false)
 async function downloadExport(kind) {
@@ -107,24 +107,17 @@ async function downloadExport(kind) {
   try {
     const res = kind === 'projects' ? await api.exportAwardProjects(exportYear.value || '') : await api.exportAwardStudents(exportYear.value || '')
     // Blob 类型为 JSON 说明后端报错
-    if (res.type === 'application/json') {
-      const reader = new FileReader()
-      reader.onload = () => {
-        try {
-          const errorJson = JSON.parse(reader.result)
-          ElMessage.error(errorJson.msg || errorJson.message || '导出失败')
-        } catch {
-          ElMessage.error('导出失败')
-        }
-      }
-      reader.readAsText(res)
+    if (res.type?.includes('application/json')) {
+      const errorJson = JSON.parse(await res.text())
+      ElMessage.error(errorJson.message || errorJson.msg || '导出失败')
       return
     }
     const blob = new Blob([res], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
     const link = document.createElement('a')
     link.href = window.URL.createObjectURL(blob)
-    const yearSuffix = exportYear.value ? `_${exportYear.value}` : ''
-    link.download = kind === 'projects' ? `获奖项目一览表${yearSuffix}.xlsx` : `获奖学生一览表${yearSuffix}.xlsx`
+    const yearSuffix = exportYear.value ? `${exportYear.value}年` : '全部赛事年份'
+    const awardLabel = kind === 'projects' ? '获奖项目' : '获奖学生'
+    link.download = `${yearSuffix}大学生参加省级以上各类竞赛${awardLabel}一览表（本科生获奖统计）.xlsx`
     link.style.display = 'none'
     document.body.appendChild(link)
     link.click()
@@ -145,19 +138,20 @@ onMounted(fetchList)
 <template>
   <div class="page-container">
     <div v-if="userStore.role === 'school_admin'" class="export-bar">
+      <span>赛事年份</span>
       <el-date-picker
         v-model="exportYear"
         type="year"
-        placeholder="全部年份"
+        placeholder="全部赛事年份"
         value-format="YYYY"
         clearable
-        style="width: 130px"
+        style="width: 160px"
       />
       <el-button type="success" :icon="Download" :loading="exporting" @click="downloadExport('projects')">
-        导出附件1（项目一览表）
+        导出附件1（省级以上项目）
       </el-button>
       <el-button type="primary" :icon="Download" :loading="exporting" @click="downloadExport('students')">
-        导出附件2（学生一览表）
+        导出附件2（省级以上学生）
       </el-button>
     </div>
     <div class="comp-list" v-loading="loading">
