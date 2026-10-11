@@ -28,6 +28,8 @@ const stats = reactive({
 
 const todoList = ref([])
 const competitionStats = ref([]) // 新增：用于存储单个比赛的统计列表
+// 所有待办计数都为 0 时视为「暂无待办」，展示空状态
+const hasTodoItems = computed(() => todoList.value.some((item) => safeNumber(item?.value) > 0))
 const collegeList = ref([])
 const detailFilters = reactive({
   name: '',
@@ -75,6 +77,8 @@ const initOrUpdateChart = (key, domRef, option) => {
   }
   chartInstances[key].setOption(option)
 }
+
+const hasPositiveValue = (values) => values.some((value) => safeNumber(value) > 0)
 
 const buildLevelPieData = (competitionList) => {
   const map = {}
@@ -217,6 +221,52 @@ const buildTrendData = (registerList, awardList) => {
   }
 }
 
+// 月度趋势：无数据（无月份或两列全为 0）时与学院参与度一致，用「暂无数据」占位
+const buildTrendOption = (months, regSeries, awardSeries) => {
+  const hasData = months.length > 0 && (hasPositiveValue(regSeries) || hasPositiveValue(awardSeries))
+  return {
+    title: { text: '近6个月趋势', textStyle: { fontSize: 14 } },
+    tooltip: { trigger: 'axis' },
+    legend: { data: ['报名数', '团队奖项数'], right: 10, top: 8 },
+    grid: { left: 40, right: 20, bottom: 35, top: 45 },
+    xAxis: { type: 'category', data: hasData ? months : ['暂无数据'] },
+    yAxis: { type: 'value' },
+    series: [
+      { name: '报名数', type: 'line', smooth: true, data: hasData ? regSeries : [0] },
+      { name: '团队奖项数', type: 'line', smooth: true, data: hasData ? awardSeries : [0] }
+    ]
+  }
+}
+
+// 流程漏斗：后端固定返回四个阶段，全为 0 视为无数据；无数据时卡片内展示 el-empty
+// 注：不用 ECharts graphic 画空状态文字，ECharts 6 下 left/top 关键字定位不生效
+const funnelHasData = ref(true)
+
+const buildFunnelOption = (funnelItems) => ({
+  title: { text: '流程漏斗（申报→报名→获奖→总结）', textStyle: { fontSize: 14 } },
+  tooltip: { trigger: 'item' },
+  series: [{
+    type: 'funnel',
+    left: '10%',
+    top: 45,
+    bottom: 10,
+    width: '80%',
+    min: 0,
+    max: Math.max(...funnelItems.map((item) => item.value), 1),
+    sort: 'descending',
+    label: { show: true, position: 'inside' },
+    data: funnelItems
+  }]
+})
+
+const setFunnelData = (funnelItems) => {
+  funnelHasData.value = funnelItems.length > 0 && hasPositiveValue(funnelItems.map((item) => item.value))
+  if (!funnelHasData.value) return
+  nextTick(() => {
+    initOrUpdateChart('funnel', funnelChartRef, buildFunnelOption(funnelItems))
+  })
+}
+
 const normalizeDashboardPayload = (payload) => {
   const summary = payload?.summary || {}
   const levelData = safeArray(payload?.distributions?.level)
@@ -278,40 +328,13 @@ const normalizeDashboardPayload = (payload) => {
     }]
   })
 
-  initOrUpdateChart('trend', trendChartRef, {
-    title: { text: '近6个月趋势', textStyle: { fontSize: 14 } },
-    tooltip: { trigger: 'axis' },
-    legend: { data: ['报名数', '团队奖项数'], right: 10, top: 8 },
-    grid: { left: 40, right: 20, bottom: 35, top: 45 },
-    xAxis: { type: 'category', data: trendMonths },
-    yAxis: { type: 'value' },
-    series: [
-      { name: '报名数', type: 'line', smooth: true, data: trendRegs },
-      { name: '团队奖项数', type: 'line', smooth: true, data: trendAwards }
-    ]
-  })
+  initOrUpdateChart('trend', trendChartRef, buildTrendOption(trendMonths, trendRegs, trendAwards))
 
   const funnelData = safeArray(payload?.funnel).map((item) => ({
     name: item.name,
     value: safeNumber(item.value)
   }))
-
-  initOrUpdateChart('funnel', funnelChartRef, {
-    title: { text: '流程漏斗（申报→报名→获奖→总结）', textStyle: { fontSize: 14 } },
-    tooltip: { trigger: 'item' },
-    series: [{
-      type: 'funnel',
-      left: '10%',
-      top: 45,
-      bottom: 10,
-      width: '80%',
-      min: 0,
-      max: Math.max(...funnelData.map((item) => item.value), 1),
-      sort: 'descending',
-      label: { show: true, position: 'inside' },
-      data: funnelData
-    }]
-  })
+  setFunnelData(funnelData)
 }
 
 const renderCharts = ({ competitionList, registerList, awardList, funnelData }) => {
@@ -348,35 +371,9 @@ const renderCharts = ({ competitionList, registerList, awardList, funnelData }) 
     }]
   })
 
-  initOrUpdateChart('trend', trendChartRef, {
-    title: { text: '近6个月趋势', textStyle: { fontSize: 14 } },
-    tooltip: { trigger: 'axis' },
-    legend: { data: ['报名数', '团队奖项数'], right: 10, top: 8 },
-    grid: { left: 40, right: 20, bottom: 35, top: 45 },
-    xAxis: { type: 'category', data: trendData.months },
-    yAxis: { type: 'value' },
-    series: [
-      { name: '报名数', type: 'line', smooth: true, data: trendData.regSeries },
-      { name: '团队奖项数', type: 'line', smooth: true, data: trendData.awardSeries }
-    ]
-  })
+  initOrUpdateChart('trend', trendChartRef, buildTrendOption(trendData.months, trendData.regSeries, trendData.awardSeries))
 
-  initOrUpdateChart('funnel', funnelChartRef, {
-    title: { text: '流程漏斗（申报→报名→获奖→总结）', textStyle: { fontSize: 14 } },
-    tooltip: { trigger: 'item' },
-    series: [{
-      type: 'funnel',
-      left: '10%',
-      top: 45,
-      bottom: 10,
-      width: '80%',
-      min: 0,
-      max: Math.max(...funnelData.map((item) => item.value), 1),
-      sort: 'descending',
-      label: { show: true, position: 'inside' },
-      data: funnelData
-    }]
-  })
+  setFunnelData(funnelData)
 }
 
 const fetchStatistics = async () => {
@@ -559,7 +556,8 @@ onBeforeUnmount(() => {
       </el-col>
       <el-col :span="8">
         <el-card header="流程转化漏斗" shadow="never">
-          <div ref="funnelChartRef" class="chart-box"></div>
+          <div v-if="funnelHasData" ref="funnelChartRef" class="chart-box"></div>
+          <el-empty v-else description="暂无数据" :image-size="80" />
         </el-card>
       </el-col>
     </el-row>
@@ -572,7 +570,7 @@ onBeforeUnmount(() => {
       </el-col>
       <el-col :span="8">
         <el-card header="关键待办" shadow="never" class="todo-card">
-          <div class="todo-list">
+          <div class="todo-list" v-if="hasTodoItems">
             <div class="todo-item" v-for="item in todoList" :key="item.title">
               <div class="left">
                 <span class="title">{{ item.title }}</span>
@@ -581,6 +579,7 @@ onBeforeUnmount(() => {
               <el-button link type="primary" @click="goPage(item.path)">去处理</el-button>
             </div>
           </div>
+          <el-empty v-else description="暂无待办" :image-size="80" />
         </el-card>
       </el-col>
     </el-row>
@@ -624,19 +623,19 @@ onBeforeUnmount(() => {
             <el-button @click="resetDetailFilters">重置</el-button>
           </div>
           <el-table :data="filteredCompetitionStats" border stripe style="width: 100%">
-            <el-table-column prop="comp_name" label="赛事名称" min-width="200" show-overflow-tooltip />
+            <el-table-column prop="comp_name" label="赛事名称" min-width="200" align="center" show-overflow-tooltip />
             <el-table-column prop="comp_level" label="级别" width="100" align="center">
               <template #default="scope">
                 <el-tag size="small" effect="plain">{{ scope.row.comp_level || '未分类' }}</el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="所属学院" min-width="160" show-overflow-tooltip>
+            <el-table-column label="所属学院" min-width="160" align="center" show-overflow-tooltip>
               <template #default="scope">
                 {{ getCompetitionCollege(scope.row) }}
               </template>
             </el-table-column>
             <el-table-column prop="reg_count" label="报名数" width="120" align="center" sortable />
-            <el-table-column prop="award_count" label="获奖学生人次" width="120" align="center" sortable />
+            <el-table-column prop="award_count" label="获奖学生人次" width="140" align="center" sortable />
             <el-table-column prop="award_team_count" label="团队奖项数" width="120" align="center" sortable />
             <el-table-column label="总结归档" width="120" align="center">
               <template #default="scope">

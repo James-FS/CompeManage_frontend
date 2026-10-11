@@ -37,6 +37,9 @@ export const api = {
   restoreCompetition: (id) => put(`/api/comp/${id}/restore`),
   getManagerList: (params) => get('/api/comp/manager/list', params),
   getCompetitionYears: () => get('/api/comp/years'),
+  createCompetitionYear: (data) => post('/api/comp/years', data),
+  updateCompetitionYear: (year, data) => put(`/api/comp/years/${year}`, data),
+  deleteCompetitionYear: (year) => del(`/api/comp/years/${year}`),
   getCompetitionDetail: (id) => get(`/api/comp/${id}`),
   updateCompetition: (id, data) => put(`/api/comp/${id}`, data),
 
