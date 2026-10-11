@@ -190,7 +190,7 @@ onMounted(fetchList)
         <el-form-item label="赛事名称">
           <el-input
             v-model="filters.keyword"
-            placeholder="搜索赛事名称或编号"
+            placeholder="请输入赛事名称或编号"
             clearable
             style="width: 220px"
             @keyup.enter="applyFilters"

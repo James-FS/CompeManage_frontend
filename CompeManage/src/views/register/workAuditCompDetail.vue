@@ -75,7 +75,7 @@ onMounted(() => {
       <div class="search-row">
         <el-input
           v-model="queryForm.keyword"
-          placeholder="输入队伍名/负责人/学号搜索"
+          placeholder="请输入队伍名、负责人或学号"
           clearable
           style="width: 280px"
           @keyup.enter="fetchStudentList"

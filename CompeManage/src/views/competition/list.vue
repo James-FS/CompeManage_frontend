@@ -476,7 +476,7 @@ onMounted(async () => {
                         maxlength="20" @keyup.enter="handleSearch" @clear="handleSearch"></el-input>
                 </el-form-item>
                 <el-form-item label="赛事级别">
-                    <el-select v-model="searchForm.comp_level" placeholder="请选择赛事级别" clearable="true"
+                    <el-select v-model="searchForm.comp_level" placeholder="全部级别" clearable="true"
                         style="width: 220px" @change="handleSearch">
                         <el-option label="校级" value="校级"></el-option>
                         <el-option label="省级" value="省级"></el-option>
@@ -484,7 +484,7 @@ onMounted(async () => {
                     </el-select>
                 </el-form-item>
                 <el-form-item label="所属学院">
-                    <el-select v-model="searchForm.college" placeholder="请选择所属学院" clearable="true" style="width: 220px" @change="handleSearch">
+                    <el-select v-model="searchForm.college" placeholder="全部学院" clearable="true" style="width: 220px" @change="handleSearch">
                         <el-option v-for="college in collegeList" :key="college.id" :label="college.name"
                             :value="college.name"></el-option>
                     </el-select>
@@ -494,7 +494,7 @@ onMounted(async () => {
                         maxlength="20" @keyup.enter="handleSearch" @clear="handleSearch"></el-input>
                 </el-form-item>
                 <el-form-item label="赛事状态">
-                    <el-select v-model="searchForm.status" placeholder="请选择赛事状态" clearable="true" style="width: 220px;" @change="handleSearch">
+                    <el-select v-model="searchForm.status" placeholder="全部状态" clearable="true" style="width: 220px;" @change="handleSearch">
                         <el-option label="未开始" value="未开始"></el-option>
                         <el-option label="进行中" value="进行中"></el-option>
                         <el-option label="已结束" value="已结束"></el-option>
