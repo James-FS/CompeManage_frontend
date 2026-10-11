@@ -193,7 +193,7 @@ onMounted(() => {
         </el-form-item>
 
         <el-form-item label="审核状态">
-          <el-select v-model="queryForm.status" placeholder="全部" style="width: 180px" clearable @change="fetchRegList">
+          <el-select v-model="queryForm.status" placeholder="全部状态" style="width: 180px" clearable @change="fetchRegList">
             <el-option label="待审核" :value="0" />
             <el-option label="已通过" :value="1" />
             <el-option label="已驳回" :value="2" />

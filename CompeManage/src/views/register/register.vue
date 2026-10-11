@@ -84,7 +84,7 @@ onMounted(() => {
         <el-form-item label="赛事名称">
           <el-input
             v-model="queryParams.comp_name"
-            placeholder="搜索赛事名称"
+            placeholder="请输入赛事名称"
             clearable
             style="width: 220px"
             @keyup.enter="applyFilters"

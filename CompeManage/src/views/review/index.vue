@@ -97,7 +97,7 @@ onMounted(() => {
           <el-input v-model="searchForm.keyword" placeholder="请输入赛事名称" clearable style="width: 220px" @keyup.enter="handleSearch" @clear="handleSearch" />
         </el-form-item>
         <el-form-item label="评审状态">
-          <el-select v-model="searchForm.status" placeholder="请选择状态" clearable style="width: 220px" @change="handleSearch">
+          <el-select v-model="searchForm.status" placeholder="全部状态" clearable style="width: 220px" @change="handleSearch">
             <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
         </el-form-item>

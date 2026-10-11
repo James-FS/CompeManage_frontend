@@ -308,7 +308,7 @@ test('校赛填报列表支持关键词/级别筛选（服务端过滤）', asyn
     if (!r.url().includes('/api/award/list')) return false
     return new URL(r.url()).searchParams.get('keyword') === '蓝桥杯校赛选拔'
   })
-  await filterBar.locator('input[placeholder="搜索赛事名称或编号"]').fill('蓝桥杯校赛选拔')
+  await filterBar.locator('input[placeholder="请输入赛事名称或编号"]').fill('蓝桥杯校赛选拔')
   await filterBar.getByRole('button', { name: '搜索' }).click()
   const json = await (await keywordResp).json()
   expect(json.data.total, '关键词应精确匹配到赛事A').toBe(1)
@@ -316,7 +316,7 @@ test('校赛填报列表支持关键词/级别筛选（服务端过滤）', asyn
   await expect(page.locator('.comp-card').filter({ hasText: state.comps.A.name })).toBeVisible()
 
   // 级别 + 无匹配关键词 → 空状态
-  await filterBar.locator('input[placeholder="搜索赛事名称或编号"]').fill('不存在的关键词XYZ')
+  await filterBar.locator('input[placeholder="请输入赛事名称或编号"]').fill('不存在的关键词XYZ')
   await filterBar.getByRole('button', { name: '搜索' }).click()
   await expect(page.locator('.el-empty')).toBeVisible()
 

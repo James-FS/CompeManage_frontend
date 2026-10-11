@@ -193,7 +193,7 @@ onMounted(() => {
         </el-form-item>
 
         <el-form-item label="获奖等级">
-          <el-select v-model="queryForm.award_level" placeholder="全部" style="width: 140px" clearable @change="fetchAwardList">
+          <el-select v-model="queryForm.award_level" placeholder="全部等级" style="width: 140px" clearable @change="fetchAwardList">
             <el-option label="国家级一等奖" value="国家级一等奖" />
             <el-option label="国家级二等奖" value="国家级二等奖" />
             <el-option label="国家级三等奖" value="国家级三等奖" />
@@ -206,7 +206,7 @@ onMounted(() => {
         </el-form-item>
 
         <el-form-item label="审核状态">
-          <el-select v-model="queryForm.status" placeholder="全部" style="width: 120px" clearable @change="fetchAwardList">
+          <el-select v-model="queryForm.status" placeholder="全部状态" style="width: 120px" clearable @change="fetchAwardList">
             <el-option label="待审核" :value="0" />
             <el-option label="已通过" :value="1" />
             <el-option label="已驳回" :value="2" />

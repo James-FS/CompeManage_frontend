@@ -138,7 +138,7 @@ test.describe.serial('赛事申报审核功能测试', () => {
 
     // ========== 提交申报到校级审核 ==========
     // 搜索刚创建的申报
-    await page.fill('.filter-card input[placeholder="搜索赛事名称"]', DECLARE_NAME)
+    await page.fill('.filter-card input[placeholder="请输入赛事名称"]', DECLARE_NAME)
     await page.locator('button:has-text("搜索")').click()
     await page.waitForTimeout(1000)
 
@@ -192,7 +192,7 @@ test.describe.serial('赛事申报审核功能测试', () => {
     await expect(page.locator('.el-tabs')).toBeVisible()
 
     // 搜索刚提交的申报
-    await page.fill('.filter-card input[placeholder="搜索赛事名称"]', DECLARE_NAME)
+    await page.fill('.filter-card input[placeholder="请输入赛事名称"]', DECLARE_NAME)
     await page.locator('button:has-text("搜索")').click()
     await page.waitForTimeout(1000)
 
@@ -224,7 +224,7 @@ test.describe.serial('赛事申报审核功能测试', () => {
     await page.waitForTimeout(500)
 
     // 搜索申报
-    await page.fill('.filter-card input[placeholder="搜索赛事名称"]', DECLARE_NAME)
+    await page.fill('.filter-card input[placeholder="请输入赛事名称"]', DECLARE_NAME)
     await page.locator('button:has-text("搜索")').click()
     await page.waitForTimeout(1000)
 
@@ -341,7 +341,7 @@ test.describe.serial('赛事申报审核功能测试', () => {
     await page.waitForTimeout(500)
 
     // 搜索并提交
-    await page.fill('.filter-card input[placeholder="搜索赛事名称"]', rejectName)
+    await page.fill('.filter-card input[placeholder="请输入赛事名称"]', rejectName)
     await page.locator('button:has-text("搜索")').click()
     await page.waitForTimeout(1000)
 
@@ -369,7 +369,7 @@ test.describe.serial('赛事申报审核功能测试', () => {
     await page.waitForTimeout(500)
 
     // 搜索
-    await page.fill('.filter-card input[placeholder="搜索赛事名称"]', rejectName)
+    await page.fill('.filter-card input[placeholder="请输入赛事名称"]', rejectName)
     await page.locator('button:has-text("搜索")').click()
     await page.waitForTimeout(1000)
 

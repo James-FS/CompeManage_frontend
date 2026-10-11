@@ -99,12 +99,12 @@ onMounted(() => {
           <el-input v-model="queryForm.manager" placeholder="请输入负责人" clearable style="width: 220px" @keyup.enter="fetchCompList" @clear="fetchCompList" />
         </el-form-item>
         <el-form-item label="所属学院">
-          <el-select v-model="queryForm.college" placeholder="请选择所属学院" clearable style="width: 220px" @change="fetchCompList">
+          <el-select v-model="queryForm.college" placeholder="全部学院" clearable style="width: 220px" @change="fetchCompList">
             <el-option v-for="college in collegeList" :key="college.id" :label="college.name" :value="college.name" />
           </el-select>
         </el-form-item>
         <el-form-item label="赛事状态">
-          <el-select v-model="queryForm.status" placeholder="请选择赛事状态" clearable style="width: 220px" @change="fetchCompList">
+          <el-select v-model="queryForm.status" placeholder="全部状态" clearable style="width: 220px" @change="fetchCompList">
             <el-option label="未开始" value="0" />
             <el-option label="进行中" value="1" />
             <el-option label="已结束" value="2" />

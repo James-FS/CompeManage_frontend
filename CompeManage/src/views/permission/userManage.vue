@@ -239,12 +239,12 @@ onMounted(async () => {
           />
         </el-form-item>
         <el-form-item label="角色">
-          <el-select v-model="filters.role_id" clearable placeholder="请选择角色" @change="handleFilterChange">
+          <el-select v-model="filters.role_id" clearable placeholder="全部角色" @change="handleFilterChange">
             <el-option v-for="role in roleList" :key="role.id" :label="role.role_name" :value="role.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="人员身份">
-          <el-select v-model="filters.identity_type" clearable placeholder="请选择身份" @change="handleFilterChange">
+          <el-select v-model="filters.identity_type" clearable placeholder="全部身份" @change="handleFilterChange">
             <el-option v-for="item in identityOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
         </el-form-item>
@@ -253,7 +253,7 @@ onMounted(async () => {
             v-model="filters.managed_college_id"
             clearable
             filterable
-            placeholder="请选择学院"
+            placeholder="全部学院"
             @change="handleFilterChange"
           >
             <el-option v-for="college in collegeList" :key="college.id" :label="college.name" :value="college.id" />
