@@ -33,7 +33,7 @@ test.describe('报名列表页面测试', () => {
 
   test('页面基本元素验证', async ({ page }) => {
     // 验证搜索区域
-    await expect(page.locator('input[placeholder="搜索赛事名称"]')).toBeVisible()
+    await expect(page.locator('input[placeholder="请输入赛事名称"]')).toBeVisible()
     await expect(page.locator('.filter-card button:has-text("搜索")')).toBeVisible()
     await expect(page.locator('.filter-card button:has-text("重置")')).toBeVisible()
 
@@ -47,7 +47,7 @@ test.describe('报名列表页面测试', () => {
 
   test('搜索功能 - 输入关键词搜索', async ({ page }) => {
     // 输入搜索关键词
-    const searchInput = page.locator('input[placeholder="搜索赛事名称"]')
+    const searchInput = page.locator('input[placeholder="请输入赛事名称"]')
     await searchInput.fill('测试')
 
     // 点击搜索按钮
@@ -64,7 +64,7 @@ test.describe('报名列表页面测试', () => {
   })
 
   test('搜索功能 - 回车键搜索', async ({ page }) => {
-    const searchInput = page.locator('input[placeholder="搜索赛事名称"]')
+    const searchInput = page.locator('input[placeholder="请输入赛事名称"]')
     await searchInput.fill('自动化测试')
     await searchInput.press('Enter')
     await page.waitForLoadState('networkidle')
@@ -75,7 +75,7 @@ test.describe('报名列表页面测试', () => {
   })
 
   test('搜索功能 - 清空搜索', async ({ page }) => {
-    const searchInput = page.locator('input[placeholder="搜索赛事名称"]')
+    const searchInput = page.locator('input[placeholder="请输入赛事名称"]')
     await searchInput.fill('测试')
     await page.locator('.filter-card button:has-text("搜索")').click()
     await page.waitForLoadState('networkidle')
@@ -285,7 +285,7 @@ test.describe('报名列表页面测试', () => {
 
   test('筛选联动 - 切换级别后重新搜索', async ({ page }) => {
     // 先搜索
-    const searchInput = page.locator('input[placeholder="搜索赛事名称"]')
+    const searchInput = page.locator('input[placeholder="请输入赛事名称"]')
     await searchInput.fill('测试')
     await page.locator('.filter-card button:has-text("搜索")').click()
     await page.waitForLoadState('networkidle')
@@ -334,7 +334,7 @@ test.describe('报名列表页面测试', () => {
 
   test('空状态 - 无数据时的显示', async ({ page }) => {
     // 使用一个不可能匹配的值进行搜索
-    const searchInput = page.locator('input[placeholder="搜索赛事名称"]')
+    const searchInput = page.locator('input[placeholder="请输入赛事名称"]')
     await searchInput.fill('这是一个不可能存在的赛事名称XYZ123456')
     await page.locator('.filter-card button:has-text("搜索")').click()
     await page.waitForLoadState('networkidle')

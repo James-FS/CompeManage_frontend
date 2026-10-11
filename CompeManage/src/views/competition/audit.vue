@@ -372,10 +372,10 @@ watch(() => activeTab.value, () => {
         <div class="filter-card">
             <el-form :inline="true" :model="searchForm" class="search-form">
                 <el-form-item label="赛事名称">
-                    <el-input v-model="searchForm.comp_name" placeholder="搜索赛事名称" clearable style="width: 220px" @keyup.enter="handleSearch" @clear="handleSearch" />
+                    <el-input v-model="searchForm.comp_name" placeholder="请输入赛事名称" clearable style="width: 220px" @keyup.enter="handleSearch" @clear="handleSearch" />
                 </el-form-item>
                 <el-form-item label="所属学院" v-if="currentRole === 'school_admin'">
-                    <el-select v-model="searchForm.college" placeholder="选择学院" clearable style="width: 220px" @change="handleSearch">
+                    <el-select v-model="searchForm.college" placeholder="全部学院" clearable style="width: 220px" @change="handleSearch">
                         <el-option
                             v-for="college in collegeList"
                             :key="college.id"
@@ -385,7 +385,7 @@ watch(() => activeTab.value, () => {
                     </el-select>
                 </el-form-item>
                 <el-form-item label="审核状态" v-if="currentRole === 'school_admin' && activeTab === 'history'">
-                    <el-select v-model="searchForm.status" placeholder="选择状态" clearable style="width: 150px" @change="handleSearch">
+                    <el-select v-model="searchForm.status" placeholder="全部状态" clearable style="width: 150px" @change="handleSearch">
                         <el-option label="已通过" :value="2" />
                         <el-option label="已驳回" :value="3" />
                     </el-select>

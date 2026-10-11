@@ -367,7 +367,7 @@ test.describe('作品审核 E2E 测试', () => {
     // ============================================================
     // 第三部分：搜索功能
     // ============================================================
-    await page.fill('input[placeholder="输入队伍名/负责人/学号搜索"]', 'S2024001')
+    await page.fill('input[placeholder="请输入队伍名、负责人或学号"]', 'S2024001')
     const searchRespPromise2 = page.waitForResponse(
       (resp) => resp.url().includes('/api/reg/work/audit/student/list') && resp.status() === 200,
       { timeout: 10000 }

@@ -147,7 +147,7 @@ onMounted(() => {
                     </el-input>
                 </el-form-item>
                 <el-form-item label="总结状态">
-                    <el-select v-model="searchForm.summary_status" placeholder="请选择总结状态" clearable="true"
+                    <el-select v-model="searchForm.summary_status" placeholder="全部状态" clearable="true"
                         style="width: 200px" @change="handleSearch">
                         <el-option label="未总结" value="0"></el-option>
                         <el-option label="已归档" value="1"></el-option>
