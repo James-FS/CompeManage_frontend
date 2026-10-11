@@ -6,7 +6,7 @@ import { ElMessage } from 'element-plus'
 import * as XLSX from 'xlsx'
 import { saveAs } from 'file-saver'
 import api from '@/api'
-import { get, post, put } from '@/utils/request'
+import { get, post } from '@/utils/request'
 import { useUserStore } from '@/stores/user'
 const compID = useRoute().params.id
 const router = useRouter()
@@ -16,7 +16,6 @@ const tableData = ref([])
 const fileName = ref('')
 const requireRegistration = ref(false)
 const settingReady = ref(false)
-const settingSaving = ref(false)
 const columns = [
   { key: 'student_id', label: '学号', width: 160 },
   { key: 'name', label: '学生姓名', width: 120 },
@@ -37,16 +36,6 @@ const loadSetting = async () => {
     requireRegistration.value = res.data.require_registration
     settingReady.value = true
   } catch (error) { ElMessage.error(errorMessage(error)) }
-}
-const changeSetting = async value => {
-  settingSaving.value = true
-  try {
-    await put('/api/award/import/settings', { require_registration: value })
-    ElMessage.success('已更新所有赛事的报名要求，历史获奖不受影响')
-  } catch (error) {
-    requireRegistration.value = !value
-    ElMessage.error(errorMessage(error))
-  } finally { settingSaving.value = false }
 }
 const downloadTemplate = async () => {
   try { saveAs(await api.getAwardTemplate(compID), '获奖名单导入模板.xlsx') }
@@ -121,11 +110,10 @@ onMounted(loadSetting)
         <span>{{ fileName }}</span>
       </div>
       <div class="setting">
-        <template v-if="userStore.role === 'school_admin'">
-          <span>导入需报名审核</span>
-          <el-switch v-model="requireRegistration" :disabled="!settingReady || loading" :loading="settingSaving" @change="changeSetting" />
+        <template v-if="settingReady">
+          <span>当前报名要求：{{ requireRegistration ? '必须有审核通过的报名' : '无需报名' }}</span>
+          <el-button v-if="userStore.role === 'school_admin'" link type="primary" @click="router.push('/award/list')">去调整</el-button>
         </template>
-        <span v-else-if="settingReady">当前报名要求：{{ requireRegistration ? '必须有审核通过的报名' : '无需报名' }}</span>
       </div>
     </el-card>
     <el-card shadow="never">

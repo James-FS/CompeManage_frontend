@@ -297,6 +297,60 @@ test('校管理员按赛事年份导出附件1/附件2并核对内容', async ({
   expect(r2604).toContain('E2E个人样例') // 备注列随导出保留
 })
 
+test('校赛填报列表支持关键词/级别筛选（服务端过滤）', async ({ page }) => {
+  await login(page, SCHOOL_ADMIN)
+  await page.goto('/#/award/list')
+  const filterBar = page.locator('.filter-card') // 与赛事审核页统一的筛选卡片
+  await expect(filterBar).toBeVisible()
+
+  // 关键词搜索：断言请求带 keyword 参数且 total 为 1（total 是全量匹配数，能证明是服务端过滤）
+  const keywordResp = page.waitForResponse(r => {
+    if (!r.url().includes('/api/award/list')) return false
+    return new URL(r.url()).searchParams.get('keyword') === '蓝桥杯校赛选拔'
+  })
+  await filterBar.locator('input[placeholder="搜索赛事名称或编号"]').fill('蓝桥杯校赛选拔')
+  await filterBar.getByRole('button', { name: '搜索' }).click()
+  const json = await (await keywordResp).json()
+  expect(json.data.total, '关键词应精确匹配到赛事A').toBe(1)
+  await expect(page.locator('.comp-card')).toHaveCount(1)
+  await expect(page.locator('.comp-card').filter({ hasText: state.comps.A.name })).toBeVisible()
+
+  // 级别 + 无匹配关键词 → 空状态
+  await filterBar.locator('input[placeholder="搜索赛事名称或编号"]').fill('不存在的关键词XYZ')
+  await filterBar.getByRole('button', { name: '搜索' }).click()
+  await expect(page.locator('.el-empty')).toBeVisible()
+
+  // 重置恢复，级别下拉选校级后本批 3 个校级赛事都在
+  await filterBar.getByRole('button', { name: '重置' }).click()
+  await expect(page.locator('.comp-card').filter({ hasText: state.comps.A.name })).toBeVisible()
+  await filterBar.locator('.el-select').first().click()
+  await page.getByRole('option', { name: '校级', exact: true }).click()
+  const levelResp = page.waitForResponse(r => {
+    if (!r.url().includes('/api/award/list')) return false
+    return new URL(r.url()).searchParams.get('level') === '校级'
+  })
+  await filterBar.getByRole('button', { name: '搜索' }).click()
+  const levelJson = await (await levelResp).json()
+  expect(levelJson.data.total).toBeGreaterThanOrEqual(3)
+  for (const comp of Object.values(state.comps)) {
+    await expect(page.locator('.comp-card').filter({ hasText: comp.name })).toBeVisible()
+  }
+})
+
+test('回归：导入页点面包屑"获奖详情"应回填路由参数而不是 ":id"', async ({ page }) => {
+  const comp = state.comps.B
+  await login(page, COLLEGE_ADMIN)
+  await page.goto(`/#/award/import/${comp.id}`)
+  await expect(page.locator('.breadcrumb-container a.redirect', { hasText: '获奖详情' })).toBeVisible()
+
+  await page.locator('.breadcrumb-container a.redirect', { hasText: '获奖详情' }).click()
+
+  // 修复前：URL 会变成 /award/detail/:id 并弹出"赛事ID无效"
+  await expect(page).toHaveURL(new RegExp(`award/detail/${comp.id}`), { timeout: 10000 })
+  await expect(page.getByText(/3 个团队项目\s*·\s*4 名获奖学生/)).toBeVisible()
+  await expect(page.locator('.el-message--error')).toHaveCount(0)
+})
+
 // ---------- 公共辅助 ----------
 
 async function selectElOption(page, labelText, optionText) {
