@@ -15,13 +15,17 @@
     /* ====== 间距 ====== */
     --container-padding:20px;
     --tag-padding:4px 8px;
-    --item-padding:24px;
+    --item-padding:20px;
      /* ====== 阴影和圆角 ====== */
      --card-shadow:0 1px 5px rgba(0, 0, 0, 0.1);
+     --card-hover-shadow:0 8px 24px rgba(0, 0, 0, 0.08);
      --card-radius:4px;
-     --card-border:1px solid #eaeff5;
+     --card-border:1px solid #ebeef5;
      --primary-btn-shadow: 0 4px 12px rgba(19, 194, 194, 0.3);
      --primary-btn-hover-shadow: 0 6px 16px rgba(19, 194, 194, 0.4);
+    /* ====== Element Plus 组件圆角兜底 ====== */
+    --el-border-radius-base:4px;
+    --el-border-radius-small:2px;
 }
 
 .dept-select-popper {

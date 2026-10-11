@@ -361,7 +361,7 @@ onMounted(() => {
         padding: 10px 15px;
         background-color: #f9f9f9;
         border: 1px solid #ebeef5;
-        border-radius: 4px;
+        border-radius: var(--card-radius);
 
         .file-list-title {
             font-size: 14px;

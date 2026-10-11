@@ -424,7 +424,7 @@ onMounted(() => {
 .page-header {
   background: #fff;
   padding: 16px 24px;
-  border-radius: 8px 8px 0 0;
+  border-radius: var(--card-radius) var(--card-radius) 0 0;
   border-bottom: var(--card-border);
 
   .back-btn {
@@ -479,8 +479,8 @@ onMounted(() => {
 .content-wrapper {
   background: #fff;
   padding: var(--item-padding) 30px 40px;
-  border-radius: 0 0 8px 8px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
+  border-radius: 0 0 var(--card-radius) var(--card-radius);
+  box-shadow: var(--card-shadow);
 
   .info-section {
     margin-bottom: 40px;
@@ -551,7 +551,7 @@ onMounted(() => {
       display: flex;
       align-items: center;
       border: var(--card-border);
-      border-radius: 6px;
+      border-radius: var(--card-radius);
       padding: 16px 20px;
       cursor: pointer;
       transition: all 0.3s;
@@ -631,7 +631,7 @@ onMounted(() => {
 
 .reject-box {
   border: var(--card-border);
-  border-radius: 6px;
+  border-radius: var(--card-radius);
   background-color: #fff;
   padding: 16px 20px;
   display: flex;

@@ -816,10 +816,10 @@ onMounted(() => {
 /* 每一个赛道的独立卡片外框 */
 .track-item-box {
   border: 1px solid #ebeef5;
-  border-radius: 8px;
+  border-radius: var(--card-radius);
   padding: 16px;
   background-color: #fcfcfc;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+  box-shadow: var(--card-shadow);
   transition: all 0.3s ease;
 }
 
@@ -869,7 +869,7 @@ onMounted(() => {
   padding: 20px;
   text-align: center;
   background-color: #f5f7fa;
-  border-radius: 4px;
+  border-radius: var(--card-radius);
 }
 /* === 简约奖项样式 === */
 .award-list-simple {
@@ -885,7 +885,7 @@ onMounted(() => {
   color: #606266;
   background-color: #f4f4f5;
   padding: 8px 12px;
-  border-radius: 4px;
+  border-radius: var(--card-radius);
   margin-bottom: 5px;
 }
 

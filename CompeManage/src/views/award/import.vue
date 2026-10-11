@@ -160,7 +160,7 @@ onMounted(loadSetting)
   </div>
 </template>
 <style scoped>
-.import-page { display: grid; gap: 20px; padding: 20px; }
+.import-page { display: grid; gap: 20px; padding: var(--container-padding); }
 .preview-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .actions, .setting, .footer { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .setting { margin-top: 20px; color: #606266; }

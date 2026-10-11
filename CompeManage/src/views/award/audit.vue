@@ -345,7 +345,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   background-color: #f0f2f5;
-  padding: 16px;
+  padding: var(--container-padding);
   gap: 12px;
 }
 
@@ -353,7 +353,7 @@ onMounted(() => {
   box-sizing: border-box;
   background: #fff;
   padding: 20px 20px 10px 20px;
-  border-radius: 4px;
+  border-radius: var(--card-radius);
   box-shadow: var(--card-shadow);
 
   .filter-form {
@@ -387,8 +387,8 @@ onMounted(() => {
 .table-container {
   flex: 1;
   background: #fff;
-  padding: 16px;
-  border-radius: 4px;
+  padding: var(--item-padding);
+  border-radius: var(--card-radius);
   display: flex;
   flex-direction: column;
   box-shadow: var(--card-shadow);

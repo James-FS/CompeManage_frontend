@@ -149,7 +149,7 @@ onMounted(loadData)
 .result-table {
   background: #fff;
   padding: 20px;
-  border-radius: 4px;
+  border-radius: var(--card-radius);
   box-shadow: var(--card-shadow);
 }
 .score-item {

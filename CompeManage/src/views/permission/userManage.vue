@@ -388,7 +388,7 @@ onMounted(async () => {
   padding: 20px 20px 10px;
   background-color: #ffffff;
   box-shadow: var(--card-shadow);
-  border-radius: 4px;
+  border-radius: var(--card-radius);
 }
 
 .filter-form :deep(.el-form-item) { margin-bottom: 15px; margin-left: 15px; }
@@ -412,7 +412,7 @@ onMounted(async () => {
   border: none;
   /* 与赛事目录内容卡一致的阴影和圆角 */
   box-shadow: var(--card-shadow);
-  border-radius: 4px;
+  border-radius: var(--card-radius);
 }
 
 /* 用户列表卡片填满行高，列表区滚动、分页固定底部 */
@@ -456,7 +456,7 @@ onMounted(async () => {
   width: 100%;
   padding: 12px;
   border: 1px solid var(--el-border-color-light);
-  border-radius: 8px;
+  border-radius: var(--card-radius);
   background: var(--el-bg-color);
   color: inherit;
   text-align: left;

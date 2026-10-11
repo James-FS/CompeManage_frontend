@@ -222,7 +222,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   background-color: var(--background-color);
-  padding: 20px;
+  padding: var(--container-padding);
   min-height: 100%;
 }
 
@@ -245,9 +245,9 @@ onMounted(() => {
 /* 卡片样式 */
 .comp-card {
   background-color: #fff;
-  padding: 24px;
-  border-radius: 8px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  padding: var(--item-padding);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
   border: 1px solid transparent;
   display: flex;
   justify-content: space-between;
@@ -256,7 +256,7 @@ onMounted(() => {
 
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    box-shadow: var(--card-hover-shadow);
   }
 
   /* 左侧信息区 */
@@ -337,11 +337,11 @@ onMounted(() => {
 
         &.el-button--primary:not(.is-disabled) {
           background: linear-gradient(135deg, #13c2c2 0%, #36cfc9 100%);
-          box-shadow: 0 4px 12px rgba(19, 194, 194, 0.3);
+          box-shadow: var(--primary-btn-shadow);
           transition: all 0.3s;
           &:hover {
             transform: translateY(-1px);
-            box-shadow: 0 6px 16px rgba(19, 194, 194, 0.4);
+            box-shadow: var(--primary-btn-hover-shadow);
             opacity: 0.95;
           }
         }

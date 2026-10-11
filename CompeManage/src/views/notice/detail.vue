@@ -255,7 +255,7 @@ async function handlePublish(row) {
 .notice-list-container {
   box-sizing: border-box;
   min-height: calc(100vh - 110px);
-  padding: 24px;
+  padding: var(--container-padding);
   background: linear-gradient(to bottom, #f0f2f5 0%, #ffffff 100%);
   display: flex;
   flex-direction: column;
@@ -266,12 +266,12 @@ async function handlePublish(row) {
 .context-header {
   background: #ffffff;
   padding: 16px 24px;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
   transition: box-shadow 0.3s;
 
   &:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    box-shadow: var(--card-hover-shadow);
   }
 
   .left {
@@ -319,13 +319,13 @@ async function handlePublish(row) {
 /* ========== 主卡片 ========== */
 .main-card {
   flex: 1;
-  border-radius: 12px;
+  border-radius: var(--card-radius);
 
   :deep(.el-card__body) {
     height: 100%;
     display: flex;
     flex-direction: column;
-    padding: 24px;
+    padding: var(--item-padding);
   }
 }
 

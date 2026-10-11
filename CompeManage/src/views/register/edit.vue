@@ -174,8 +174,8 @@ onMounted(() => {
   .comp-item {
     background-color: #fff;
     padding: var(--item-padding);
-    border-radius: 8px;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+    border-radius: var(--card-radius);
+    box-shadow: var(--card-shadow);
     border: 1px solid transparent;
     display: flex;
     justify-content: space-between;
@@ -185,7 +185,7 @@ onMounted(() => {
     
     &:hover {
       transform: translateY(-2px);
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+      box-shadow: var(--card-hover-shadow);
       .comp-name {
         color: var(--primary-color);
       }

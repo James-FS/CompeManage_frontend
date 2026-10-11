@@ -560,8 +560,8 @@ const selectTeacher = (row) => {
 .content-box {
     width: 100%;
     background-color: #ffffff;
-    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
-    border-radius: 4px;
+    box-shadow: var(--card-shadow);
+    border-radius: var(--card-radius);
     padding: 20px;
     box-sizing: border-box;
 }
@@ -584,7 +584,7 @@ const selectTeacher = (row) => {
         margin-top: 10px;
         padding: 10px;
         background-color: #f5f7fa;
-        border-radius: 4px;
+        border-radius: var(--card-radius);
         display: flex;
         flex-direction: column;
         gap: 6px;

@@ -188,7 +188,7 @@ onMounted(() => {
   width: 100%;
   min-height: 100%;
   box-sizing: border-box;
-  padding: 20px 40px;
+  padding: var(--container-padding);
   background-color: #fafbfc;
   background-image:
     radial-gradient(at 0% 0%, rgba(19, 194, 194, 0.06) 0px, transparent 50%),
@@ -202,11 +202,11 @@ onMounted(() => {
     height: 85vh;
     align-items: stretch;
     background-color: rgba(255, 255, 255, 0.9); /* 90% 不透明度 */
-    border-radius: 16px;
-    padding: 30px;
+    border-radius: var(--card-radius);
+    padding: var(--item-padding);
     max-width: 1440px;
     margin: 0 auto;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+    box-shadow: var(--card-shadow);
     backdrop-filter: blur(8px); /* 毛玻璃效果 */
     border: 1px solid rgba(255, 255, 255, 0.5);
     

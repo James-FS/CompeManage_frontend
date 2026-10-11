@@ -512,14 +512,14 @@ watch(() => activeTab.value, () => {
 .filter-card{
     background-color: #fff;
     padding: 20px;
-    border-radius: 4px;
-    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
+    border-radius: var(--card-radius);
+    box-shadow: var(--card-shadow);
 }
 .content-card {
     background-color: #fff;
     padding: 20px 20px 10px 20px;
-    border-radius: 4px;
-    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
+    border-radius: var(--card-radius);
+    box-shadow: var(--card-shadow);
     /* 卡片填满页面剩余高度，内部区域各自滚动，页面本身不出现滚动条 */
     flex: 1;
     min-height: 0;
