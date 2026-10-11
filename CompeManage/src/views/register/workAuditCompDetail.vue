@@ -124,17 +124,17 @@ onMounted(() => {
   width: 100%;
   height: 100%;
   background-color: var(--background-color);
-  padding: 20px;
+  padding: var(--container-padding);
   box-sizing: border-box;
 }
 
 .search-container {
   box-sizing: border-box;
   margin-bottom: 15px;
-  padding: 20px;
+  padding: var(--container-padding);
   background-color: #ffffff;
   box-shadow: var(--card-shadow);
-  border-radius: 4px;
+  border-radius: var(--card-radius);
 }
 
 .header-row {
@@ -160,7 +160,7 @@ onMounted(() => {
   padding: 20px 20px 10px 20px;
   background-color: #ffffff;
   box-shadow: var(--card-shadow);
-  border-radius: 4px;
+  border-radius: var(--card-radius);
 }
 
 .pagination-wrapper {

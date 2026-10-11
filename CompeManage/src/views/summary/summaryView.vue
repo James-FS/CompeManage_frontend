@@ -226,7 +226,7 @@ onMounted(() => {
     // 基本信息卡片
     .info-card {
         margin-bottom: 20px;
-        border-radius: 4px;
+        border-radius: var(--card-radius);
         border: none;
         box-shadow: var(--card-shadow);
 
@@ -272,7 +272,7 @@ onMounted(() => {
     }
 
     .detail-card {
-        border-radius: 4px;
+        border-radius: var(--card-radius);
         border: none;
         box-shadow: var(--card-shadow);
         
@@ -286,7 +286,7 @@ onMounted(() => {
     .summary-text-box {
         background-color: #f9f9f9;
         padding: 20px;
-        border-radius: 4px;
+        border-radius: var(--card-radius);
         border: 1px dashed #dcdfe6;
         min-height: 200px;
         

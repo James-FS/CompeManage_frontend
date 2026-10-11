@@ -1184,8 +1184,8 @@ onMounted(async () => {
   z-index: 5;
   .form-card {
     background: #fff;
-    border-radius: 8px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+    border-radius: var(--card-radius);
+    box-shadow: var(--card-shadow);
     padding: 40px;
     margin-top: -60px;
     border: 1px solid #ebeef5;
@@ -1219,8 +1219,8 @@ onMounted(async () => {
     .info-grid {
       background: #fcfcfc;
       border: 1px solid #ebeef5;
-      padding: 24px;
-      border-radius: 6px;
+      padding: var(--item-padding);
+      border-radius: var(--card-radius);
     }
 
     .member-grid-container {
@@ -1230,18 +1230,18 @@ onMounted(async () => {
 
       .empty-tip {
         border: 1px dashed #dcdfe6;
-        border-radius: 8px;
+        border-radius: var(--card-radius);
         padding: 20px 0;
       }
 
       .member-card {
         background-color: #fcfcfc;
         border: 1px solid #ebeef5;
-        border-radius: 8px;
+        border-radius: var(--card-radius);
         transition: all 0.3s;
 
         &:hover {
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+          box-shadow: var(--card-hover-shadow);
           border-color: #dcdfe6;
           background-color: #fff;
         }
@@ -1253,7 +1253,7 @@ onMounted(async () => {
           padding: 10px 20px;
           border-bottom: 1px solid #ebeef5;
           background-color: #fafafa;
-          border-radius: 8px 8px 0 0;
+          border-radius: var(--card-radius) var(--card-radius) 0 0;
 
           .member-index {
             font-weight: 600;
@@ -1296,7 +1296,7 @@ onMounted(async () => {
     .track-single-tip {
       margin-top: 4px;
       padding: 8px 12px;
-      border-radius: 6px;
+      border-radius: var(--card-radius);
       background: #f4f8ff;
       color: #5a6b8c;
       font-size: 13px;

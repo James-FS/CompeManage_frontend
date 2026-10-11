@@ -332,8 +332,8 @@ onBeforeUnmount(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
-  border-radius: 4px;
+  box-shadow: var(--card-shadow);
+  border-radius: var(--card-radius);
   border-left: 3px solid var(--primary-color);
 
 
@@ -417,8 +417,8 @@ onBeforeUnmount(() => {
 }
 
 .portal-card {
-  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
-  border-radius: 4px;
+  box-shadow: var(--card-shadow);
+  border-radius: var(--card-radius);
 
   .card-header {
     display: flex;
@@ -559,7 +559,7 @@ onBeforeUnmount(() => {
     padding: 10px;
     background: #fcfcfc;
     border: 1px solid #f0f2f5;
-    border-radius: 6px;
+    border-radius: var(--card-radius);
     transition: 0.2s;
 
 

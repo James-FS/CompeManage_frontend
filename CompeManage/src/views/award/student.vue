@@ -377,7 +377,7 @@ onMounted(() => {
 <style scoped lang="scss">
 .page-container {
   box-sizing: border-box;
-  padding: 24px;
+  padding: var(--container-padding);
   flex-direction: column;
   min-height: calc(100vh - 110px);
   display: flex;
@@ -414,9 +414,9 @@ onMounted(() => {
 /* 卡片样式 */
 .comp-card {
   background-color: #fff;
-  padding: 24px;
-  border-radius: 8px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  padding: var(--item-padding);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
   border: 1px solid #ebeef5;
   
   display: flex;
@@ -426,7 +426,7 @@ onMounted(() => {
   
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    box-shadow: var(--card-hover-shadow);
     border-color: #dcdfe6;
   }
 
@@ -500,10 +500,10 @@ onMounted(() => {
         &.el-button--primary:not(.is-disabled) {
           background: linear-gradient(135deg, #13c2c2 0%, #36cfc9 100%);
           border: none;
-          box-shadow: 0 4px 12px rgba(19, 194, 194, 0.3);
+          box-shadow: var(--primary-btn-shadow);
           &:hover {
             transform: translateY(-1px);
-            box-shadow: 0 6px 16px rgba(19, 194, 194, 0.4);
+            box-shadow: var(--primary-btn-hover-shadow);
           }
         }
       }
@@ -532,11 +532,11 @@ onMounted(() => {
   margin-bottom: 4px;
 
   .overview-card {
-    border-radius: 10px;
+    border-radius: var(--card-radius);
     border: 1px solid #ebeef5;
     background: #ffffff;
     padding: 14px 16px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    box-shadow: var(--card-shadow);
 
     .num {
       font-size: 24px;
@@ -560,13 +560,13 @@ onMounted(() => {
 .award-card {
   background: #fff;
   border: 1px solid #ebeef5;
-  border-radius: 10px;
+  border-radius: var(--card-radius);
   padding: 18px 20px;
   transition: all 0.25s ease;
 
   &:hover {
     border-color: #dcdfe6;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+    box-shadow: var(--card-hover-shadow);
     transform: translateY(-1px);
   }
 
@@ -646,7 +646,7 @@ onMounted(() => {
   .reject-box {
     margin-top: 12px;
     padding: 8px 12px;
-    border-radius: 6px;
+    border-radius: var(--card-radius);
     background: #fff2f0;
     border: 1px solid #ffccc7;
     color: #a8071a;

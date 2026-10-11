@@ -751,7 +751,7 @@ onBeforeUnmount(() => {
         align-items: center;
         padding: 10px 12px;
         border: 1px solid #ebeef5;
-        border-radius: 8px;
+        border-radius: var(--card-radius);
       }
 
       .left {

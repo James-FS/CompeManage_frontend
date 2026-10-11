@@ -247,7 +247,7 @@ onMounted(() => {
     padding: 20px 20px 10px 20px;
     background-color: #ffffff;
     box-shadow: var(--card-shadow);
-    border-radius: 4px;
+    border-radius: var(--card-radius);
 
     .search-form {
         .el-form-item {
@@ -270,7 +270,7 @@ onMounted(() => {
     padding: 20px 20px 10px 20px;
     background-color: #ffffff;
     box-shadow: var(--card-shadow);
-    border-radius: 4px;
+    border-radius: var(--card-radius);
 
     .table-toolbar {
         display: flex;
@@ -296,7 +296,7 @@ onMounted(() => {
                 height: 32px;
                 padding: 0 10px;
                 border: 1px solid var(--el-border-color-light);
-                border-radius: 4px;
+                border-radius: var(--card-radius);
                 white-space: nowrap;
                 transition: all 0.3s;
 

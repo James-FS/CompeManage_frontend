@@ -320,7 +320,7 @@ onMounted(() => {
 .detail-page {
   min-height: 100%;
   background-color: var(--background-color);
-  padding: 16px;
+  padding: var(--container-padding);
   box-sizing: border-box;
 }
 
@@ -328,7 +328,7 @@ onMounted(() => {
 .page-header {
   background: #fff;
   padding: 16px 24px;
-  border-radius: 8px 8px 0 0;
+  border-radius: var(--card-radius) var(--card-radius) 0 0;
   border-bottom: 1px solid #ebeef5;
 
   .back-btn {
@@ -395,9 +395,9 @@ onMounted(() => {
 /* ====== 内容区域 ====== */
 .content-wrapper {
   background: #fff;
-  padding: 24px 30px 40px;
-  border-radius: 0 0 8px 8px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
+  padding: var(--item-padding) 30px 40px;
+  border-radius: 0 0 var(--card-radius) var(--card-radius);
+  box-shadow: var(--card-shadow);
 
   .info-section {
     margin-bottom: 40px;
@@ -433,7 +433,7 @@ onMounted(() => {
   .award-item {
     background: #fcfcfc;
     border: 1px solid #ebeef5;
-    border-radius: 6px;
+    border-radius: var(--card-radius);
     padding: 16px;
     display: flex;
     flex-direction: column;
@@ -481,7 +481,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   border: 1px solid #ebeef5;
-  border-radius: 6px;
+  border-radius: var(--card-radius);
   padding: 16px;
   cursor: pointer;
   transition: all 0.3s;
@@ -492,7 +492,7 @@ onMounted(() => {
     background-color: #f0fdfa;
 
     .cert-preview {
-      box-shadow: 0 4px 12px rgba(19, 194, 194, 0.15);
+      box-shadow: var(--primary-btn-shadow);
     }
   }
 
@@ -500,7 +500,7 @@ onMounted(() => {
     flex-shrink: 0;
     width: 80px;
     height: 80px;
-    border-radius: 4px;
+    border-radius: var(--card-radius);
     overflow: hidden;
     background: #f5f7fa;
     display: flex;
@@ -543,7 +543,7 @@ onMounted(() => {
   text-align: center;
   padding: 40px 20px;
   background: #fafafa;
-  border-radius: 6px;
+  border-radius: var(--card-radius);
   color: #909399;
 
   .el-icon {
@@ -557,7 +557,7 @@ onMounted(() => {
 .reject-box {
   background: #fef0f0;
   border: 1px solid #fde2e4;
-  border-radius: 6px;
+  border-radius: var(--card-radius);
   padding: 16px;
   display: flex;
   gap: 12px;

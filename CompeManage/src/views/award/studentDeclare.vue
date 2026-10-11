@@ -770,8 +770,8 @@ onMounted(() => {
 .info-grid {
   background: #fcfcfc;
   border: 1px solid #ebeef5;
-  padding: 24px;
-  border-radius: 6px;
+  padding: var(--item-padding);
+  border-radius: var(--card-radius);
 }
 
 .member-grid-container {
@@ -781,18 +781,18 @@ onMounted(() => {
 
   .empty-tip {
     border: 1px dashed #dcdfe6;
-    border-radius: 8px;
+    border-radius: var(--card-radius);
     padding: 20px 0;
   }
 
   .member-card {
     background-color: #fcfcfc;
     border: 1px solid #ebeef5;
-    border-radius: 8px;
+    border-radius: var(--card-radius);
     transition: all 0.3s;
 
     &:hover {
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      box-shadow: var(--card-hover-shadow);
       border-color: #dcdfe6;
       background-color: #fff;
     }
@@ -804,7 +804,7 @@ onMounted(() => {
       padding: 10px 20px;
       border-bottom: 1px solid #ebeef5;
       background-color: #fafafa;
-      border-radius: 8px 8px 0 0;
+      border-radius: var(--card-radius) var(--card-radius) 0 0;
 
       .member-index {
         font-weight: 600;
@@ -856,7 +856,7 @@ onMounted(() => {
   background-color: #f0f2f5;
   /* 页面在顶栏+面包屑(约110px)之下，100vh 会固定多出滚动量 */
   min-height: calc(100vh - 110px);
-  padding: 30px 20px;
+  padding: var(--container-padding);
   display: flex;
   justify-content: center;
   align-items: flex-start;
@@ -866,8 +866,8 @@ onMounted(() => {
   width: 100%;
   max-width: 760px;
   background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.05);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
   overflow: hidden;
   margin-bottom: 40px;
 }
@@ -939,7 +939,7 @@ onMounted(() => {
   border: 1px solid #ffeedb;
   color: #b8741a;
   padding: 16px;
-  border-radius: 6px;
+  border-radius: var(--card-radius);
   display: flex;
   gap: 12px;
   margin-bottom: 35px;
@@ -1008,7 +1008,7 @@ onMounted(() => {
   :deep(.el-upload) {
     width: 100%;
     cursor: pointer;
-    border-radius: 6px;
+    border-radius: var(--card-radius);
     overflow: hidden;
   }
 }
@@ -1017,7 +1017,7 @@ onMounted(() => {
   width: 100%;
   height: 220px;
   border: 2px dashed #dcdfe6;
-  border-radius: 6px;
+  border-radius: var(--card-radius);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -1050,15 +1050,15 @@ onMounted(() => {
   max-height: 400px;
   object-fit: contain;
   background-color: #f5f7fa;
-  border: 1px solid #e4e7ed;
-  border-radius: 6px;
+  border: var(--card-border);
+  border-radius: var(--card-radius);
 }
 
 .pdf-info {
   width: 100%;
   height: 220px;
   border: 2px dashed #dcdfe6;
-  border-radius: 6px;
+  border-radius: var(--card-radius);
   display: flex;
   flex-direction: column;
   justify-content: center;

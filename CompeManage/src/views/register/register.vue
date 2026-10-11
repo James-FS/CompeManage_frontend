@@ -253,7 +253,7 @@ onMounted(() => {
       gap: 10px;
       .filter-tag {
         padding: 4px 12px;
-        border-radius: 4px;
+        border-radius: var(--card-radius);
         cursor: pointer;
         color: #606266;
         line-height: 20px;
@@ -286,8 +286,8 @@ onMounted(() => {
   .comp-item {
     background-color: #fff;
     padding: var(--item-padding);
-    border-radius: 8px;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05); /* 默认微弱阴影 */
+    border-radius: var(--card-radius);
+    box-shadow: var(--card-shadow);
     border: 1px solid transparent;
     display: flex;
     justify-content: space-between; /* 左右布局 */
@@ -296,7 +296,7 @@ onMounted(() => {
     transition: all 0.3s;
     &:hover {
       transform: translateY(-2px);
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+      box-shadow: var(--card-hover-shadow);
       .comp-name {
         color: var(--primary-color);
       }

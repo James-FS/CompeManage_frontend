@@ -184,7 +184,7 @@ onMounted(() => {
   padding: 20px 20px 10px 20px;
   background-color: #ffffff;
   box-shadow: var(--card-shadow);
-  border-radius: 4px;
+  border-radius: var(--card-radius);
   .search-form {
     .el-form-item {
       margin-bottom: 15px;
@@ -203,7 +203,7 @@ onMounted(() => {
   padding: 20px 20px 10px 20px;
   background-color: #ffffff;
   box-shadow: var(--card-shadow);
-  border-radius: 4px;
+  border-radius: var(--card-radius);
 }
 .pagination-wrapper {
   margin-top: 10px;

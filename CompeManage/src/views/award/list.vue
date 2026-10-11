@@ -253,7 +253,7 @@ onMounted(fetchList)
   display: flex;
   flex-direction: column;
   background-color: var(--background-color);
-  padding: 20px;
+  padding: var(--container-padding);
 }
 
 .export-bar {
@@ -272,8 +272,8 @@ onMounted(fetchList)
 
 .comp-card {
   background-color: #fff;
-  padding: 24px;
-  border-radius: 8px;
+  padding: var(--item-padding);
+  border-radius: var(--card-radius);
   box-shadow: var(--card-shadow);
   border: 1px solid transparent;
   display: flex;
@@ -284,7 +284,7 @@ onMounted(fetchList)
 
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    box-shadow: var(--card-hover-shadow);
     .comp-name {
       color: #13c2c2 !important;
     }
@@ -383,12 +383,12 @@ onMounted(fetchList)
         font-size: 14px;
         border: none;
         background: linear-gradient(135deg, #13c2c2 0%, #36cfc9 100%);
-        box-shadow: 0 4px 12px rgba(19, 194, 194, 0.3);
+        box-shadow: var(--primary-btn-shadow);
         transition: all 0.3s;
 
         &:hover {
           transform: translateY(-1px);
-          box-shadow: 0 6px 16px rgba(19, 194, 194, 0.4);
+          box-shadow: var(--primary-btn-hover-shadow);
           opacity: 0.95;
         }
       }

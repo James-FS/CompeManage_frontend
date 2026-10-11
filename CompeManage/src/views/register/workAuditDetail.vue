@@ -157,7 +157,7 @@ onMounted(() => {
 .page-header {
   background: #fff;
   padding: 16px 24px;
-  border-radius: 8px 8px 0 0;
+  border-radius: var(--card-radius) var(--card-radius) 0 0;
   border-bottom: 1px solid #ebeef5;
 
   .back-btn {
@@ -183,8 +183,8 @@ onMounted(() => {
 
 .content-wrapper {
   background: #fff;
-  border-radius: 0 0 8px 8px;
-  padding: 20px;
+  border-radius: 0 0 var(--card-radius) var(--card-radius);
+  padding: var(--container-padding);
 }
 
 .info-section {
@@ -206,7 +206,7 @@ onMounted(() => {
 
 .attachment-box {
   border: 1px solid #ebeef5;
-  border-radius: 8px;
+  border-radius: var(--card-radius);
   padding: 12px;
   display: flex;
   align-items: center;
@@ -215,14 +215,14 @@ onMounted(() => {
 
   &:hover {
     border-color: #13c2c2;
-    box-shadow: 0 4px 12px rgba(19, 194, 194, 0.18);
+    box-shadow: var(--primary-btn-shadow);
     transform: translateY(-1px);
   }
 
   .file-icon-area {
     width: 38px;
     height: 38px;
-    border-radius: 8px;
+    border-radius: var(--card-radius);
     background: #f0f9f9;
     color: #13c2c2;
     display: flex;
@@ -258,7 +258,7 @@ onMounted(() => {
 .empty-attachment {
   padding: 20px;
   border: 1px dashed #dcdfe6;
-  border-radius: 8px;
+  border-radius: var(--card-radius);
   color: #909399;
   text-align: center;
   font-size: 14px;
