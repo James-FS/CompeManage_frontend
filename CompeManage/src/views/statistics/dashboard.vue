@@ -644,9 +644,10 @@ onBeforeUnmount(() => {
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="100" align="center">
+            <el-table-column label="操作" width="170" align="center">
               <template #default="scope">
-                <el-button link type="primary" @click="goPage(`/summary/summary/view/${scope.row.id}`)">查看</el-button>
+                <el-button link type="primary" @click="goPage(`/award/detail/${scope.row.id}`)">获奖明细</el-button>
+                <el-button link type="primary" @click="goPage(`/summary/summary/view/${scope.row.id}`)">总结</el-button>
               </template>
             </el-table-column>
             <template #empty>
