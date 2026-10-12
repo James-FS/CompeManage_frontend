@@ -54,7 +54,7 @@ const levelColorMap = {
 
 const awardLevelGroup = computed(() => {
   const level = detail.value.award_level || ''
-  return levelLabelMap[level] || '未知'
+  return detail.value.award_category || levelLabelMap[level] || (level.match(/国家级|省级|校级/)?.[0]) || '未知'
 })
 
 const awardLevelColor = computed(() => {
@@ -63,6 +63,13 @@ const awardLevelColor = computed(() => {
 
 const hasMultipleTeammates = computed(() => {
   return Array.isArray(detail.value.teammates) && detail.value.teammates.length > 1
+})
+
+const advisors = computed(() => {
+  try {
+    const data = typeof detail.value.advisor_info === 'string' ? JSON.parse(detail.value.advisor_info || '[]') : detail.value.advisor_info
+    return Array.isArray(data) ? data : []
+  } catch { return [] }
 })
 
 // --- 获取详情 ---
@@ -208,7 +215,7 @@ onMounted(() => {
           </div>
 
           <div class="award-item">
-            <div class="item-label">具体奖项等级</div>
+            <div class="item-label">获奖类别 / 等级</div>
             <div class="item-value">{{ awardLevelGroup }}{{ detail.award_specific }}</div>
           </div>
 
@@ -223,10 +230,12 @@ onMounted(() => {
 
           <!-- 团队/项目名称 -->
           <div class="award-item">
-            <div class="item-label">团队/项目名</div>
+            <div class="item-label">参赛项目名称</div>
             <div class="item-value">{{ detail.team_name || '（个人参赛）' }}</div>
           </div>
 
+          <div class="award-item"><div class="item-label">参赛类型</div><div class="item-value">{{ detail.participation_type === 'team' ? '团队赛' : detail.participation_type === 'individual' ? '个人赛' : (hasMultipleTeammates ? '团队赛' : '个人赛') }}</div></div>
+          <div class="award-item"><div class="item-label">备注</div><div class="item-value" style="white-space: pre-wrap">{{ detail.remark || '无' }}</div></div>
           <!-- 申报时间 -->
           <div class="award-item">
             <div class="item-label">申报时间</div>
@@ -243,9 +252,20 @@ onMounted(() => {
           <el-table-column prop="name" label="姓名" width="140" />
           <el-table-column prop="student_id" label="学号" width="160" />
           <el-table-column prop="college" label="所属学院" />
+          <el-table-column label="身份" width="90"><template #default="{ row }">{{ row.is_leader ? '队长' : '成员' }}</template></el-table-column>
+          <el-table-column prop="phone" label="手机号" min-width="130" />
+          <el-table-column prop="email" label="邮箱" min-width="180" />
         </el-table>
       </div>
 
+      <div class="info-section">
+        <h3 class="section-title">指导老师</h3>
+        <el-table :data="advisors" border stripe empty-text="未填写指导老师">
+          <el-table-column type="index" label="序号" width="70" />
+          <el-table-column prop="name" label="姓名" min-width="140" />
+          <el-table-column prop="college" label="学院 / 单位" min-width="200" />
+        </el-table>
+      </div>
       <!-- 证书材料 -->
       <div class="info-section">
         <h3 class="section-title">证明材料</h3>

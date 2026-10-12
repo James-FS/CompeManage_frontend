@@ -8,6 +8,10 @@ import { saveAs } from 'file-saver'
 import api from '@/api'
 import { put } from '@/utils/request'
 import { useUserStore } from '@/stores/user'
+const advisorNames = value => {
+  try { const data = typeof value === 'string' ? JSON.parse(value || '[]') : value; return Array.isArray(data) ? data.map(a => a.name).join('、') : '' }
+  catch { return '' }
+}
 const compID = useRoute().params.id
 const router = useRouter()
 const userStore = useUserStore()
@@ -101,6 +105,8 @@ onMounted(async () => {
         <el-table-column prop="award_name" label="获奖等级" width="140" align="center" />
         <el-table-column prop="award_month" label="获奖时间" width="140" align="center" />
         <el-table-column label="获奖成员" min-width="240" align="center"><template #default="{ row }"><el-button link type="primary" @click="memberTeam = row">{{ row.members.map(m => m.name).join('、') || '历史成员待核对' }}（{{ row.members.length }}人）</el-button></template></el-table-column>
+        <el-table-column label="指导老师" min-width="170" show-overflow-tooltip><template #default="{ row }">{{ advisorNames(row.advisor_info) }}</template></el-table-column>
+        <el-table-column prop="remark" label="备注" min-width="180" show-overflow-tooltip />
         <el-table-column label="操作" width="140" align="center"><template #default="{ row }"><el-button v-if="row.can_edit_team" link type="primary" :icon="Edit" @click="openTeam(row)">修改获奖信息</el-button></template></el-table-column>
       </el-table>
       <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="filteredTeams.length" :page-sizes="[10,20,50]" layout="total, sizes, prev, pager, next" style="margin-top: 18px; justify-content: flex-end" />

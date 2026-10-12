@@ -1,5 +1,5 @@
 <script setup>
-import { reactive, ref, computed, onMounted } from 'vue'
+import { reactive, ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
@@ -15,7 +15,15 @@ const isSubmitting = ref(false)
 
 // 搜索相关
 const searchLoading = ref(false)
-const compOptions = ref([]) // 搜索结果列表
+const compOptions = ref([])
+const compDialogVisible = ref(false)
+const compKeyword = ref('')
+const compYear = ref('')
+const compPage = ref(1)
+const compTotal = ref(0)
+const currentStudent = ref(null)
+const categoryNote = '获奖类别：指国家级、省部级，国际级竞赛等同于国家级。'
+const levelNote = '获奖等级：指一等奖、二等奖、三等奖，冠军（金奖）、特等奖等同于一等奖，亚军（银奖）等同于二等奖，季军（铜奖）等同于三等奖。如冠亚季军、金银铜奖从一等奖获得者中决出，则按一等奖计算。'
 
 // 判断是否为 PDF 文件
 const isPdfFile = computed(() => {
@@ -48,8 +56,11 @@ const studentTotal = ref(0)
 const form = reactive({
   compID: null,
   compName: '',
+  participationType: 'individual',
+  awardCategory: '',
+  remark: '',
+  advisors: [{ name: '', college: '' }],
   awardLevel: '',
-  awardSpecific: '',
   teamName: '',
   certImage: '',
   awardDate: '',
@@ -71,42 +82,40 @@ const uploadHeaders = { Authorization: `Bearer ${token}` }
 // 校验规则
 const rules = {
   compID: [{ required: true, message: '必须锁定一个具体的赛事', trigger: 'change' }],
-  awardLevel: [{ required: true, message: '请选择标准归档等级', trigger: 'change' }],
-  awardSpecific: [{ required: true, message: '请填写证书上的具体奖项名称', trigger: 'blur' }],
+  teamName: [{ required: true, whitespace: true, message: '请填写参赛项目名称', trigger: 'blur' }],
+  awardCategory: [{ required: true, message: '请选择获奖类别', trigger: 'change' }],
+  awardLevel: [{ required: true, message: '请选择获奖等级', trigger: 'change' }],
   certImage: [{ required: true, message: '请上传获奖证书证明', trigger: 'change' }],
   awardDate: [{ required: true, message: '请选择获奖日期', trigger: 'change' }],
 }
 
 // ==================== 赛事搜索相关方法 ====================
 
-const onSearchComp = async (query) => {
-  if (query) {
-    searchLoading.value = true
-    try {
-      const res = await api.searchCompList({ keyword: query, page_size: 20 })
-      if (res.code === 200) {
-        compOptions.value = res.data.map(item => ({
-          value: item.id,
-          label: item.comp_name,
-          year: item.year,
-        }))
-      }
-    } catch (error) {
-      console.error(error)
-    } finally {
-      searchLoading.value = false
+const fetchCompList = async () => {
+  searchLoading.value = true
+  try {
+    const res = await api.searchCompList({ keyword: compKeyword.value.trim(), year: compYear.value || undefined, page: compPage.value, page_size: 10, paginated: true })
+    if (res.code === 200) {
+      compOptions.value = res.data.list
+      compTotal.value = res.data.total
     }
-  } else {
-    compOptions.value = []
-  }
+  } finally { searchLoading.value = false }
 }
-
-const handleCompChange = (val) => {
-  const selected = compOptions.value.find(item => item.value === val)
-  if (selected) {
-    form.compName = selected.label
-  }
+const searchCompetitions = () => { compPage.value = 1; fetchCompList() }
+const openCompSelect = () => { compDialogVisible.value = true; fetchCompList() }
+const selectCompetition = (row) => {
+  form.compID = row.id
+  form.compName = `[${row.year}] ${row.comp_name}`
+  compDialogVisible.value = false
+  formRef.value?.clearValidate('compID')
 }
+const applyCurrentStudent = () => {
+  const u = currentStudent.value
+  if (u) form.leader = { name: u.name, stuID: u.username, college: u.college || '', phone: '', email: '' }
+}
+watch(() => form.participationType, (type) => {
+  if (type === 'individual') { form.members = []; applyCurrentStudent() }
+})
 
 // ==================== 学生选择相关方法 ====================
 
@@ -156,6 +165,11 @@ const handleDialogClose = () => {
 
 // 确认选择学生
 const selectStudent = (row) => {
+  const others = form.members.filter((_, index) => index !== currentMemberEditIndex.value)
+  if ((!isSelectingLeader.value && row.username === form.leader.stuID) || others.some(m => m.stuID === row.username)) {
+    ElMessage.warning('该学生已在团队中，请勿重复选择')
+    return
+  }
   if (isSelectingLeader.value) {
     // 选择队长
     form.leader.name = row.name
@@ -177,6 +191,7 @@ const selectStudent = (row) => {
   } else {
     // 编辑已有成员模式
     const member = form.members[currentMemberEditIndex.value]
+    if (member.stuID !== row.username) { member.phone = ''; member.email = '' }
     member.name = row.name
     member.stuID = row.username
     member.college = row.college
@@ -198,7 +213,7 @@ async function fetchStudentList() {
       search: searchForm.name || searchForm.username || '',
     })
     if (response.code === 200) {
-      studentList.value = response.data.list
+      studentList.value = response.data.list.filter(row => !searchForm.college || row.college === searchForm.college)
       studentTotal.value = response.data.total
     }
   } catch (error) {
@@ -234,19 +249,22 @@ const handleSubmit = async () => {
   if (!formRef.value) return
   await formRef.value.validate(async (valid) => {
     if (valid) {
-      //  检查队长是否已选择
+      if (form.participationType === 'team' && form.members.length === 0) return ElMessage.error('团队赛请至少添加一名团队成员')
+      if (form.advisors.some(a => !a.name.trim())) return ElMessage.error('请填写每位指导老师的姓名')
+      const participantLabel = form.participationType === 'individual' ? '本人' : '队长'
+      // 检查参赛人信息
       if (!form.leader.name) {
-        ElMessage.error('请先选择队长')
+        ElMessage.error(`请先填写${participantLabel}信息`)
         return
       }
 
       //  检查队长手机号和邮箱
       if (!form.leader.phone) {
-        ElMessage.error('请填写队长手机号')
+        ElMessage.error(`请填写${participantLabel}手机号`)
         return
       }
       if (!form.leader.email) {
-        ElMessage.error('请填写队长邮箱')
+        ElMessage.error(`请填写${participantLabel}邮箱`)
         return
       }
 
@@ -268,10 +286,14 @@ const handleSubmit = async () => {
         //  构造符合后端期望的数据结构
         const payload = {
           comp_id: form.compID,
-          award_level: form.awardLevel,
-          award_name: form.awardSpecific,
+          participation_type: form.participationType,
+          award_category: form.awardCategory,
+          award_level: form.awardCategory + form.awardLevel,
+          award_name: form.awardLevel,
+          advisors: form.advisors.map(a => ({ name: a.name.trim(), college: a.college.trim() })),
+          remark: form.remark.trim(),
           award_date: form.awardDate,
-          team_name: form.teamName || '个人参赛',
+          team_name: form.teamName.trim(),
           proof_url: form.certImage,
           members: [
             {
@@ -283,7 +305,7 @@ const handleSubmit = async () => {
               is_leader: true,
             },
             // 添加其他团队成员
-            ...form.members.map(m => ({
+            ...(form.participationType === 'team' ? form.members : []).map(m => ({
               name: m.name,
               student_id: m.stuID,
               phone: m.phone,
@@ -318,7 +340,15 @@ const handleSubmit = async () => {
 
 const goBack = () => router.back()
 
-onMounted(() => {
+onMounted(async () => {
+  const user = JSON.parse(localStorage.getItem('userInfo') || '{}')
+  if (user.username) {
+    try {
+      const res = await api.getStudentList({ page: 1, page_size: 10, role: 'student', search: user.username })
+      currentStudent.value = res.data?.list?.find(u => u.username === user.username)
+      applyCurrentStudent()
+    } catch { ElMessage.error('加载本人信息失败，请刷新后重试') }
+  }
   const compId = route.query.comp_id
   const compName = route.query.comp_name
   if (compId && compName) {
@@ -336,8 +366,13 @@ onMounted(() => {
     try {
       const data = JSON.parse(saved)
       if (data.comp_id === form.compID) {
-        form.awardLevel = data.award_level || ''
-        form.awardSpecific = data.award_name || ''
+        form.participationType = data.participation_type || ((data.members || []).length > 1 ? 'team' : 'individual')
+        form.awardCategory = data.award_category || (data.award_level || '').match(/国家级|省级|校级/)?.[0] || ''
+        form.awardLevel = (data.award_level || '').match(/一等奖|二等奖|三等奖/)?.[0] || ''
+        form.awardDate = data.award_time?.slice(0, 10) || ''
+        form.remark = data.remark || ''
+        const advisors = typeof data.advisor_info === 'string' ? JSON.parse(data.advisor_info || '[]') : data.advisor_info
+        form.advisors = Array.isArray(advisors) && advisors.length ? advisors : [{ name: '', college: '' }]
         form.teamName = data.team_name || ''
         form.certImage = data.proof_url || ''
 
@@ -346,7 +381,7 @@ onMounted(() => {
         if (leader) {
           form.leader = {
             name: leader.name || '',
-            stuID: leader.stu_id || '',
+            stuID: leader.student_id || leader.stu_id || '',
             phone: leader.phone || '',
             email: leader.email || '',
             college: leader.college || '',
@@ -356,7 +391,7 @@ onMounted(() => {
           .filter(m => !m.is_leader)
           .map(m => ({
             name: m.name || '',
-            stuID: m.stu_id || '',
+            stuID: m.student_id || m.stu_id || '',
             phone: m.phone || '',
             email: m.email || '',
             college: m.college || '',
@@ -409,34 +444,9 @@ onMounted(() => {
             <div class="section-title">01 赛事锁定</div>
             
             <el-form-item label="搜索并选择赛事 (包含年份)" prop="compID">
-              <el-select
-                v-model="form.compID"
-                filterable
-                remote
-                reserve-keyword
-                placeholder="请输入关键词搜索（如：蓝桥杯、数学建模）"
-                :remote-method="onSearchComp"
-                :loading="searchLoading"
-                @change="handleCompChange"
-                class="search-select"
-                popper-class="comp-select-popper"
-              >
-                <el-option
-                  v-for="item in compOptions"
-                  :key="item.value"
-                  :label="`[${item.year}] ${item.label}`" 
-                  :value="item.value"
-                >
-                  <div class="option-item">
-                    <span class="comp-name">
-                      <el-tag size="small" effect="dark" type="danger" style="margin-right:6px">
-                        {{ item.year }}
-                      </el-tag>
-                      {{ item.label }}
-                    </span>
-                  </div>
-                </el-option>
-              </el-select>
+              <el-input v-model="form.compName" readonly placeholder="请选择对应年份的赛事" @click="openCompSelect">
+                <template #append><el-button @click="openCompSelect">选择赛事</el-button></template>
+              </el-input>
               <div class="help-text">
                 <el-icon><InfoFilled /></el-icon> 
                 如果没有找到对应年份的赛事，请联系学院管理员在后台"竞赛目录"中添加。
@@ -444,12 +454,25 @@ onMounted(() => {
             </el-form-item>
           </div>
 
+          <div class="form-section">
+            <div class="section-title">02 参赛信息</div>
+            <el-form-item label="参赛项目名称" prop="teamName">
+              <el-input v-model="form.teamName" maxlength="255" show-word-limit placeholder="请输入参赛项目名称，同一赛事通过项目名称区分团队" />
+            </el-form-item>
+            <el-form-item label="参赛类型">
+              <el-radio-group v-model="form.participationType">
+                <el-radio-button value="individual">个人赛</el-radio-button>
+                <el-radio-button value="team">团队赛</el-radio-button>
+              </el-radio-group>
+            </el-form-item>
+          </div>
+
           <!-- 队长信息 -->
           <div class="form-section">
             <div class="section-header">
-              <h3 class="section-title" style="margin: 0">队长信息</h3>
+              <h3 class="section-title" style="margin: 0">{{ form.participationType === 'individual' ? '本人信息' : '队长信息' }}</h3>
               <el-button
-                v-if="!form.leader.name"
+                v-if="form.participationType === 'team' && !form.leader.name"
                 link
                 type="primary"
                 @click="openStudentSelect('leader')"
@@ -458,7 +481,7 @@ onMounted(() => {
                 选择队长
               </el-button>
               <el-button
-                v-if="form.leader.name"
+                v-if="form.participationType === 'team' && form.leader.name"
                 link
                 type="primary"
                 @click="openStudentSelect('leader')"
@@ -470,7 +493,7 @@ onMounted(() => {
             <div class="info-grid">
               <el-empty
                 v-if="!form.leader.name"
-                description="请先选择队长"
+                :description="form.participationType === 'individual' ? '正在加载本人信息' : '请先选择队长'"
                 :image-size="80"
               />
 
@@ -513,7 +536,7 @@ onMounted(() => {
           </div>
 
           <!-- 团队成员 -->
-          <div class="form-section">
+          <div v-if="form.participationType === 'team'" class="form-section">
             <div class="section-header">
               <h3 class="section-title" style="margin: 0">团队成员</h3>
               <el-button link type="primary" @click="addMember" :icon="Plus">
@@ -523,7 +546,7 @@ onMounted(() => {
 
             <div class="member-grid-container">
               <div v-if="form.members.length === 0" class="empty-tip">
-                <el-empty description="暂无成员（可选）" :image-size="60" />
+                <el-empty description="请添加团队成员（不含队长）" :image-size="60" />
               </div>
 
               <div v-for="(m, i) in form.members" :key="i" class="member-card">
@@ -590,49 +613,44 @@ onMounted(() => {
             </div>
           </div>
 
-          <!-- 获奖详情 -->
           <div class="form-section">
-            <div class="section-title">02 获奖详情</div>
-            
+            <div class="section-header">
+              <h3 class="section-title" style="margin: 0">指导老师</h3>
+              <el-button link type="primary" :icon="Plus" @click="form.advisors.push({ name: '', college: '' })">添加指导老师</el-button>
+            </div>
+            <el-row v-for="(advisor, index) in form.advisors" :key="index" :gutter="20">
+              <el-col :span="10" :xs="24">
+                <el-form-item :label="`指导老师 ${index + 1} 姓名`" :prop="`advisors.${index}.name`" :rules="[{ required: true, whitespace: true, message: '请填写指导老师姓名', trigger: 'blur' }]">
+                  <el-input v-model="advisor.name" maxlength="100" placeholder="请输入指导老师姓名" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="10" :xs="20"><el-form-item label="学院 / 单位"><el-input v-model="advisor.college" maxlength="255" placeholder="请输入学院或单位（选填）" /></el-form-item></el-col>
+              <el-col :span="4" :xs="4"><el-button style="margin-top: 32px" link type="danger" :disabled="form.advisors.length === 1" @click="form.advisors.splice(index, 1)">删除</el-button></el-col>
+            </el-row>
+          </div>
+          <div class="form-section">
+            <div class="section-title">03 获奖详情</div>
             <div class="form-row-2">
-              <el-form-item label="标准归档等级 (用于统计)" prop="awardLevel">
-                <el-select v-model="form.awardLevel" placeholder="请对照学校标准选择" style="width: 100%">
-                  <el-option label="国家级一等奖" value="国家级一等奖" />
-                  <el-option label="国家级二等奖" value="国家级二等奖" />
-                  <el-option label="国家级三等奖" value="国家级三等奖" />
-                  <el-option label="省级一等奖" value="省级一等奖" />
-                  <el-option label="省级二等奖" value="省级二等奖" />
-                  <el-option label="省级三等奖" value="省级三等奖" />
-                  <el-option label="校级一等奖" value="校级一等奖" />
-                  <el-option label="校级二等奖" value="校级二等奖" />
+              <el-form-item prop="awardCategory">
+                <template #label>获奖类别 <el-tooltip :content="categoryNote" placement="top" :show-after="150"><el-icon tabindex="0" :aria-label="categoryNote"><InfoFilled /></el-icon></el-tooltip></template>
+                <el-select v-model="form.awardCategory" placeholder="请选择获奖类别" style="width: 100%">
+                  <el-option v-for="category in ['国家级', '省级', '校级']" :key="category" :label="category" :value="category" />
                 </el-select>
               </el-form-item>
-
-              <el-form-item label="证书具体奖项名称" prop="awardSpecific">
-                <el-input v-model="form.awardSpecific" placeholder="如：金奖、特等奖、最佳创意奖" />
+              <el-form-item prop="awardLevel">
+                <template #label>获奖等级 <el-tooltip :content="levelNote" placement="top" :show-after="150"><el-icon tabindex="0" :aria-label="levelNote"><InfoFilled /></el-icon></el-tooltip></template>
+                <el-select v-model="form.awardLevel" placeholder="请选择获奖等级" style="width: 100%">
+                  <el-option v-for="level in ['一等奖', '二等奖', '三等奖']" :key="level" :label="level" :value="level" />
+                </el-select>
               </el-form-item>
             </div>
-
-            <div class="form-row-2">
-              <el-form-item label="获奖日期" prop="awardDate">
-                <el-date-picker 
-                  v-model="form.awardDate" 
-                  type="date" 
-                  placeholder="选择日期" 
-                  format="YYYY-MM-DD"
-                  value-format="YYYY-MM-DD"
-                  style="width: 100%"
-                />
-              </el-form-item>
-              <el-form-item label="团队/项目名称">
-                <el-input v-model="form.teamName" placeholder="个人参赛可不填" />
-              </el-form-item>
-            </div>
+            <el-form-item label="获奖时间" prop="awardDate"><el-date-picker v-model="form.awardDate" type="date" placeholder="选择获奖日期" format="YYYY-MM-DD" value-format="YYYY-MM-DD" style="width: 100%" /></el-form-item>
+            <el-form-item label="备注"><el-input v-model="form.remark" type="textarea" :rows="3" maxlength="2000" show-word-limit placeholder="填写需要补充说明的信息（选填）" /></el-form-item>
           </div>
 
           <!-- 证明件上传 -->
           <div class="form-section">
-            <div class="section-title">03 证明件上传</div>
+            <div class="section-title">04 证明件上传</div>
             
             <el-form-item prop="certImage">
               <el-upload
@@ -670,11 +688,26 @@ onMounted(() => {
     </div>
   </div>
 
-  <!--  学生选择弹窗 -->
+  <el-dialog v-model="compDialogVisible" title="选择赛事" width="min(960px, 94vw)" align-center append-to-body>
+    <el-form :inline="true" @submit.prevent="searchCompetitions">
+      <el-form-item label="赛事名称"><el-input v-model="compKeyword" clearable placeholder="输入赛事名称或编号" @keyup.enter="searchCompetitions" @clear="searchCompetitions" /></el-form-item>
+      <el-form-item label="举办年份"><el-date-picker v-model="compYear" type="year" value-format="YYYY" placeholder="全部年份" clearable @change="searchCompetitions" /></el-form-item>
+      <el-form-item><el-button type="primary" @click="searchCompetitions">搜索</el-button><el-button @click="compKeyword = ''; compYear = ''; searchCompetitions()">重置</el-button></el-form-item>
+    </el-form>
+    <el-table :data="compOptions" v-loading="searchLoading" border stripe height="360">
+      <el-table-column prop="comp_name" label="赛事名称" min-width="260" />
+      <el-table-column prop="comp_code" label="赛事编号" width="150" />
+      <el-table-column prop="year" label="举办年份" width="100" align="center" />
+      <el-table-column prop="comp_level" label="赛事级别" width="100" align="center" />
+      <el-table-column label="操作" width="90" align="center"><template #default="{ row }"><el-button link type="primary" @click="selectCompetition(row)">选择</el-button></template></el-table-column>
+    </el-table>
+    <div class="pagination-wrapper"><el-pagination v-model:current-page="compPage" :page-size="10" :total="compTotal" layout="total, prev, pager, next" @current-change="fetchCompList" /></div>
+  </el-dialog>
+  <!-- 学生选择弹窗 -->
   <el-dialog
     v-model="studentDialogVisible"
     :title="isSelectingLeader ? '选择队长' : '选择队员'"
-    width="800px"
+    width="min(800px, 94vw)"
     align-center
     append-to-body
     @close="handleDialogClose"
@@ -758,7 +791,6 @@ onMounted(() => {
 </template>
 
 <style scoped lang="scss">
-/* ... 保留原有样式 ... */
 
 .section-header {
   display: flex;
@@ -864,7 +896,7 @@ onMounted(() => {
 
 .paper-sheet {
   width: 100%;
-  max-width: 760px;
+  max-width: 1200px;
   background: #fff;
   border-radius: var(--card-radius);
   box-shadow: var(--card-shadow);
@@ -1106,6 +1138,12 @@ onMounted(() => {
     padding: 12px 24px;
   }
 }
+@media (max-width: 768px) {
+  .paper-container { padding: 12px; }
+  .paper-body { padding: 20px 16px; }
+  .form-row-2 { grid-template-columns: 1fr; }
+}
+
 </style>
 
 <style>
