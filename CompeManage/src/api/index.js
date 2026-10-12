@@ -31,11 +31,12 @@ export const api = {
   // ==================== 竞赛相关 ====================
   getCompetitionList: (params) => get('/api/comp/list', params),
   createCompetition: (data) => post('/api/comp/create', data),
-  batchImportCompetition: (data) => post('/api/comp/batch-import', data),
+  batchImportCompetition: (data) => post('/api/comp/batch-import', data, { timeout: 120000 }),
   deleteCompetition: (id) => del(`/api/comp/${id}`),
   batchDeleteCompetition: (ids) => post('/api/comp/batch-delete', { ids }),
   restoreCompetition: (id) => put(`/api/comp/${id}/restore`),
   getManagerList: (params) => get('/api/comp/manager/list', params),
+  lookupManagersByWorkIds: (data) => post('/api/comp/manager/lookup-by-work-ids', data),
   getCompetitionYears: () => get('/api/comp/years'),
   createCompetitionYear: (data) => post('/api/comp/years', data),
   updateCompetitionYear: (year, data) => put(`/api/comp/years/${year}`, data),
