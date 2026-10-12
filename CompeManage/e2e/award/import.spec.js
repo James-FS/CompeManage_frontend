@@ -17,18 +17,44 @@ test('Excel解析排除说明、保留学号文本，并可新增和提交', asy
   await expect(rows.first().locator('input').first()).toHaveValue('00123')
   await page.getByRole('button', { name: '新增一条', exact: true }).click()
   await expect(rows).toHaveCount(2)
-  await page.getByRole('button', { name: '校验数据', exact: true }).click()
+  await page.getByRole('button', { name: '提交导入', exact: true }).click()
   await expect(page.getByText('学号不能为空', { exact: true })).toBeVisible()
+  await expect(page.getByText('1 行需要修正；本批数据未写入，请根据下方提示修改后重新提交。', { exact: true })).toBeVisible()
   await rows.nth(1).getByRole('button').click()
   await expect(rows).toHaveCount(1)
   await page.locator('.el-table__body-wrapper .el-scrollbar__wrap').evaluate(el => { el.scrollLeft = 0 })
   await page.locator('.import-page').evaluate(el => el.scrollIntoView({ block: 'start' }))
-  await page.screenshot({ path: 'test-results/award-import-preview.png', fullPage: true })
+  await page.screenshot({ path: 'test-results/award-import-validation.png', fullPage: true })
   await page.getByRole('button', { name: '提交导入', exact: true }).click()
   await expect(page).toHaveURL(/award\/detail\/1/)
   expect(state.getSubmitted().rows).toHaveLength(1)
   expect(state.getSubmitted().rows[0].student_id).toBe('00123')
 })
+
+test('学生补录重复记录时显示服务端提示', async ({ page }) => {
+  await mockAwardSession(page, 'student')
+  await page.addInitScript(() => sessionStorage.setItem('resubmitAward', JSON.stringify({
+    comp_id: 1,
+    award_level: '省级二等奖',
+    award_name: '二等奖',
+    team_name: '已有导入项目',
+    proof_url: '/uploads/e2e-certificate.pdf',
+    members: [{
+      is_leader: true,
+      name: '测试学生',
+      stu_id: 'S2024001',
+      phone: '13800000000',
+      email: 'student@example.com',
+      college: '学院甲',
+    }],
+  })))
+  await page.goto('/#/award/student/declare?comp_id=1&comp_name=校验赛事')
+  await page.getByPlaceholder('选择日期').click()
+  await page.locator('.el-date-table td.today:not(.disabled)').click()
+  await page.getByRole('button', { name: '确认提交' }).click()
+  await expect(page.locator('.el-message--error').filter({ hasText: '记录已存在' })).toBeVisible()
+})
+
 test('校管理员在校赛填报列表调整全局导入设置', async ({ page }) => {
   await mockAwardSession(page)
   await page.goto('/#/award/list')

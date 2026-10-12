@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Download, UploadFilled, Delete, Plus, CircleCheck } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
@@ -16,6 +16,7 @@ const tableData = ref([])
 const fileName = ref('')
 const requireRegistration = ref(false)
 const settingReady = ref(false)
+const validationErrorCount = computed(() => tableData.value.filter(row => row.error).length)
 const columns = [
   { key: 'student_id', label: '学号', width: 160 },
   { key: 'name', label: '学生姓名', width: 120 },
@@ -67,33 +68,19 @@ const handleFileChange = async uploadFile => {
   } catch (error) { ElMessage.error(errorMessage(error)) }
   finally { loading.value = false }
 }
-const validate = async () => {
-  if (!tableData.value.length) { ElMessage.warning('请先导入或新增数据'); return false }
-  const res = await post(`/api/award/import/preview?comp_id=${compID}`, { rows: tableData.value })
-  tableData.value = res.data.rows
-  requireRegistration.value = res.data.require_registration
-  if (res.data.error_count) {
-    ElMessage.warning(`有 ${res.data.error_count} 行需要修正，尚未写入数据`)
-    return false
-  }
-  return true
-}
-const preview = async () => {
-  loading.value = true
-  try { if (await validate()) ElMessage.success('校验通过') }
-  catch (error) { ElMessage.error(errorMessage(error)) }
-  finally { loading.value = false }
-}
 const submitImport = async () => {
+  if (!tableData.value.length) {
+    ElMessage.warning('请先导入或新增数据')
+    return
+  }
   loading.value = true
   try {
-    if (!await validate()) return
     const res = await post(`/api/award/import?comp_id=${compID}`, { rows: tableData.value })
     ElMessage.success(res.message || '导入成功')
     router.push({ name: 'AwardDetail', params: { id: compID } })
   } catch (error) {
-    if (error.response?.data?.data?.rows) tableData.value = error.response.data.data.rows
-    ElMessage.error(errorMessage(error))
+    const failedRows = error.response?.data?.data?.rows
+    if (Array.isArray(failedRows)) tableData.value = failedRows
   } finally { loading.value = false }
 }
 onMounted(loadSetting)
@@ -124,8 +111,19 @@ onMounted(loadSetting)
         </div>
       </template>
       <el-alert title="同一赛事内项目名称相同视为同一团队，获奖类别、等级和时间必须一致。国际级统一保存为国家级。" type="info" :closable="false" />
+      <el-alert
+        v-if="validationErrorCount"
+        :title="`${validationErrorCount} 行需要修正；本批数据未写入，请根据下方提示修改后重新提交。`"
+        type="error"
+        :closable="false"
+        show-icon
+        style="margin-top: 12px"
+      />
       <el-table :data="tableData" v-loading="loading" border height="calc(100vh - 390px)" style="margin-top: 16px">
         <el-table-column type="index" label="序号" width="65" fixed />
+        <el-table-column label="原始行号" width="95" align="center">
+          <template #default="{ row }">{{ row.row_number || '新增' }}</template>
+        </el-table-column>
         <el-table-column v-for="column in columns" :key="column.key" :label="column.label" :min-width="column.width">
           <template #default="{ row }">
             <el-select v-if="column.key === 'award_category'" v-model="row[column.key]" :disabled="loading" @change="row.error = ''; row.existing = false">
@@ -141,7 +139,6 @@ onMounted(loadSetting)
       </el-table>
       <div class="footer">
         <el-button :disabled="loading" @click="tableData = []; fileName = ''">清空</el-button>
-        <el-button :disabled="loading" @click="preview">校验数据</el-button>
         <el-button type="primary" :icon="CircleCheck" :loading="loading" @click="submitImport">提交导入</el-button>
       </div>
     </el-card>

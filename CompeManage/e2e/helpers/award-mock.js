@@ -20,12 +20,24 @@ export async function mockAwardSession(page, role = 'school_admin') {
     if (path === '/api/award/import/settings') {
       if (req.method() === 'PUT') setting = req.postDataJSON().require_registration
       data = { require_registration: setting }
-    } else if (path === '/api/award/import/preview') {
-      const rows = req.postDataJSON().rows.map(row => ({ ...row, error: row.student_id ? '' : '学号不能为空', existing: false }))
-      data = { rows, error_count: rows.filter(r => r.error).length, require_registration: setting }
     } else if (path === '/api/award/import') {
       submitted = req.postDataJSON()
+      const rows = submitted.rows.map(row => ({ ...row, error: row.student_id ? '' : '学号不能为空', existing: false }))
+      const errorCount = rows.filter(row => row.error).length
+      if (errorCount) {
+        await route.fulfill({
+          status: 400,
+          json: { code: 400, message: '数据校验未通过，未写入任何数据', data: { rows, error_count: errorCount } },
+        })
+        return
+      }
       data = { student_count: submitted.rows.length, team_count: 1 }
+    } else if (path === '/api/award/student/supplement') {
+      await route.fulfill({
+        status: 400,
+        json: { code: 400, message: '记录已存在：该学生在本赛事已有获奖记录；如需更正，请联系管理员修改原记录' },
+      })
+      return
     } else if (path === '/api/award/comp-awards') data = { list: [team], student_count: 2, team_count: 1 }
     else if (path === '/api/college/list') data = [{ id: 1, name: '学院甲' }, { id: 2, name: '学院乙' }]
     else if (path === '/api/award/teams/1') Object.assign(team, req.postDataJSON())
