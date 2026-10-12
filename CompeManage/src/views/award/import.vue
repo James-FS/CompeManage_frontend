@@ -133,7 +133,7 @@ onMounted(loadSetting)
           </template>
         </el-table-column>
         <el-table-column label="校验结果" width="250">
-          <template #default="{ row }"><span v-if="row.error" class="error">{{ row.error }}</span><el-tag v-else-if="row.existing" type="info">已存在，保留原填报归属</el-tag><span v-else>待提交校验</span></template>
+          <template #default="{ row }"><span v-if="row.error" class="error">{{ row.error }}</span><el-tag v-else-if="row.existing" type="info">已存在，保留原填报归属</el-tag><span v-else>提交时自动校验</span></template>
         </el-table-column>
         <el-table-column label="操作" width="70" fixed="right"><template #default="{ $index }"><el-button link type="danger" :icon="Delete" :disabled="loading" @click="tableData.splice($index, 1)" /></template></el-table-column>
       </el-table>
