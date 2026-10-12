@@ -80,12 +80,11 @@ const handleBatchPass = async () => {
       }
     } catch (error) {
       console.error(error)
-      ElMessage.error('批量操作部分或全部失败，请刷新后重试')
-      fetchAwardList()
+      if (!error.messageShown) ElMessage.error(error.message || '批量审核失败，请重试')
     } finally {
       loading.value = false
     }
-  })
+  }).catch(() => {})
 }
 
 const openBatchRejectDialog = () => {
@@ -117,8 +116,7 @@ const handleBatchReject = async () => {
     }
   } catch (error) {
     console.error(error)
-    ElMessage.error('批量操作部分或全部失败，请刷新后重试')
-    fetchAwardList()
+    if (!error.messageShown) ElMessage.error(error.message || '批量审核失败，请重试')
   } finally {
     loading.value = false
   }
@@ -138,9 +136,9 @@ const handleQuickPass = (row) => {
         ElMessage.success('审核已通过')
       }
     } catch (e) {
-      ElMessage.warning('' + e.message)
+      if (!e.messageShown) ElMessage.error(e.message || '审核失败，请重试')
     }
-  })
+  }).catch(() => {})
 }
 
 // --- 详情页跳转 ---
@@ -166,7 +164,7 @@ async function fetchAwardList() {
       total.value = res.data.total || 0
     }
   } catch (err) {
-    ElMessage.info('无相关数据')
+    if (!err.messageShown) ElMessage.error(err.message || '获取申报列表失败')
   } finally {
     loading.value = false
   }
