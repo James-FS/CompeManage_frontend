@@ -151,17 +151,16 @@ test('院管理员为赛事B走导入页：校验报错、删错行、提交成�
   await expect(page.getByText(/读取 5 名学生，示例和说明行已排除/)).toBeVisible()
   await expect(page.locator('.el-table__body tbody tr')).toHaveCount(5)
 
-  // 校验数据：学号不存在的行应报错且不写入（导入页学号是 input 值，用校验结果列的文本定位坏行）
-  await page.getByRole('button', { name: '校验数据', exact: true }).click()
-  await expect(page.getByText('有 1 行需要修正，尚未写入数据')).toBeVisible()
+  // 提交时自动校验：学号不存在的行应报错且不写入
+  const invalidImportResp = page.waitForResponse(r => r.url().includes('/api/award/import?') && r.request().method() === 'POST')
+  await page.getByRole('button', { name: '提交导入', exact: true }).click()
+  expect((await (await invalidImportResp).json()).code).toBe(400)
+  await expect(page.getByText('1 行需要修正；本批数据未写入，请根据下方提示修改后重新提交。')).toBeVisible()
   const badRow = page.locator('.el-table__body tbody tr').filter({ hasText: '学号不存在' })
   await expect(badRow).toHaveCount(1)
 
   await badRow.getByRole('button').click()
   await expect(page.locator('.el-table__body tbody tr')).toHaveCount(4)
-
-  await page.getByRole('button', { name: '校验数据', exact: true }).click()
-  await expect(page.getByText('校验通过', { exact: true })).toBeVisible()
 
   const importResp = page.waitForResponse(r => r.url().includes('/api/award/import?') && r.request().method() === 'POST')
   await page.getByRole('button', { name: '提交导入', exact: true }).click()
@@ -176,6 +175,109 @@ test('院管理员为赛事B走导入页：校验报错、删错行、提交成�
   await expect(page.locator('.el-table__body tr').filter({ hasText: P.B2 })).toContainText('校赛')
   // 跨学院团队两名成员
   await expect(page.locator('.el-table__body tr').filter({ hasText: P.B1 })).toContainText('林芷晴、黄子涛（2人）')
+})
+
+test('已导入成员不能重复补录，同赛事重复获奖记录整批拒绝', async ({ page }) => {
+  let comp = state.comps.B
+  if (!comp) {
+    // 支持单独运行本条回归用例：此前 B 赛事由前序 UI 用例创建，这里补齐最小 API fixture。
+    await login(page, SCHOOL_ADMIN)
+    const adminToken = await page.evaluate(() => localStorage.getItem('token'))
+    const createResponse = await page.request.post('/api/comp/create', {
+      headers: { Authorization: `Bearer ${adminToken}` },
+      data: {
+        comp_name: `E2E获奖流程·重复校验_${RUN_TAG}`,
+        comp_level: '校级',
+        comp_type: '学科竞赛',
+        organizer: 'E2E测试主办方',
+        undertaker: 'E2E测试承办方',
+        manager_id: 7,
+        college: '计算机科学与网络工程学院',
+        year: YEAR,
+        desc: '独立运行重复获奖校验用例',
+      },
+    })
+    const created = await createResponse.json()
+    expect(created.code, `创建校验赛事应成功：${JSON.stringify(created)}`).toBe(200)
+    comp = { id: created.data.competition.id, compCode: created.data.competition.comp_code, name: created.data.competition.comp_name }
+
+    const seedResponse = await page.request.post(`/api/award/import?comp_id=${comp.id}`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+      data: { rows: [{
+        student_id: STUDENT.E2E2605.username,
+        name: STUDENT.E2E2605.name,
+        college: STUDENT.E2E2605.college,
+        major: STUDENT.E2E2605.major,
+        project_name: P.B1,
+        award_month: '2026-04',
+        award_category: '省级',
+        award_name: '二等奖',
+      }] },
+    })
+    const seedBody = await seedResponse.json()
+    expect(seedBody.code, `导入初始获奖记录失败：${JSON.stringify(seedBody)}`).toBe(200)
+  }
+
+  await login(page, { username: STUDENT.E2E2605.username, password: '123', role: 'student' })
+  const studentToken = await page.evaluate(() => localStorage.getItem('token'))
+  const supplementResponse = await page.request.post('/api/award/student/supplement', {
+    headers: { Authorization: `Bearer ${studentToken}` },
+    data: {
+      comp_id: comp.id,
+      team_name: P.B1,
+      award_level: '省级二等奖',
+      award_name: '二等奖',
+      award_date: '2026-04-01',
+      proof_url: '/uploads/e2e-duplicate-award.pdf',
+      members: [{
+        name: STUDENT.E2E2605.name,
+        student_id: STUDENT.E2E2605.username,
+        phone: '13800000000',
+        email: 'e2e2605@example.com',
+        college: STUDENT.E2E2605.college,
+        is_leader: true,
+      }],
+    },
+  })
+  expect(supplementResponse.status()).toBe(400)
+  expect((await supplementResponse.json()).message).toContain('记录已存在')
+
+  await login(page, SCHOOL_ADMIN)
+  const managerToken = await page.evaluate(() => localStorage.getItem('token'))
+  const duplicateExistingResponse = await page.request.post(`/api/award/import?comp_id=${comp.id}`, {
+    headers: { Authorization: `Bearer ${managerToken}` },
+    data: { rows: [{
+      student_id: STUDENT.E2E2605.username,
+      name: STUDENT.E2E2605.name,
+      college: STUDENT.E2E2605.college,
+      major: STUDENT.E2E2605.major,
+      project_name: `另一个项目_${RUN_TAG}`,
+      award_month: '2026-05',
+      award_category: '国家级',
+      award_name: '一等奖',
+    }] },
+  })
+  expect(duplicateExistingResponse.status()).toBe(400)
+  const duplicateExistingBody = await duplicateExistingResponse.json()
+  expect(duplicateExistingBody.data.rows[0].error).toContain('该学生在本赛事已有其他获奖记录')
+
+  const duplicateBatchResponse = await page.request.post(`/api/award/import?comp_id=${comp.id}`, {
+    headers: { Authorization: `Bearer ${managerToken}` },
+    data: { rows: ['批次项目一', '批次项目二'].map(projectName => ({
+      student_id: STUDENT.E2E2609.username,
+      name: STUDENT.E2E2609.name,
+      college: STUDENT.E2E2609.college,
+      major: STUDENT.E2E2609.major,
+      project_name: `${projectName}_${RUN_TAG}`,
+      award_month: '2026-05',
+      award_category: '省级',
+      award_name: '二等奖',
+    })) },
+  })
+  expect(duplicateBatchResponse.status()).toBe(400)
+  const duplicateBatchBody = await duplicateBatchResponse.json()
+  expect(duplicateBatchBody.data.error_count).toBe(1)
+  expect(duplicateBatchBody.data.rows[1].error).toContain('同一赛事中，每名学生只能申报一条获奖记录')
 })
 
 test('院管理员为赛事C手动新增 2 人团队获奖', async ({ page }) => {
@@ -199,9 +301,6 @@ test('院管理员为赛事C手动新增 2 人团队获奖', async ({ page }) =>
     学号: STUDENT.E2E2601.username, 姓名: STUDENT.E2E2601.name, 学院: STUDENT.E2E2601.college, 专业: STUDENT.E2E2601.major,
     项目: P.C1, 时间: '2026-08', 类别: '省级', 等级: '三等奖',
   })
-
-  await page.getByRole('button', { name: '校验数据', exact: true }).click()
-  await expect(page.getByText('校验通过', { exact: true })).toBeVisible()
 
   const importResp = page.waitForResponse(r => r.url().includes('/api/award/import?') && r.request().method() === 'POST')
   await page.getByRole('button', { name: '提交导入', exact: true }).click()
