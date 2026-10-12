@@ -125,6 +125,11 @@ const goResubmit = (award) => {
   sessionStorage.setItem('resubmitAward', JSON.stringify({
     comp_id: award.comp_id,
     comp_name: compName,
+    participation_type: award.participation_type,
+    award_category: award.award_category,
+    award_time: award.award_time,
+    advisor_info: award.advisor_info,
+    remark: award.remark,
     award_level: award.award_level,
     award_name: award.award_name,
     team_name: award.register?.team_name || '',
