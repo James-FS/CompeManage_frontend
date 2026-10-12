@@ -89,6 +89,8 @@ export const api = {
   getAwardCompList: (params) => get('/api/award/list', params),
   getCompAwards: (comp_id) => get(`/api/award/comp-awards?comp_id=${comp_id}`),
   getAwardTemplate: (comp_id) => get(`/api/award/export-template?comp_id=${comp_id}`, {}, { responseType: 'blob' }),
+  // 指导教师候选（按身份取在职教职工，支持姓名/工号搜索）
+  getTeacherList: (params) => get('/api/reg/user/list', { ...params, role: 'teacher' }),
   exportAwardProjects: (year) => get(`/api/award/export/projects${year ? `?year=${year}` : ''}`, {}, { responseType: 'blob' }),
   exportAwardStudents: (year) => get(`/api/award/export/students${year ? `?year=${year}` : ''}`, {}, { responseType: 'blob' }),
   getAwardCompList:(params) => get('/api/award/list', params),
