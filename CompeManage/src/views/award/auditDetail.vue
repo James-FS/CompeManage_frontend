@@ -81,7 +81,7 @@ async function fetchDetail() {
       detail.value = res.data
     }
   } catch (error) {
-    ElMessage.error('获取详情失败')
+    if (!error.messageShown) ElMessage.error(error.message || '获取详情失败')
     console.error(error)
   } finally {
     loading.value = false
@@ -89,45 +89,39 @@ async function fetchDetail() {
 }
 
 // --- 审核操作 ---
-async function auditAward() {
-  try {
-    return { code: 200 }
-  } catch (error) {
-    ElMessage.error('审核操作失败')
-    throw error
+const showAuditError = (error) => {
+  if (error !== 'cancel' && error !== 'close' && !error?.messageShown) {
+    ElMessage.error(error?.message || '审核操作失败，请重试')
   }
 }
 
-const handlePass = () => {
-  ElMessageBox.confirm(
-    `确定通过 ${detail.value.student_name} 的获奖申报吗？`,
-    '通过审核',
-    {
-      confirmButtonText: '确定通过',
-      cancelButtonText: '取消',
-      type: 'success',
-    }
-  ).then(async () => {
+const handlePass = async () => {
+  try {
+    await ElMessageBox.confirm(`确定通过 ${detail.value.student_name} 的获奖申报吗？`, '通过审核', {
+      confirmButtonText: '确定通过', cancelButtonText: '取消', type: 'success',
+    })
     const res = await api.passAwardAudit(awardID)
     if (res.code === 200) {
       detail.value.status = 1
-      await auditAward()
       ElMessage.success('审核已通过')
     }
-  })
+  } catch (error) {
+    showAuditError(error)
+  }
 }
 
 const handleReject = async () => {
-  if (!rejectReason.value.trim()) {
-    return ElMessage.warning('请输入驳回原因')
-  }
-  const res = await api.rejectAwardAudit(awardID, rejectReason.value)
-  if (res.code === 200) {
-    detail.value.status = 2
-    detail.value.reject_reason = rejectReason.value
-    await auditAward()
-    ElMessage.success('已驳回申请')
-    rejectDialogVisible.value = false
+  if (!rejectReason.value.trim()) return ElMessage.warning('请输入驳回原因')
+  try {
+    const res = await api.rejectAwardAudit(awardID, rejectReason.value)
+    if (res.code === 200) {
+      detail.value.status = 2
+      detail.value.reject_reason = rejectReason.value
+      ElMessage.success('已驳回申请')
+      rejectDialogVisible.value = false
+    }
+  } catch (error) {
+    showAuditError(error)
   }
 }
 
@@ -139,7 +133,7 @@ const openCertificate = async () => {
     // 走预览分支（api 内已封装 window.open(blobUrl, '_blank')）
     await api.downloadFile(detail.value.cert_image, true)
   } catch (error) {
-    ElMessage.error('证书预览失败：' + (error.message || '未知错误'))
+    if (!error.messageShown) ElMessage.error('证书预览失败：' + (error.message || '未知错误'))
     console.error(error)
   }
 }

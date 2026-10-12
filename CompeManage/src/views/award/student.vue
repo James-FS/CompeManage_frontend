@@ -1,13 +1,19 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { Trophy, Timer, DocumentChecked, Calendar, Paperclip } from '@element-plus/icons-vue'
 import api from '@/api'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
 const loading = ref(false)
-const activeTab = ref('registration')
+const route = useRoute()
+const activeTab = ref(['registration', 'declaration', 'award'].includes(route.query.tab) ? route.query.tab : 'registration')
+const awardTabs = [
+  { name: 'declaration', label: '我的申报', empty: '暂无奖项申报记录' },
+  { name: 'award', label: '我的获奖', empty: '暂无获奖记录' },
+]
+let requestSequence = 0
 const myRegList = ref([])
 const myAwardList = ref([])
 const total = ref(0)
@@ -17,18 +23,23 @@ const awardQuery = ref({
 })
 
 watch(activeTab, (newTab) => {
+  router.replace({ query: { ...route.query, tab: newTab } })
+  total.value = 0
+  myAwardList.value = []
   if (newTab === 'registration') {
     fetchMyRegList()
-  } else if (newTab === 'award') {
+  } else if (newTab === 'award' || newTab === 'declaration') {
     awardQuery.value.page = 1
     fetchMyAwardList()
   }
 })
 
 async function fetchMyRegList() {
+  const sequence = ++requestSequence
   loading.value = true
   try {
-    const response = await api.getMyReg()
+    const response = await api.getMyReg({ registration_only: true })
+    if (sequence !== requestSequence) return
     if (response.code == 200) {
       myRegList.value = response.data.list || []
       total.value = response.data.total
@@ -36,19 +47,23 @@ async function fetchMyRegList() {
       ElMessage.error('获取列表失败:' + (response.message || response.msg || '未知错误'))
     }
   } catch (error) {
+    if (sequence !== requestSequence) return
     ElMessage.error(error?.response?.data?.msg || error?.response?.data?.message || '获取列表失败')
   } finally {
-    loading.value = false
+    if (sequence === requestSequence) loading.value = false
   }
 }
 
 async function fetchMyAwardList() {
+  const sequence = ++requestSequence
   loading.value = true
   try {
     const response = await api.getMyAwardList({
       page: awardQuery.value.page,
       size: awardQuery.value.size,
+      ...(activeTab.value === 'declaration' ? { source: 'supplement' } : { status: 'approved' }),
     })
+    if (sequence !== requestSequence) return
     if (response.code == 200) {
       myAwardList.value = response.data.list || []
       total.value = response.data.total || 0
@@ -56,9 +71,10 @@ async function fetchMyAwardList() {
       ElMessage.error('获取列表失败:' + (response.message || response.msg || '未知错误'))
     }
   } catch (error) {
+    if (sequence !== requestSequence) return
     ElMessage.error(error?.response?.data?.msg || error?.response?.data?.message || '获取列表失败')
   } finally {
-    loading.value = false
+    if (sequence === requestSequence) loading.value = false
   }
 }
 
@@ -70,7 +86,7 @@ const awardStatusMap = {
 
 const awardSourceMap = {
   import: { type: 'info', text: '系统导入' },
-  supplement: { type: 'primary', text: '学生补录' },
+  supplement: { type: 'primary', text: '学生申报' },
 }
 
 const awardStats = computed(() => {
@@ -121,7 +137,7 @@ const goDeclare = () => {
 }
 
 const goResubmit = (award) => {
-  const compName = award.register?.competition?.comp_name || award.comp_name || ''
+  const compName = getAwardCompName(award)
   sessionStorage.setItem('resubmitAward', JSON.stringify({
     comp_id: award.comp_id,
     comp_name: compName,
@@ -132,7 +148,7 @@ const goResubmit = (award) => {
     remark: award.remark,
     award_level: award.award_level,
     award_name: award.award_name,
-    team_name: award.register?.team_name || '',
+    team_name: getAwardTeamName(award),
     proof_url: award.proof_url || '',
     members: award.register?.members || [],
     leader: award.register?.leader || null,
@@ -203,7 +219,8 @@ const getStatusTag = (status) => {
 }
 
 onMounted(() => {
-  fetchMyRegList()
+  if (activeTab.value === 'registration') fetchMyRegList()
+  else fetchMyAwardList()
 })
 </script>
 
@@ -215,7 +232,7 @@ onMounted(() => {
         <!-- <span class="subtitle">My Competition Center</span> -->
       </div>
       <el-button type="primary" @click="goDeclare" class="declare-btn">
-        <el-icon class="mr-1"><Trophy /></el-icon> 申报校外奖项
+        <el-icon class="mr-1"><Trophy /></el-icon> 申报奖项
       </el-button>
     </div>
 
@@ -286,27 +303,27 @@ onMounted(() => {
         </div>
       </el-tab-pane>
 
-      <el-tab-pane label="我的获奖" name="award">
-        <div v-loading="loading" class="list-wrapper">
-          <el-empty v-if="myAwardList.length === 0" description="暂无获奖记录" />
+      <el-tab-pane v-for="tab in awardTabs" :key="tab.name" :label="tab.label" :name="tab.name">
+        <div v-if="activeTab === tab.name" v-loading="loading" class="list-wrapper">
+          <el-empty v-if="myAwardList.length === 0" :description="tab.empty" />
 
           <div class="award-list" v-if="myAwardList.length > 0">
             <div class="award-overview">
               <div class="overview-card">
                 <div class="num">{{ total }}</div>
-                <div class="label">累计记录</div>
+                <div class="label">{{ tab.name === 'declaration' ? '累计申报' : '累计获奖' }}</div>
               </div>
-              <div class="overview-card approved">
+              <div v-if="tab.name === 'declaration'" class="overview-card approved">
                 <div class="num">{{ awardStats.approved }}</div>
-                <div class="label">已通过</div>
+                <div class="label">本页已通过</div>
               </div>
-              <div class="overview-card pending">
+              <div v-if="tab.name === 'declaration'" class="overview-card pending">
                 <div class="num">{{ awardStats.draft }}</div>
-                <div class="label">待审核</div>
+                <div class="label">本页待审核</div>
               </div>
-              <div class="overview-card rejected">
+              <div v-if="tab.name === 'declaration'" class="overview-card rejected">
                 <div class="num">{{ awardStats.rejected }}</div>
-                <div class="label">已驳回</div>
+                <div class="label">本页已驳回</div>
               </div>
             </div>
 
@@ -314,7 +331,7 @@ onMounted(() => {
               <div class="award-head">
                 <div class="title-wrap">
                   <h4 class="comp-title">{{ getAwardCompName(award) }}</h4>
-                  <p class="team-name">参赛队伍：{{ getAwardTeamName(award) }}</p>
+                  <p class="team-name">参赛项目：{{ getAwardTeamName(award) }}</p>
                 </div>
 
                 <div class="tag-group">
@@ -335,7 +352,7 @@ onMounted(() => {
               <div class="award-meta">
                 <span class="meta-item">
                   <el-icon><Calendar /></el-icon>
-                  申报时间：{{ formatDateTime(award.create_time) }}
+                  {{ tab.name === 'declaration' ? '申报时间' : '获奖时间' }}：{{ formatDateTime(tab.name === 'declaration' ? award.create_time : award.award_time) }}
                 </span>
                 <span class="meta-item" v-if="award.audit_time">
                   <el-icon><Calendar /></el-icon>
@@ -353,7 +370,7 @@ onMounted(() => {
                 </a>
               </div>
 
-              <div class="reject-box" v-if="award.status === 'rejected'">
+              <div class="reject-box" v-if="tab.name === 'declaration' && award.status === 'rejected'">
                 <span v-if="award.reject_reason">驳回原因：{{ award.reject_reason }}</span>
                 <span v-else>审核未通过</span>
                 <el-button type="primary" size="small" class="resubmit-btn" @click="goResubmit(award)">

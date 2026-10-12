@@ -30,7 +30,6 @@ const form = reactive({
 const rules = {
     comp_name: [{ required: true, message: '请输入赛事名称', trigger: 'blur' }],
     comp_level: [{ required: true, message: '请选择赛事级别', trigger: 'change' }],
-    college: [{ required: true, message: '请选择所属学院', trigger: 'change' }],
     manager: [{ required: true, message: '请选择赛事负责人', trigger: 'change' }],
     year: [{ required: true, message: '请输入所属年份', trigger: 'blur' }]
 };
