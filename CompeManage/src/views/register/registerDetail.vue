@@ -26,10 +26,13 @@ const route = useRoute()
 const formRef = ref(null)
 let maxMembers = ref()
 let minMembers = ref()
-let need_advisor = ref()
+let need_advisor = ref(0)
 let need_attachment = ref()
 let trackOptions = ref([]) // 赛道配置（含子赛道）
-let compType = 'team' // team / individual
+const participationType = ref('individual')
+const currentStudent = ref(null)
+const savedRegistrationID = ref(null)
+const canChooseParticipationType = computed(() => compInfo.value.compType === 2 && minMembers.value <= 1 && maxMembers.value > 1)
 const uploadedUrls = ref([])
 const uploadRef = ref(null)
 const token = localStorage.getItem('token')
@@ -70,9 +73,29 @@ const formData = reactive({
   track: '', // 提交给后端的赛道字符串
 })
 
+const emptyLeader = () => ({ name: '', stuID: '', phone: '', email: '', college: '', is_leader: true })
+const applyCurrentStudent = () => {
+  const u = currentStudent.value
+  if (u && participationType.value === 'individual') formData.leader = { ...emptyLeader(), name: u.name, stuID: u.username, college: u.college || '' }
+}
+watch(participationType, (type) => {
+  formData.members = []
+  formData.leader = emptyLeader()
+  if (type === 'individual') applyCurrentStudent()
+  formRef.value?.clearValidate()
+}, { flush: 'sync' })
+async function loadCurrentStudent() {
+  const user = JSON.parse(localStorage.getItem('userInfo') || '{}')
+  if (!user.username) return
+  try {
+    const res = await api.getStudentList({ page: 1, page_size: 10, role: 'student', search: user.username })
+    currentStudent.value = res.data?.list?.find(u => u.username === user.username) || null
+  } catch { ElMessage.error('加载本人信息失败，请刷新后重试') }
+}
+
 /* --- 校验规则 --- */
 const rules = {
-  teamName: [{ required: true, message: '请输入团队名称', trigger: 'blur' }],
+  teamName: [{ required: true, whitespace: true, message: '请输入参赛项目名称', trigger: 'blur' }],
   'leader.name': [{ required: true, message: '请输入姓名', trigger: 'blur' }],
   'leader.phone': [
     { required: true, message: '请输入手机号', trigger: 'blur' },
@@ -81,14 +104,6 @@ const rules = {
   'leader.email': [
     { required: true, message: '请输入邮箱', trigger: 'blur' },
     emailRule, // 使用验证工具
-  ],
-  'advisorInfo.phone': [
-    { required: true, message: '请输入手机号', trigger: 'blur' },
-    phoneRule,
-  ],
-  'advisorInfo.email': [
-    { required: true, message: '请输入邮箱', trigger: 'blur' },
-    emailRule,
   ],
   trackName: [],
   subTrackTitle: [],
@@ -215,6 +230,7 @@ const studentTotal = ref(0)
 
 // 打开学生选择弹窗
 const openStudentSelect = (target = -1) => {
+  searchForm.name = ''; searchForm.username = ''; searchForm.college = ''; studentCurrentPage.value = 1
   if (target === 'advisor') {
     //  选择指导老师
     isSelectingAdvisor.value = true
@@ -261,6 +277,7 @@ const resetSearch = () => {
 
 const handleDialogClose = () => {
   isSelectingLeader.value = false
+  isSelectingAdvisor.value = false
   currentMemberEditIndex.value = -1
 }
 
@@ -277,15 +294,18 @@ const selectStudent = (row) => {
     }
     ElMessage.success(`已选择指导老师：${row.name}`)
   } else if (isSelectingLeader.value) {
-    // 选择负责人
+    if (formData.members.some(m => m.stuID === row.username)) return ElMessage.warning('该学生已在团队中，请勿重复选择')
+    // 选择队长
     formData.leader.name = row.name
     formData.leader.stuID = row.username
     formData.leader.college = row.college
     // 电话和邮箱需要手动填写，清空之前的
     formData.leader.phone = ''
     formData.leader.email = ''
-    ElMessage.success(`已选择负责人：${row.name}，请补充手机号和邮箱`)
+    ElMessage.success(`已选择队长：${row.name}，请补充手机号和邮箱`)
   } else if (currentMemberEditIndex.value === -1) {
+    if (row.username === formData.leader.stuID || formData.members.some(m => m.stuID === row.username)) return ElMessage.warning('该学生已在团队中，请勿重复选择')
+    if (formData.members.length >= maxMembers.value - 1) return ElMessage.warning(`参赛人数不能超过${maxMembers.value}人`)
     // 新增成员模式
     formData.members.push({
       name: row.name,
@@ -297,7 +317,9 @@ const selectStudent = (row) => {
     ElMessage.success(`已添加成员：${row.name}，请补充手机号和邮箱`)
   } else {
     // 编辑已有成员模式
+    if (row.username === formData.leader.stuID || formData.members.some((m, index) => index !== currentMemberEditIndex.value && m.stuID === row.username)) return ElMessage.warning('该学生已在团队中，请勿重复选择')
     const member = formData.members[currentMemberEditIndex.value]
+    if (member.stuID !== row.username) { member.phone = ''; member.email = '' }
     member.name = row.name
     member.stuID = row.username
     member.college = row.college
@@ -371,6 +393,8 @@ async function checkRegStatus() {
       } else {
         pageStatus.value = 1
       }
+      savedRegistrationID.value = data.id
+      participationType.value = compInfo.value.compType === 2 && (!canChooseParticipationType.value || (data.members || []).length > 1) ? 'team' : 'individual'
       formData.teamName = data.team_name
        console.log('data.track =', data.track)  // 加这一行看看后端返回的值
       await parseSavedTrackValue(data.track || '')
@@ -404,12 +428,12 @@ async function checkRegStatus() {
         }
       }
 
-      const leaderData = data.members.find((m) => m.is_leader)
-      const memberData = data.members.filter((m) => !m.is_leader)
+      const leaderData = (data.members || []).find((m) => m.is_leader)
+      const memberData = (data.members || []).filter((m) => !m.is_leader)
       if (leaderData) {
         formData.leader = {
           name: leaderData.name,
-          stuID: leaderData.student_id || leaderData.username, // 兼容后端字段名
+          stuID: leaderData.student_id || leaderData.stu_id || leaderData.username, // 兼容后端字段名
           phone: leaderData.phone,
           email: leaderData.email,
           college: leaderData.college,
@@ -421,7 +445,7 @@ async function checkRegStatus() {
       if (memberData.length > 0) {
         formData.members = memberData.map((m) => ({
           name: m.name,
-          stuID: m.student_id || m.username,
+          stuID: m.student_id || m.stu_id || m.username,
           phone: m.phone,
           email: m.email,
           college: m.college,
@@ -441,10 +465,10 @@ async function fetchRegSettings() {
   const response = await api.getRegConfig(compID)
   if (response.code == 200) {
     const config = response.data
-    maxMembers.value = config.max_team_member
-    minMembers.value = config.min_team_member
+    maxMembers.value = Number(config.max_team_member) || 1
+    minMembers.value = Number(config.min_team_member) || 1
     compInfo.value.title = config.comp_name
-    need_advisor.value = config.need_advisor
+    need_advisor.value = Number(config.need_advisor) || 0
     need_attachment.value = config.need_attachment
     
     // 获取赛道配置（含子赛道）
@@ -467,13 +491,14 @@ async function fetchRegSettings() {
       updateSubTrackRule()
     }
 
-    if (maxMembers.value > 1) {
+    if (Number(config.participant_type) === 2 || (!config.participant_type && maxMembers.value > 1)) {
       compInfo.value.compType = 2
       compInfo.value.limitText = `团队赛 (${minMembers.value}-${maxMembers.value}人)`
     } else {
       compInfo.value.compType = 1
       compInfo.value.limitText = '个人赛'
     }
+    participationType.value = compInfo.value.compType === 2 && !canChooseParticipationType.value ? 'team' : 'individual'
   } else {
     ElMessage.error(response.msg || '获取报名配置失败')
   }
@@ -503,6 +528,13 @@ async function fetchStudentList() {
 async function submitVerify() {
   if (!formRef.value) return
   
+  if (!formData.leader.stuID) return ElMessage.error(participationType.value === 'team' ? '请先选择队长' : '请先加载本人信息')
+  if (participationType.value === 'team') {
+    const count = formData.members.length + 1
+    const minimum = Math.max(2, minMembers.value)
+    if (count < minimum || count > maxMembers.value) return ElMessage.error(`团队参赛人数须为${minimum}-${maxMembers.value}人（含队长）`)
+    if (currentStudent.value && ![formData.leader, ...formData.members].some(m => m.stuID === currentStudent.value.username)) return ElMessage.error('请将申报人本人添加到参赛成员中')
+  }
   // 检查赛道是否必填
   if (hasTrackConfig.value && !formData.trackName) {
     ElMessage.error('请选择赛道')
@@ -538,11 +570,13 @@ async function submitForm(attachmentURL) {
   const compID = Number(route.params.id)
   const submitData = {
     comp_id: compID,
-    team_name: formData.teamName,
+    reg_id: savedRegistrationID.value || undefined,
+    participation_type: participationType.value,
+    team_name: formData.teamName.trim(),
     leader: formData.leader,
-    members: formData.members,
+    members: participationType.value === 'team' ? formData.members : [],
     attachment_url: attachmentURL,
-    advisor_info: formData.advisorInfo,
+    advisor_info: need_advisor.value > 0 && formData.advisorInfo.name ? { id: formData.advisorInfo.id, username: formData.advisorInfo.username, name: formData.advisorInfo.name, college: formData.advisorInfo.college } : null,
     track: formData.track, // 新增：提交赛道
   }
   try {
@@ -560,7 +594,7 @@ async function submitForm(attachmentURL) {
       ElMessage.error(response.msg || '报名失败')
     }
   } catch (error) {
-    ElMessage.error(error.response.msg || '报名失败')
+    ElMessage.error(error.response?.data?.message || error.message || '报名失败')
   }
 }
 
@@ -589,8 +623,10 @@ async function loadDepartments() {
 onMounted(async () => {
   loadColleges()
   loadDepartments()
+  await loadCurrentStudent()
   // 先获取赛道配置
   await fetchRegSettings()
+  applyCurrentStudent()
   // 再获取报名状态
   await checkRegStatus()
   // 等待 DOM 更新完成
@@ -652,15 +688,25 @@ onMounted(async () => {
           :hide-required-asterisk="true"
           :disabled="isReadOnly"
         >
-          <div class="form-section" v-if="compInfo.compType === 2">
-            <h3 class="section-title">团队名称</h3>
+          <div class="form-section">
+            <h3 class="section-title">参赛信息</h3>
             <el-row>
               <el-col :span="24">
-                <el-form-item label="团队名称" prop="teamName" :disabled="isReadOnly">
-                  <el-input v-model="formData.teamName"/>
+                <el-form-item label="参赛项目名称" prop="teamName" :disabled="isReadOnly">
+                  <el-input v-model="formData.teamName" maxlength="255" placeholder="请输入参赛项目名称" />
                 </el-form-item>
               </el-col>
             </el-row>
+          </div>
+
+          <div class="form-section">
+            <el-form-item label="参赛方式">
+              <el-radio-group v-if="canChooseParticipationType" v-model="participationType" :disabled="isReadOnly">
+                <el-radio-button value="individual">个人参赛</el-radio-button>
+                <el-radio-button value="team">团队参赛</el-radio-button>
+              </el-radio-group>
+              <el-tag v-else>{{ participationType === 'team' ? '团队参赛' : '个人参赛' }}</el-tag>
+            </el-form-item>
           </div>
 
           <!-- 赛道选择区域 -->
@@ -718,18 +764,18 @@ onMounted(async () => {
 
           <div class="form-section">
             <div class="section-header">
-              <h3 class="section-title" style="margin: 0">负责人信息</h3>
+              <h3 class="section-title" style="margin: 0">{{ participationType === 'individual' ? '本人信息' : '队长信息' }}</h3>
               <el-button
-                v-if="!isReadOnly && !formData.leader.name"
+                v-if="participationType === 'team' && !isReadOnly && !formData.leader.name"
                 link
                 type="primary"
                 @click="openStudentSelect('leader')"
                 :icon="Plus"
               >
-                选择负责人
+                选择队长
               </el-button>
               <el-button
-                v-if="!isReadOnly && formData.leader.name"
+                v-if="participationType === 'team' && !isReadOnly && formData.leader.name"
                 link
                 type="primary"
                 @click="openStudentSelect('leader')"
@@ -742,7 +788,7 @@ onMounted(async () => {
               <!-- 空状态提示 -->
               <el-empty
                 v-if="!formData.leader.name"
-                description="请先选择负责人"
+                description="请先选择队长"
                 :image-size="80"
               />
 
@@ -791,7 +837,7 @@ onMounted(async () => {
             </div>
           </div>
 
-          <div class="form-section" v-if="compInfo.compType == 2">
+          <div class="form-section" v-if="participationType === 'team'">
             <div class="section-header">
               <h3 class="section-title" style="margin: 0">成员列表</h3>
               <el-button link type="primary" @click="addMember" :icon="Plus" :disabled="isReadOnly">
@@ -948,24 +994,6 @@ onMounted(async () => {
                   </el-form-item>
                 </el-col>
                 <el-col :span="8" :xs="24">
-                  <el-form-item label="联系电话" prop="advisorInfo.phone">
-                    <el-input
-                      v-model="formData.advisorInfo.phone"
-                      placeholder="请输入手机号"
-                      :disabled="isReadOnly"
-                    />
-                  </el-form-item>
-                </el-col>
-                <el-col :span="8" :xs="24">
-                  <el-form-item label="联系邮箱" prop="advisorInfo.email">
-                    <el-input
-                      v-model="formData.advisorInfo.email"
-                      placeholder="请输入邮箱"
-                      :disabled="isReadOnly"
-                    />
-                  </el-form-item>
-                </el-col>
-                <el-col :span="8" :xs="24">
                   <el-form-item label="所属部门">
                     <el-input
                       v-model="formData.advisorInfo.college"
@@ -1015,8 +1043,8 @@ onMounted(async () => {
   <!--  学生选择弹窗 -->
   <el-dialog
     v-model="studentDialogVisible"
-    :title="isSelectingAdvisor ? '选择指导老师' : isSelectingLeader ? '选择负责人' : '选择队员'"
-    width="800px"
+    :title="isSelectingAdvisor ? '选择指导老师' : isSelectingLeader ? '选择队长' : '选择队员'"
+    width="min(800px, 94vw)"
     align-center
     append-to-body
     @close="handleDialogClose"
@@ -1136,7 +1164,7 @@ onMounted(async () => {
   .header-content {
     position: relative;
     z-index: 2;
-    max-width: 900px;
+    max-width: 1200px;
     margin: 0 auto;
 
     .comp-title {
@@ -1176,8 +1204,9 @@ onMounted(async () => {
 }
 
 .content-area {
-  max-width: 1000px;
+  max-width: 1200px;
   width: 100%;
+  box-sizing: border-box;
   margin: 0 auto;
   padding: 0 20px 40px;
   position: relative;
@@ -1345,5 +1374,9 @@ onMounted(async () => {
   color: #c0c4cc;
   font-size: 12px;
   margin-top: 30px;
+}
+@media (max-width: 768px) {
+  .content-area { padding: 0 12px 24px; }
+  .content-area .form-card { padding: 24px 16px; }
 }
 </style>

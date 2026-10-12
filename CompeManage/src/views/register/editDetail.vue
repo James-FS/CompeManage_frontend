@@ -4,7 +4,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
   Setting, Select, User, UserFilled,
-  Top, Bottom, Delete, Plus, Search
+  Top, Bottom, Delete, Plus, Search, Warning
 } from '@element-plus/icons-vue'
 import { api } from '@/api'
 import { formatToGoTime } from '@/utils/format'
@@ -23,13 +23,11 @@ const gradeOptions = [
   { label: '大二', value: 2 },
   { label: '大三', value: 3 },
   { label: '大四', value: 4 },
-  { label: '研究生', value: 9 },
 ]
 
 const competitionYear = ref(2026)
 const reviewWasOn = ref(false)  // 追踪是否之前开启了评审
 const getEntranceYear = (gradeValue) => {
-  if (gradeValue === 9) return '不限年份'
   return `${competitionYear.value - gradeValue}级`
 }
 
@@ -285,18 +283,19 @@ async function fetchConfig() {
       form.type = data.participant_type
       form.minMember = data.min_team_member || 1
       form.maxMember = data.max_team_member || 1
-      form.grades = data.grade_requirement || []
+      form.grades = (data.grade_requirement || []).map(Number).filter(value => gradeOptions.some(option => option.value === value))
       form.attachmentType = data.need_attachment ?? null
       const needRegAuditValue = Number(data.need_reg_audit ?? 1)
       form.needRegAudit = needRegAuditValue !== 0
       comp_name.value = data.comp_name || ''
       
-      if (data.need_advisor === 0) {
+      const needAdvisor = Number(data.need_advisor) || 0
+      if (needAdvisor === 0) {
         form.allowAdvisor = false
         form.advisorRequired = false
       } else {
         form.allowAdvisor = true
-        form.advisorRequired = (data.need_advisor === 2)
+        form.advisorRequired = (needAdvisor === 2)
       }
 
       if (data.reg_start_time && data.reg_end_time) {
@@ -445,6 +444,9 @@ onMounted(() => {
             active-text="需要审核"
             inactive-text="免审核"
           />
+          <el-tooltip content="开启后，报名信息需要审核通过；关闭后，学生提交报名即自动通过审核。" placement="top" :show-after="200">
+            <el-icon class="help-icon" tabindex="0" aria-label="报名审核说明"><Warning /></el-icon>
+          </el-tooltip>
         </el-form-item>
 
         <el-divider border-style="dashed" />
@@ -473,7 +475,9 @@ onMounted(() => {
               </span>
             </el-option>
           </el-select>
-          <div class="form-tip">不选默认所有年级学生均可报名</div>
+          <el-tooltip content="不选默认所有年级学生均可报名；选择后，仅允许所选年级的学生报名。" placement="top" :show-after="200">
+            <el-icon class="help-icon" tabindex="0" aria-label="允许参赛年级说明"><Warning /></el-icon>
+          </el-tooltip>
         </el-form-item>
 
         <el-form-item label="指导老师设置">
@@ -578,9 +582,9 @@ onMounted(() => {
             active-text="需要专家评审"
             inactive-text="无需评审"
           />
-          <div class="form-tip">
-            开启后，获奖名单将由专家评审结果自动生成
-          </div>
+          <el-tooltip content="开启后，获奖名单将由专家评审结果自动生成。" placement="top" :show-after="200">
+            <el-icon class="help-icon" tabindex="0" aria-label="专家评审说明"><Warning /></el-icon>
+          </el-tooltip>
         </el-form-item>
 
         <transition name="el-fade-in">
@@ -794,11 +798,16 @@ onMounted(() => {
   border-left: 2px solid #e4e7ed;
 }
 
-.form-tip {
-  font-size: 12px;
+.help-icon {
+  margin-left: 10px;
+  font-size: 16px;
   color: #909399;
-  line-height: 1.5;
-  margin-top: 6px;
+  flex-shrink: 0;
+  cursor: help;
+
+  &:hover, &:focus-visible {
+    color: var(--primary-color);
+  }
 }
 
 .ml-2 { margin-left: 8px; }
