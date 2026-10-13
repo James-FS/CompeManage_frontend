@@ -1,13 +1,16 @@
 <script setup>
-import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import * as echarts from 'echarts'
+import { ElMessage } from 'element-plus'
+import { saveAs } from 'file-saver'
 import {
   Trophy,
   User,
   Histogram,
   PieChart,
   DataLine,
+  Download,
   CircleCheckFilled,
   Timer
 } from '@element-plus/icons-vue'
@@ -46,7 +49,8 @@ const chartInstances = reactive({
   pie: null,
   bar: null,
   trend: null,
-  funnel: null
+  funnel: null,
+  compBar: null
 })
 
 const safeArray = (value) => (Array.isArray(value) ? value : [])
@@ -197,6 +201,64 @@ const resetDetailFilters = () => {
   detailFilters.name = ''
   detailFilters.level = ''
   detailFilters.college = ''
+}
+
+// —— 各赛事详细统计：转化率列 ——
+const conversionRateText = (row) => {
+  const reg = safeNumber(row?.reg_count)
+  if (!reg) return '—'
+  return `${ratioToPercent(safeNumber(row?.award_count), reg)}%`
+}
+
+// —— 各赛事详细统计：获奖人数柱状图（跟随筛选联动） ——
+const compBarChartRef = ref(null)
+const renderCompBarChart = () => {
+  const list = filteredCompetitionStats.value
+  initOrUpdateChart('compBar', compBarChartRef, {
+    grid: { left: 56, right: 16, top: 36, bottom: 110 },
+    tooltip: { trigger: 'axis' },
+    xAxis: {
+      type: 'category',
+      data: list.map((i) => (getCompetitionName(i) || '').slice(0, 10)),
+      axisLabel: { rotate: 42, interval: 0, fontSize: 10 }
+    },
+    yAxis: { type: 'value', name: '获奖人次' },
+    series: [
+      {
+        name: '获奖人数',
+        type: 'bar',
+        barMaxWidth: 26,
+        data: list.map((i) => safeNumber(i?.award_count)),
+        itemStyle: { color: '#409EFF' }
+      }
+    ]
+  })
+}
+watch(filteredCompetitionStats, () => nextTick(renderCompBarChart))
+
+// —— 一键导出上报 Excel（附件1+附件2+汇总表） ——
+const reportYear = ref('')
+const exportingReport = ref(false)
+const exportReport = async () => {
+  exportingReport.value = true
+  try {
+    const res = await api.exportAwardReport(reportYear.value || '')
+    if (res.type?.includes('application/json')) {
+      const errorJson = JSON.parse(await res.text())
+      ElMessage.error(errorJson.message || errorJson.msg || '导出失败')
+      return
+    }
+    saveAs(
+      new Blob([res], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
+      `${reportYear.value || '全部'}年大学生参加省级以上各类竞赛获奖上报汇总.xlsx`
+    )
+    ElMessage.success('导出成功')
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('网络请求失败')
+  } finally {
+    exportingReport.value = false
+  }
 }
 
 const buildTrendData = (registerList, awardList) => {
@@ -621,7 +683,20 @@ onBeforeUnmount(() => {
               />
             </el-select>
             <el-button @click="resetDetailFilters">重置</el-button>
+            <el-date-picker
+              v-model="reportYear"
+              type="year"
+              placeholder="上报年份（留空全部）"
+              value-format="YYYY"
+              clearable
+              class="filter-item"
+              style="width: 170px"
+            />
+            <el-button type="primary" :icon="Download" :loading="exportingReport" @click="exportReport">
+              导出上报Excel（附件1+附件2+汇总表）
+            </el-button>
           </div>
+          <div ref="compBarChartRef" class="chart-box comp-bar"></div>
           <el-table :data="filteredCompetitionStats" border stripe style="width: 100%">
             <el-table-column prop="comp_name" label="赛事名称" min-width="200" align="center" show-overflow-tooltip />
             <el-table-column prop="comp_level" label="级别" width="100" align="center">
@@ -636,6 +711,9 @@ onBeforeUnmount(() => {
             </el-table-column>
             <el-table-column prop="reg_count" label="报名数" width="120" align="center" sortable />
             <el-table-column prop="award_count" label="获奖学生人次" width="140" align="center" sortable />
+            <el-table-column label="获奖转化率" width="110" align="center" sortable :sort-method="(a, b) => ratioToPercent(safeNumber(a?.award_count), safeNumber(a?.reg_count)) - ratioToPercent(safeNumber(b?.award_count), safeNumber(b?.reg_count))">
+              <template #default="scope">{{ conversionRateText(scope.row) }}</template>
+            </el-table-column>
             <el-table-column prop="award_team_count" label="团队奖项数" width="120" align="center" sortable />
             <el-table-column label="总结归档" width="120" align="center">
               <template #default="scope">
@@ -726,6 +804,7 @@ onBeforeUnmount(() => {
     }
   }
 
+  .chart-box.comp-bar { height: 280px; }
   .chart-box {
     height: 320px;
     width: 100%;
