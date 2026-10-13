@@ -217,7 +217,7 @@ const handleDeleteYear = async (year) => {
 
 // 跳转编辑页
 const handleEdit = (row) => {
-    if (!['school_admin', 'competition_manager'].includes(userStore.role)) {
+    if (!row?.capabilities?.can_edit_competition) {
         ElMessage.warning('当前账号无编辑权限');
         return;
     }
@@ -635,7 +635,7 @@ onMounted(async () => {
                 </el-table-column>
                 <el-table-column label="操作" width="150" align="center" fixed="right">
                     <template #default="scope">
-                        <el-button v-if="['school_admin'].includes(userStore.role)" link type="primary" size="small" :icon="Edit"
+                        <el-button v-if="scope.row.capabilities?.can_edit_competition" link type="primary" size="small" :icon="Edit"
                             @click="handleEdit(scope.row)">编辑</el-button>
                         <el-button v-if="['school_admin'].includes(userStore.role)" link type="danger" size="small" :icon="Delete"
                             @click="handleDelete(scope.row)">删除</el-button>

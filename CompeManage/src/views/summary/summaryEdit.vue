@@ -12,6 +12,7 @@ import {
 const route = useRoute();
 const router = useRouter();
 const loading = ref(false);
+const canEdit = ref(false);
 const formRef = ref(null);
 
 const compId = route.params.id;
@@ -110,6 +111,12 @@ const loadData = async () => {
   try {
     const res = await api.getSummaryDetail(compId);
     const data = res?.data || {};
+    canEdit.value = !!data.capabilities?.can_edit_summary;
+    if (!canEdit.value) {
+      ElMessage.warning('当前赛事总结不可编辑');
+      router.replace({ name: 'SummaryList' });
+      return;
+    }
     form.comp_name = data.comp_name || compName || '';
     form.organizer = data.organizer || '';
     form.undertaker = data.undertaker || '';
@@ -142,6 +149,7 @@ const removeExpenseRow = (index) => {
 
 // --- 提交处理 ---
 const handleSubmit = async (isArchive = false) => {
+  if (!canEdit.value) return;
   if (!formRef.value) return;
   
   await formRef.value.validate(async (valid) => {
@@ -195,7 +203,7 @@ onMounted(() => {
   <div class="summary-add-container">
 
     <div class="content-wrapper" v-loading="loading">
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="120px" label-position="top">
+      <el-form :disabled="!canEdit" ref="formRef" :model="form" :rules="rules" label-width="120px" label-position="top">
         
         <el-card shadow="never" class="section-card">
            <template #header>

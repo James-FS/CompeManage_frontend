@@ -13,6 +13,7 @@ import { ElMessageBox } from 'element-plus'
 const route = useRoute()
 const router = useRouter()
 const isSaving = ref(false)
+const canEdit = ref(false)
 const formRef = ref(null)
 const comp_name = ref('')
 
@@ -194,6 +195,7 @@ const handleTypeChange = (val) => {
 
 // 保存逻辑
 async function handleSave() {
+  if (!canEdit.value) return
   if (!formRef.value) return
 
   await formRef.value.validate(async (valid) => {
@@ -280,6 +282,7 @@ async function fetchConfig() {
     const response = await api.getRegConfig(compID)
     if (response.code === 200) {
       const data = response.data
+      canEdit.value = !!data.capabilities?.can_edit_registration
       form.type = data.participant_type
       form.minMember = data.min_team_member || 1
       form.maxMember = data.max_team_member || 1
@@ -361,13 +364,13 @@ onMounted(() => {
             <span class="title">报名规则配置</span>
             <el-tag type="info" size="small" effect="plain" class="ml-2">当前赛事：{{ comp_name }}</el-tag>
           </div>
-          <el-button type="primary" :loading="isSaving" @click="handleSave">
+          <el-button type="primary" :loading="isSaving" v-if="canEdit" @click="handleSave">
             <el-icon><Select /></el-icon> 保存设置
           </el-button>
         </div>
       </template>
 
-      <el-form
+      <el-form :disabled="!canEdit"
         ref="formRef"
         :model="form"
         :rules="rules"

@@ -57,7 +57,7 @@ const routes = [
         props: true,
         meta: {
           title: '编辑赛事',
-          roles: ['school_admin'],
+          roles: ['school_admin', 'college_admin', 'competition_manager'],
           parent: 'CompetitionList',
           activeMenu: '/competition/list',
         }

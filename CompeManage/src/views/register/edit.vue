@@ -160,6 +160,7 @@ onMounted(() => {
             </el-button>
 
             <el-button
+              v-if="item.capabilities?.can_edit_registration"
               type="primary"
               class="primary-btn"
               @click.stop="NavigateToSettings(item.id)"
@@ -167,6 +168,7 @@ onMounted(() => {
               <el-icon style="margin-right: 6px"><Setting /></el-icon>
               报名设置
             </el-button>
+            <el-button v-else @click.stop="NavigateToSettings(item.id)">查看配置</el-button>
           </div>
         </div>
       </div>

@@ -208,7 +208,7 @@ onMounted(() => {
 
                 <el-table-column label="操作" width="130" align="center" fixed="right">
                     <template #default="scope">
-                        <el-button v-if="scope.row.summary_status === 0" type="primary" link :icon="Edit"
+                        <el-button v-if="scope.row.capabilities?.can_edit_summary" type="primary" link :icon="Edit"
                             @click="handleEdit(scope.row)">
                             去总结
                         </el-button>
