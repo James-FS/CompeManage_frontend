@@ -72,13 +72,13 @@ const allMenus = [
   },
   {
     path: '/award',
-    title: '获奖填报',
+    title: '获奖管理',
     roles: ['school_admin', 'college_admin', 'competition_manager', 'student'],
     icon: Medal,
     children: [
       {
         path: '/award/list',
-        title: '校赛填报',
+        title: '获奖填报',
         roles: ['school_admin', 'college_admin', 'competition_manager',],
       },
       {

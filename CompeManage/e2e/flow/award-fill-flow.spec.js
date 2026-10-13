@@ -2,7 +2,7 @@
  * 获奖填报全流程 E2E（串行，按真实业务顺序执行）：
  *
  * 1. 校管理员在"赛事管理 → 新增赛事"手动创建 3 个校级赛事
- * 2. 院管理员在"获奖填报 → 校赛填报"里：
+ * 2. 院管理员在"获奖管理 → 获奖填报"里：
  *    - 赛事A：列表卡片"导入数据"直传 Excel（3人跨学院团队 + 1个国家级个人）
  *    - 赛事B：详情页"导入名单"进导入页，Excel 上传 → 校验（含1行学号不存在）→ 删错行 → 提交
  *             （2人跨学院团队 + 校赛个人 + 国际级个人，验证国际级归一为国家级）
@@ -472,12 +472,12 @@ async function pickManagerByWorkId(page, workId) {
   await expect(dialog).not.toBeVisible({ timeout: 5000 })
 }
 
-/** 通过侧边栏菜单进入"获奖填报 → 校赛填报"（菜单异常时兜底直跳路由） */
+/** 通过侧边栏菜单进入"获奖管理 → 获奖填报"（菜单异常时兜底直跳路由） */
 async function gotoAwardListViaMenu(page) {
-  const submenu = page.locator('.el-sub-menu__title').filter({ hasText: '获奖填报' })
+  const submenu = page.locator('.el-sub-menu__title').filter({ hasText: '获奖管理' })
   await submenu.waitFor({ state: 'visible', timeout: 10000 })
   await submenu.click()
-  const item = page.getByRole('menuitem', { name: '校赛填报' })
+  const item = page.getByRole('menuitem', { name: '获奖填报' })
   try {
     await item.click({ timeout: 5000 })
   } catch {

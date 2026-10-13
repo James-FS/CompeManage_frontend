@@ -40,7 +40,46 @@ const fetchData = async () => {
   } catch (e) { ElMessage.error(errorMessage(e)) }
   finally { loading.value = false }
 }
-const openTeam = t => { teamEdit.value = { ...t } }
+const openTeam = t => {
+  teamEdit.value = { ...t, advisors: (t.advisors || []).map(a => ({ username: a.username, name: a.name, college: a.college })) }
+}
+// —— 指导教师选择弹窗（任务7：仅可从教师列表选择，不支持手填工号）——
+const teacherDialog = ref(false)
+const teacherSearch = ref('')
+const teacherList = ref([])
+const teacherLoading = ref(false)
+let teacherTimer = null
+const searchTeachers = async () => {
+  teacherLoading.value = true
+  try {
+    const res = await api.getTeacherList({ page: 1, page_size: 20, search: teacherSearch.value.trim() })
+    teacherList.value = res.data?.list || []
+  } catch (e) {
+    teacherList.value = []
+  } finally {
+    teacherLoading.value = false
+  }
+}
+const openTeacherPicker = () => {
+  teacherDialog.value = true
+  teacherSearch.value = ''
+  searchTeachers()
+}
+const onTeacherSearch = () => {
+  clearTimeout(teacherTimer)
+  teacherTimer = setTimeout(searchTeachers, 300)
+}
+const addAdvisor = u => {
+  const list = teamEdit.value.advisors || (teamEdit.value.advisors = [])
+  if (list.some(a => a.username === u.username)) {
+    ElMessage.info('该教师已在列表中')
+    return
+  }
+  list.push({ username: u.username, name: u.name, college: u.college })
+}
+const removeAdvisor = u => {
+  teamEdit.value.advisors = (teamEdit.value.advisors || []).filter(a => a.username !== u.username)
+}
 const saveTeam = async () => {
   saving.value = true
   try {
@@ -133,9 +172,26 @@ onMounted(async () => {
           <el-form-item label="获奖类别"><el-select v-model="teamEdit.award_category"><el-option v-for="c in ['校赛', '国家级', '省级', '国际级']" :key="c" :label="c" :value="c" /></el-select></el-form-item>
           <el-form-item label="获奖等级"><el-input v-model="teamEdit.award_name" maxlength="100" /></el-form-item>
           <el-form-item label="获奖时间"><el-date-picker v-model="teamEdit.award_month" type="month" value-format="YYYY-MM" /></el-form-item>
+          <el-form-item label="指导老师">
+            <div class="advisor-chips">
+              <el-tag v-for="a in teamEdit.advisors || []" :key="a.username" closable size="small" @close="removeAdvisor(a)">{{ a.name }}（{{ a.username }}）· {{ a.college }}</el-tag>
+              <el-button size="small" @click="openTeacherPicker">+ 选择教师</el-button>
+            </div>
+            <div class="hint">从教师列表选择，姓名与学院自动取系统资料；多人按顺序导出。</div>
+          </el-form-item>
         </el-form>
       </template>
       <template #footer><el-button @click="teamEdit = null">取消</el-button><el-button type="primary" :loading="saving" @click="saveTeam">保存</el-button></template>
+    </el-dialog>
+    <el-dialog v-model="teacherDialog" title="选择指导教师" width="540px" append-to-body>
+      <el-input v-model="teacherSearch" placeholder="搜索教师姓名或工号" clearable @input="onTeacherSearch" />
+      <div v-loading="teacherLoading" class="teacher-list">
+        <div v-for="u in teacherList" :key="u.username" class="teacher-item">
+          <span class="teacher-info">{{ u.name }}（{{ u.username }}）· {{ u.college }}</span>
+          <el-button link type="primary" @click="addAdvisor(u)">添加</el-button>
+        </div>
+        <el-empty v-if="!teacherList.length && !teacherLoading" description="无匹配教师" :image-size="56" />
+      </div>
     </el-dialog>
     <el-dialog :model-value="!!memberEdit" title="修改成员信息" width="540px" @close="memberEdit = null">
       <el-form v-if="memberEdit" label-width="110px">
@@ -152,4 +208,8 @@ onMounted(async () => {
 .header, .toolbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 .header { justify-content: space-between; }
 .hint { font-size: 12px; color: #909399; margin-top: 6px; }
+.advisor-chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.teacher-list { margin-top: 12px; max-height: 320px; overflow-y: auto; }
+.teacher-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 4px; border-bottom: 1px solid #f0f0f0; }
+.teacher-info { font-size: 14px; }
 </style>
