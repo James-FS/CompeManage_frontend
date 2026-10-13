@@ -26,6 +26,7 @@ const filters = reactive({
   role_id: undefined,
   identity_type: undefined,
   managed_college_id: undefined,
+  college_id: undefined,
 })
 
 const roleOrder = [
@@ -41,7 +42,6 @@ const roleOrder = [
 const identityOptions = [
   { value: 'staff', label: '教职工' },
   { value: 'student', label: '本科生' },
-  { value: 'postgraduate', label: '研究生' },
   { value: 'external', label: '外部/人工账号' },
 ]
 
@@ -111,7 +111,7 @@ async function loadUsers({ preserveSelection = true } = {}) {
       search: filters.search.trim() || undefined,
       role_id: filters.role_id || undefined,
       identity_type: filters.identity_type || undefined,
-      managed_college_id: filters.managed_college_id || undefined,
+      college_id: filters.college_id || undefined,
     })
     if (sequence !== requestSequence) return
     userList.value = response.data?.list || []
@@ -142,6 +142,7 @@ function handleFilterReset() {
   filters.role_id = undefined
   filters.identity_type = undefined
   filters.managed_college_id = undefined
+  filters.college_id = undefined
   filters.page = 1
   loadUsers({ preserveSelection: false })
 }
@@ -248,9 +249,9 @@ onMounted(async () => {
             <el-option v-for="item in identityOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
         </el-form-item>
-        <el-form-item label="管理学院">
+        <el-form-item label="所属学院">
           <el-select
-            v-model="filters.managed_college_id"
+            v-model="filters.college_id"
             clearable
             filterable
             placeholder="全部学院"
