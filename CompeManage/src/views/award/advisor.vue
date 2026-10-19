@@ -84,13 +84,16 @@ onMounted(fetchList)
         <el-form-item label="审核状态"><el-select v-model="query.status" placeholder="全部" clearable style="width: 140px" @change="fetchList(true)"><el-option v-for="(status, key) in statuses" :key="key" :label="status.text" :value="key" /></el-select></el-form-item>
         <el-form-item><el-button type="primary" @click="fetchList(true)">查询</el-button></el-form-item>
       </el-form>
-      <el-table v-loading="loading" :data="list" empty-text="暂无您指导的获奖项目">
+      <el-table v-loading="loading" :data="list">
         <el-table-column prop="comp_name" label="赛事" min-width="180" />
         <el-table-column prop="project_name" label="项目名称" min-width="180" />
         <el-table-column prop="award_level" label="获奖等级" min-width="150" />
         <el-table-column label="获奖日期" width="130"><template #default="{ row }">{{ date(row.award_time) }}</template></el-table-column>
         <el-table-column label="状态" width="100"><template #default="{ row }"><el-tag :type="statuses[row.status]?.type">{{ statuses[row.status]?.text || row.status }}</el-tag></template></el-table-column>
         <el-table-column label="操作" width="130" fixed="right"><template #default="{ row }"><el-button link type="primary" @click="openDetail(row)">{{ row.can_edit ? '查看 / 修改' : '查看详情' }}</el-button></template></el-table-column>
+        <template #empty>
+          <el-empty description="暂无您指导的获奖项目" />
+        </template>
       </el-table>
       <el-pagination v-model:current-page="query.page" v-model:page-size="query.size" :total="total" :page-sizes="[10, 20, 50]" layout="total, sizes, prev, pager, next" @current-change="fetchList()" @size-change="fetchList(true)" />
     </el-card>
