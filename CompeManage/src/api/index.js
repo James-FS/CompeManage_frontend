@@ -3,6 +3,10 @@ import { get, post, put, del } from '@/utils/request'
 export const api = {
   // 健康检查
   health: () => get('/health'),
+  getAdvisorAwards: (params) => get('/api/award/advisor/list', params),
+  getAwardChanges: (id) => get(`/api/award/${id}/changes`),
+  getAdvisorAwardDetail: (id) => get(`/api/award/advisor/${id}`),
+  updateAdvisorAward: (id, data) => put(`/api/award/advisor/${id}`, data),
 
   // ==================== 认证相关 ====================
   // 用户登录
@@ -101,10 +105,10 @@ export const api = {
   getMyAwardList:(params) => get('/api/award/student/my-awards', params),
   getAwardAuditList: (params) => get('/api/award/audit/list', params),
   getAwardAuditDetail: (id) => get(`/api/award/audit/detail/${id}`),
-  passAwardAudit: (id) => put(`/api/award/audit/${id}/pass`),
-  rejectAwardAudit: (id, reason) => put(`/api/award/audit/${id}/reject`, { reason }),
-  batchPassAwardAudit: (ids) => put('/api/award/audit/batch/pass', { ids }),
-  batchRejectAwardAudit: (ids, reason) => put('/api/award/audit/batch/reject', { ids, reason }),
+  passAwardAudit: (id, updateTime) => put(`/api/award/audit/${id}/pass`, { update_time: updateTime }),
+  rejectAwardAudit: (id, reason, updateTime) => put(`/api/award/audit/${id}/reject`, { reason, update_time: updateTime }),
+  batchPassAwardAudit: (ids, versions) => put('/api/award/audit/batch/pass', { ids, versions }),
+  batchRejectAwardAudit: (ids, reason, versions) => put('/api/award/audit/batch/reject', { ids, reason, versions }),
   searchCompList: (params) => get('/api/award/comp/list', params),
   submitAward: (data) => post('/api/award/student/supplement', data),
 

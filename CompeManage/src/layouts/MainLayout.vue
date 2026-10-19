@@ -89,6 +89,12 @@ const allMenus = [
     ],
   },
   {
+    path: '/award/advisor',
+    title: '我的指导获奖',
+    roles: ['teacher', 'competition_manager'],
+    icon: Medal,
+  },
+  {
     path: '/award/student',
     title: '我的竞赛',
     roles: ['student'],

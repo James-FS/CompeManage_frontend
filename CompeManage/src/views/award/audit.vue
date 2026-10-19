@@ -72,7 +72,7 @@ const handleBatchPass = async () => {
     loading.value = true
     try {
       const ids = pendingItems.map((item) => item.id)
-      const res = await api.batchPassAwardAudit(ids)
+      const res = await api.batchPassAwardAudit(ids, Object.fromEntries(pendingItems.map(item => [item.id, item.update_time])))
       if (res.code === 200) {
         ElMessage.success(`成功通过 ${pendingItems.length} 条记录`)
         selectedRows.value = []
@@ -107,7 +107,7 @@ const handleBatchReject = async () => {
 
   try {
     const ids = pendingItems.map((item) => item.id)
-    const res = await api.batchRejectAwardAudit(ids, batchRejectReason.value)
+    const res = await api.batchRejectAwardAudit(ids, batchRejectReason.value, Object.fromEntries(pendingItems.map(item => [item.id, item.update_time])))
     if (res.code === 200) {
       ElMessage.success(`成功驳回 ${pendingItems.length} 条记录`)
       batchRejectDialogVisible.value = false
@@ -130,7 +130,7 @@ const handleQuickPass = (row) => {
     type: 'success',
   }).then(async () => {
     try {
-      const res = await api.passAwardAudit(row.id)
+      const res = await api.passAwardAudit(row.id, row.update_time)
       if (res.code === 200) {
         row.status = 1
         ElMessage.success('审核已通过')

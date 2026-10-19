@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import AwardChangeHistory from '@/components/AwardChangeHistory.vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   User,
@@ -100,7 +101,7 @@ const handlePass = async () => {
     await ElMessageBox.confirm(`确定通过 ${detail.value.student_name} 的获奖申报吗？`, '通过审核', {
       confirmButtonText: '确定通过', cancelButtonText: '取消', type: 'success',
     })
-    const res = await api.passAwardAudit(awardID)
+    const res = await api.passAwardAudit(awardID, detail.value.update_time)
     if (res.code === 200) {
       detail.value.status = 1
       ElMessage.success('审核已通过')
@@ -113,7 +114,7 @@ const handlePass = async () => {
 const handleReject = async () => {
   if (!rejectReason.value.trim()) return ElMessage.warning('请输入驳回原因')
   try {
-    const res = await api.rejectAwardAudit(awardID, rejectReason.value)
+    const res = await api.rejectAwardAudit(awardID, rejectReason.value, detail.value.update_time)
     if (res.code === 200) {
       detail.value.status = 2
       detail.value.reject_reason = rejectReason.value
@@ -230,6 +231,7 @@ onMounted(() => {
 
           <div class="award-item"><div class="item-label">参赛类型</div><div class="item-value">{{ detail.participation_type === 'team' ? '团队赛' : detail.participation_type === 'individual' ? '个人赛' : (hasMultipleTeammates ? '团队赛' : '个人赛') }}</div></div>
           <div class="award-item"><div class="item-label">备注</div><div class="item-value" style="white-space: pre-wrap">{{ detail.remark || '无' }}</div></div>
+          <AwardChangeHistory :award-id="detail.id" />
           <!-- 申报时间 -->
           <div class="award-item">
             <div class="item-label">申报时间</div>

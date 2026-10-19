@@ -12,6 +12,7 @@ const router = useRouter()
 const route = useRoute()
 const formRef = ref(null)
 const isSubmitting = ref(false)
+const resubmitVersion = ref(null)
 
 // 搜索相关
 const searchLoading = ref(false)
@@ -329,6 +330,7 @@ const handleSubmit = async () => {
           award_date: form.awardDate,
           team_name: form.teamName.trim(),
           proof_url: form.certImage,
+          update_time: resubmitVersion.value || undefined,
           members: [
             {
               name: form.leader.name,
@@ -400,6 +402,7 @@ onMounted(async () => {
     try {
       const data = JSON.parse(saved)
       if (data.comp_id === form.compID) {
+        resubmitVersion.value = data.update_time || null
         form.participationType = data.participation_type || ((data.members || []).length > 1 ? 'team' : 'individual')
         form.awardCategory = data.award_category || (data.award_level || '').match(/国家级|省级|校级/)?.[0] || ''
         form.awardLevel = (data.award_level || '').match(/一等奖|二等奖|三等奖/)?.[0] || ''

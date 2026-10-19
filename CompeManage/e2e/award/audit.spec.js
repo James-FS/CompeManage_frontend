@@ -6,7 +6,7 @@ async function setup(page, fail = false) {
     localStorage.setItem('role', 'competition_manager')
     localStorage.setItem('userInfo', JSON.stringify({ id: 1, name: '赛事负责人' }))
   })
-  const record = { id: 7, student_name: '学生甲', comp_name: '数学建模', project_name: '申报项目', status: 0, award_level: '省级一等奖', award_name: '一等奖' }
+  const record = { id: 7, student_name: '学生甲', comp_name: '数学建模', project_name: '申报项目', status: 0, award_level: '省级一等奖', award_name: '一等奖', update_time: '2026-10-19T09:00:00+08:00' }
   await page.route(url => url.pathname.startsWith('/api/'), async route => {
     const path = new URL(route.request().url()).pathname
     if (route.request().method() === 'PUT' && fail) {
@@ -25,7 +25,9 @@ test('负责人快捷通过申报后更新审核状态', async ({ page }) => {
   await page.goto('/#/award/audit')
   const row = page.getByRole('row').filter({ hasText: '学生甲' })
   await row.getByRole('button', { name: '通过', exact: true }).click()
+  const request = page.waitForRequest(request => request.method() === 'PUT' && request.url().endsWith('/7/pass'))
   await page.getByRole('button', { name: '确定通过', exact: true }).click()
+  expect((await request).postDataJSON().update_time).toBe('2026-10-19T09:00:00+08:00')
   await expect(row.getByText('已通过', { exact: true })).toBeVisible()
 })
 

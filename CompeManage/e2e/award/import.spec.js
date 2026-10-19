@@ -37,6 +37,8 @@ test('学生补录重复记录时显示服务端提示', async ({ page }) => {
     comp_id: 1,
     award_level: '省级二等奖',
     award_name: '二等奖',
+    award_time: '2026-10-12T00:00:00+08:00',
+    advisor_info: [{ id: 11, username: 'T001', name: '张老师', college: '学院甲' }],
     team_name: '已有导入项目',
     proof_url: '/uploads/e2e-certificate.pdf',
     members: [{
@@ -49,8 +51,6 @@ test('学生补录重复记录时显示服务端提示', async ({ page }) => {
     }],
   })))
   await page.goto('/#/award/student/declare?comp_id=1&comp_name=校验赛事')
-  await page.getByPlaceholder('选择日期').click()
-  await page.locator('.el-date-table td.today:not(.disabled)').click()
   await page.getByRole('button', { name: '确认提交' }).click()
   await expect(page.locator('.el-message--error').filter({ hasText: '记录已存在' })).toBeVisible()
 })

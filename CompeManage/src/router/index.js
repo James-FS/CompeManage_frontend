@@ -213,6 +213,12 @@ const routes = [
     component: MainLayout,
     children: [
       {
+        path: 'advisor',
+        name: 'AwardAdvisor',
+        component: () => import('@/views/award/advisor.vue'),
+        meta: { title: '我的指导获奖', roles: ['teacher', 'competition_manager'] },
+      },
+      {
         path: 'list',
         name: 'AwardList',
         component: () => import('@/views/award/list.vue'),

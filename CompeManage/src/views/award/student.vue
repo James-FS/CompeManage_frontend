@@ -3,6 +3,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Trophy, Timer, DocumentChecked, Calendar, Paperclip } from '@element-plus/icons-vue'
 import api from '@/api'
+import AwardChangeHistory from '@/components/AwardChangeHistory.vue'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
@@ -136,6 +137,11 @@ const goDeclare = () => {
   router.push('/award/student/declare')
 }
 
+async function downloadProof(award) {
+  try { await api.downloadFile(award.proof_url, false, '获奖证明') }
+  catch (error) { if (!error.messageShown) ElMessage.error(error.message || '下载证明失败') }
+}
+
 const goResubmit = (award) => {
   const compName = getAwardCompName(award)
   sessionStorage.setItem('resubmitAward', JSON.stringify({
@@ -150,6 +156,7 @@ const goResubmit = (award) => {
     award_name: award.award_name,
     team_name: getAwardTeamName(award),
     proof_url: award.proof_url || '',
+    update_time: award.update_time,
     members: award.register?.members || [],
     leader: award.register?.leader || null,
   }))
@@ -350,6 +357,7 @@ onMounted(() => {
               </div>
 
               <div class="award-meta">
+                <AwardChangeHistory :award-id="award.id" />
                 <span class="meta-item">
                   <el-icon><Calendar /></el-icon>
                   {{ tab.name === 'declaration' ? '申报时间' : '获奖时间' }}：{{ formatDateTime(tab.name === 'declaration' ? award.create_time : award.award_time) }}
@@ -362,6 +370,7 @@ onMounted(() => {
                   v-if="award.proof_url"
                   class="proof-link"
                   :href="award.proof_url"
+                  @click.prevent="downloadProof(award)"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
