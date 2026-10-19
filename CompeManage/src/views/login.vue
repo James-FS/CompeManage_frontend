@@ -168,6 +168,7 @@ onMounted(() => {
 }
 
 .login-box {
+    /* 例外：登录页为独立展示页，不纳入后台卡片的圆角/阴影令牌体系 */
     width: 800px;
     height: 500px;
     background: white;

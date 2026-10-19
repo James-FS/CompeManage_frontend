@@ -101,7 +101,7 @@ test.describe('奖项审计详情页面', () => {
     await expect(awardSection).toBeVisible()
 
     // 获奖详情字段 - 验证区域包含这些文本
-    const awardFields = ['参赛赛事', '具体奖项等级', '获奖日期', '团队/项目名', '申报时间']
+    const awardFields = ['参赛赛事', '获奖类别 / 等级', '获奖日期', '参赛项目名称', '申报时间']
     for (const field of awardFields) {
       await expect(awardSection).toContainText(field)
     }

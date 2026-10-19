@@ -11,6 +11,7 @@ const compId = route.params.id;
 
 const formRef = ref(null);
 const loading = ref(false);
+const capabilities = ref({});
 const collegeList = ref([]);
 const departmentList = ref([]);
 
@@ -30,7 +31,6 @@ const form = reactive({
 const rules = {
     comp_name: [{ required: true, message: '请输入赛事名称', trigger: 'blur' }],
     comp_level: [{ required: true, message: '请选择赛事级别', trigger: 'change' }],
-    college: [{ required: true, message: '请选择所属学院', trigger: 'change' }],
     manager: [{ required: true, message: '请选择赛事负责人', trigger: 'change' }],
     year: [{ required: true, message: '请输入所属年份', trigger: 'blur' }]
 };
@@ -85,6 +85,12 @@ const loadDetail = async () => {
             return;
         }
 
+        capabilities.value = data.capabilities || {};
+        if (!capabilities.value.can_edit_competition) {
+            ElMessage.warning('当前账号无权编辑该赛事');
+            router.replace('/competition/list');
+            return;
+        }
         const managerInfo = data.manager || {};
         const collegeInfo = data.college_info || {};
 
@@ -141,6 +147,7 @@ const onFilterChange = () => {
 };
 
 const openManagerSelect = () => {
+    if (!capabilities.value.can_reassign_manager) return;
     managerDialogVisible.value = true;
     managerCurrentPage.value = 1;
     // P2-A：数据源为全体教职工（约万人），打开时不自动加载，先输入姓名/工号再查询
@@ -179,6 +186,7 @@ const resetSearch = () => {
 };
 
 const handleSubmit = async (formEl) => {
+    if (!capabilities.value.can_edit_competition) return;
     if (!formEl) return;
     await formEl.validate(async (valid) => {
         if (!valid) return;
@@ -233,7 +241,7 @@ onMounted(async () => {
                     <span>编辑赛事信息</span>
                 </div>
             </template>
-            <el-form :model="form" :rules="rules" ref="formRef" label-width="120px">
+            <el-form :disabled="!capabilities.can_edit_competition" :model="form" :rules="rules" ref="formRef" label-width="120px">
                 <el-row :gutter="20">
                     <el-col :span="12">
                         <el-form-item label="赛事名称" prop="comp_name">
@@ -261,7 +269,7 @@ onMounted(async () => {
                     </el-col>
                     <el-col :span="12">
                         <el-form-item label="所属学院" prop="college">
-                            <el-select v-model="form.college" placeholder="请选择学院" style="width: 100%" clearable>
+                            <el-select v-model="form.college" :disabled="!capabilities.can_change_college" placeholder="请选择学院" style="width: 100%" clearable>
                                 <el-option v-for="college in collegeList" :key="college.id" :label="college.name"
                                     :value="college.name" />
                             </el-select>
@@ -283,7 +291,7 @@ onMounted(async () => {
                 <el-row :gutter="20">
                     <el-col :span="12">
                         <el-form-item label="赛事负责人" prop="manager">
-                            <el-input v-model="form.manager" placeholder="请选择赛事负责人" readonly class="manager-input"
+                            <el-input v-model="form.manager" :disabled="!capabilities.can_reassign_manager" placeholder="请选择赛事负责人" readonly class="manager-input"
                                 @click="openManagerSelect" />
                         </el-form-item>
                     </el-col>
@@ -331,7 +339,8 @@ onMounted(async () => {
             <el-table-column prop="college" label="所属部门" min-width="200" align="center" />
             <el-table-column label="当前角色" width="120" align="center">
                 <template #default="{ row }">
-                    <el-tag v-if="row.role_code === 'competition_manager'" type="warning" size="small">赛事负责人</el-tag>
+                    <el-tag v-if="row.role_code === 'college_admin'" type="success" size="small">院级管理员</el-tag>
+                    <el-tag v-else-if="row.role_code === 'competition_manager'" type="warning" size="small">赛事负责人</el-tag>
                     <el-tag v-else type="info" size="small">老师</el-tag>
                 </template>
             </el-table-column>

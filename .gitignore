@@ -1,1 +1,8 @@
+# Generated reports and root-level tool state
 CompeManage/coverage-summary.md
+/package-lock.json
+/test-results/
+/playwright-report/
+/coverage/
+/dist/
+/.nyc_output/

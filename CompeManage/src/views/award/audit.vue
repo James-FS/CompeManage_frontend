@@ -72,7 +72,7 @@ const handleBatchPass = async () => {
     loading.value = true
     try {
       const ids = pendingItems.map((item) => item.id)
-      const res = await api.batchPassAwardAudit(ids)
+      const res = await api.batchPassAwardAudit(ids, Object.fromEntries(pendingItems.map(item => [item.id, item.update_time])))
       if (res.code === 200) {
         ElMessage.success(`成功通过 ${pendingItems.length} 条记录`)
         selectedRows.value = []
@@ -80,12 +80,11 @@ const handleBatchPass = async () => {
       }
     } catch (error) {
       console.error(error)
-      ElMessage.error('批量操作部分或全部失败，请刷新后重试')
-      fetchAwardList()
+      if (!error.messageShown) ElMessage.error(error.message || '批量审核失败，请重试')
     } finally {
       loading.value = false
     }
-  })
+  }).catch(() => {})
 }
 
 const openBatchRejectDialog = () => {
@@ -108,7 +107,7 @@ const handleBatchReject = async () => {
 
   try {
     const ids = pendingItems.map((item) => item.id)
-    const res = await api.batchRejectAwardAudit(ids, batchRejectReason.value)
+    const res = await api.batchRejectAwardAudit(ids, batchRejectReason.value, Object.fromEntries(pendingItems.map(item => [item.id, item.update_time])))
     if (res.code === 200) {
       ElMessage.success(`成功驳回 ${pendingItems.length} 条记录`)
       batchRejectDialogVisible.value = false
@@ -117,8 +116,7 @@ const handleBatchReject = async () => {
     }
   } catch (error) {
     console.error(error)
-    ElMessage.error('批量操作部分或全部失败，请刷新后重试')
-    fetchAwardList()
+    if (!error.messageShown) ElMessage.error(error.message || '批量审核失败，请重试')
   } finally {
     loading.value = false
   }
@@ -132,15 +130,15 @@ const handleQuickPass = (row) => {
     type: 'success',
   }).then(async () => {
     try {
-      const res = await api.passAwardAudit(row.id)
+      const res = await api.passAwardAudit(row.id, row.update_time)
       if (res.code === 200) {
         row.status = 1
         ElMessage.success('审核已通过')
       }
     } catch (e) {
-      ElMessage.warning('' + e.message)
+      if (!e.messageShown) ElMessage.error(e.message || '审核失败，请重试')
     }
-  })
+  }).catch(() => {})
 }
 
 // --- 详情页跳转 ---
@@ -166,7 +164,7 @@ async function fetchAwardList() {
       total.value = res.data.total || 0
     }
   } catch (err) {
-    ElMessage.info('无相关数据')
+    if (!err.messageShown) ElMessage.error(err.message || '获取申报列表失败')
   } finally {
     loading.value = false
   }
@@ -181,19 +179,19 @@ onMounted(() => {
   <div class="list-container">
     <!-- 筛选卡片 -->
     <div class="filter-card">
-      <el-form :inline="true" :model="queryForm" class="filter-form" label-width="70px" label-position="right">
+      <el-form :inline="true" :model="queryForm" class="filter-form">
         <el-form-item label="赛事名称">
           <el-input v-model="queryForm.comp_name" placeholder="请输入赛事名称" style="width: 200px" clearable
-            @keyup.enter="fetchAwardList" />
+            @keyup.enter="fetchAwardList" @clear="fetchAwardList" />
         </el-form-item>
 
         <el-form-item label="学生姓名">
-          <el-input v-model="queryForm.keyword" placeholder="请输入姓名或学号" style="width: 180px"
-            @keyup.enter="fetchAwardList" />
+          <el-input v-model="queryForm.keyword" placeholder="请输入姓名或学号" style="width: 180px" clearable
+            @keyup.enter="fetchAwardList" @clear="fetchAwardList" />
         </el-form-item>
 
         <el-form-item label="获奖等级">
-          <el-select v-model="queryForm.award_level" placeholder="全部" style="width: 140px" clearable>
+          <el-select v-model="queryForm.award_level" placeholder="全部等级" style="width: 140px" clearable @change="fetchAwardList">
             <el-option label="国家级一等奖" value="国家级一等奖" />
             <el-option label="国家级二等奖" value="国家级二等奖" />
             <el-option label="国家级三等奖" value="国家级三等奖" />
@@ -206,7 +204,7 @@ onMounted(() => {
         </el-form-item>
 
         <el-form-item label="审核状态">
-          <el-select v-model="queryForm.status" placeholder="全部" style="width: 120px" clearable>
+          <el-select v-model="queryForm.status" placeholder="全部状态" style="width: 120px" clearable @change="fetchAwardList">
             <el-option label="待审核" :value="0" />
             <el-option label="已通过" :value="1" />
             <el-option label="已驳回" :value="2" />
@@ -345,24 +343,8 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   background-color: #f0f2f5;
-  padding: 16px;
+  padding: var(--container-padding);
   gap: 12px;
-}
-
-.filter-card {
-  box-sizing: border-box;
-  background: #fff;
-  padding: 20px 20px 10px 20px;
-  border-radius: 4px;
-  box-shadow: var(--card-shadow);
-
-  .filter-form {
-    :deep(.el-form-item) {
-      margin-bottom: 12px;
-      margin-right: 24px;
-    }
-
-  }
 }
 
 .action-bar {
@@ -387,8 +369,8 @@ onMounted(() => {
 .table-container {
   flex: 1;
   background: #fff;
-  padding: 16px;
-  border-radius: 4px;
+  padding: var(--item-padding);
+  border-radius: var(--card-radius);
   display: flex;
   flex-direction: column;
   box-shadow: var(--card-shadow);

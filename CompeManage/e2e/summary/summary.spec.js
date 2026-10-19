@@ -54,7 +54,7 @@ test.describe('赛事总结列表页面', () => {
     await expect(page.locator('.summary-list-container')).toBeVisible()
 
     // ---------- 搜索栏 ----------
-    await expect(page.locator('.search-container')).toBeVisible()
+    await expect(page.locator('.filter-card')).toBeVisible()
 
     // 赛事名称输入框
     await expect(page.locator('input[placeholder="请输入赛事名称"]')).toBeVisible()

@@ -1,11 +1,11 @@
 <script setup>
 import { onMounted, ref } from 'vue'
-import { Calendar, User, Bell, Setting } from '@element-plus/icons-vue'
+import { Calendar, User, Bell, Setting, Search, Refresh } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { formatTimeRange } from '@/utils/format'
 import api from '@/api'
-import { 
+import {
   getParticipantType,
   getStatusConfig,
   getTimeState,
@@ -18,7 +18,9 @@ const loading = ref(false)
 const queryParams = ref({
   page: 1,
   page_size: 10,
-  keyword: '',
+  comp_name: '',
+  comp_level: '',
+  status: '',
   is_my: true,
   is_reg: true,
 })
@@ -32,6 +34,18 @@ function NavigateToSettings(compID) {
 
 function NavigateToNotice(compID) {
     router.push({name: 'NoticeDetail', params: { id: compID } })
+}
+
+function applyFilters() {
+  queryParams.value.page = 1
+  fetchCompList()
+}
+
+function resetFilters() {
+  queryParams.value.comp_name = ''
+  queryParams.value.comp_level = ''
+  queryParams.value.status = ''
+  applyFilters()
 }
 
 async function fetchCompList() {
@@ -67,6 +81,37 @@ onMounted(() => {
 
 <template>
   <div class="page-container">
+
+    <div class="filter-card">
+      <el-form :inline="true" class="search-form" @submit.prevent>
+        <el-form-item label="赛事名称">
+          <el-input
+            v-model="queryParams.comp_name"
+            placeholder="请输入赛事名称"
+            clearable
+            style="width: 220px"
+            @keyup.enter="applyFilters"
+            @clear="applyFilters"
+          />
+        </el-form-item>
+        <el-form-item label="赛事级别">
+          <el-select v-model="queryParams.comp_level" placeholder="全部级别" clearable style="width: 130px" @change="applyFilters">
+            <el-option v-for="lvl in ['国家级', '省级', '校级']" :key="lvl" :label="lvl" :value="lvl" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="状态">
+          <el-select v-model="queryParams.status" placeholder="全部状态" clearable style="width: 130px" @change="applyFilters">
+            <el-option label="未开始" value="upcoming" />
+            <el-option label="报名中" value="ongoing" />
+            <el-option label="已结束" value="ended" />
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" :icon="Search" @click="applyFilters">搜索</el-button>
+          <el-button :icon="Refresh" @click="resetFilters">重置</el-button>
+        </el-form-item>
+      </el-form>
+    </div>
 
     <div v-loading="loading" class="comp-list">
       <el-empty v-if="!loading && compList.length === 0" description="暂无负责的赛事" />
@@ -115,6 +160,7 @@ onMounted(() => {
             </el-button>
 
             <el-button
+              v-if="item.capabilities?.can_edit_registration"
               type="primary"
               class="primary-btn"
               @click.stop="NavigateToSettings(item.id)"
@@ -122,6 +168,7 @@ onMounted(() => {
               <el-icon style="margin-right: 6px"><Setting /></el-icon>
               报名设置
             </el-button>
+            <el-button v-else @click.stop="NavigateToSettings(item.id)">查看配置</el-button>
           </div>
         </div>
       </div>
@@ -174,8 +221,8 @@ onMounted(() => {
   .comp-item {
     background-color: #fff;
     padding: var(--item-padding);
-    border-radius: 8px;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+    border-radius: var(--card-radius);
+    box-shadow: var(--card-shadow);
     border: 1px solid transparent;
     display: flex;
     justify-content: space-between;
@@ -185,7 +232,7 @@ onMounted(() => {
     
     &:hover {
       transform: translateY(-2px);
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+      box-shadow: var(--card-hover-shadow);
       .comp-name {
         color: var(--primary-color);
       }

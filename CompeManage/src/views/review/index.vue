@@ -91,13 +91,13 @@ onMounted(() => {
 
 <template>
   <div class="review-container">
-    <div class="search-container">
-      <el-form :inline="true" :model="searchForm" class="search-form" label-width="80px" label-position="right">
+    <div class="filter-card">
+      <el-form :inline="true" :model="searchForm" class="search-form">
         <el-form-item label="关键词">
-          <el-input v-model="searchForm.keyword" placeholder="请输入赛事名称" clearable style="width: 220px" @keyup.enter="handleSearch" />
+          <el-input v-model="searchForm.keyword" placeholder="请输入赛事名称" clearable style="width: 220px" @keyup.enter="handleSearch" @clear="handleSearch" />
         </el-form-item>
         <el-form-item label="评审状态">
-          <el-select v-model="searchForm.status" placeholder="请选择状态" clearable style="width: 220px">
+          <el-select v-model="searchForm.status" placeholder="全部状态" clearable style="width: 220px" @change="handleSearch">
             <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
         </el-form-item>
@@ -178,18 +178,9 @@ onMounted(() => {
   padding: 20px;
   box-sizing: border-box;
 }
-.search-container {
-  box-sizing: border-box;
-  margin-bottom: 15px;
-  padding: 20px 20px 10px 20px;
-  background-color: #ffffff;
-  box-shadow: var(--card-shadow);
-  border-radius: 4px;
+/* 筛选卡片外壳用全局 .filter-card */
+.filter-card {
   .search-form {
-    .el-form-item {
-      margin-bottom: 15px;
-      margin-left: 15px;
-    }
     .search-actions {
       margin-left: 45px;
       .el-button {
@@ -203,7 +194,7 @@ onMounted(() => {
   padding: 20px 20px 10px 20px;
   background-color: #ffffff;
   box-shadow: var(--card-shadow);
-  border-radius: 4px;
+  border-radius: var(--card-radius);
 }
 .pagination-wrapper {
   margin-top: 10px;

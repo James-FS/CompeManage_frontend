@@ -526,7 +526,8 @@ const selectTeacher = (row) => {
             <el-table-column prop="college" label="所属部门" min-width="200" align="center" />
             <el-table-column label="当前角色" width="120" align="center">
                 <template #default="{ row }">
-                    <el-tag v-if="row.role_code === 'competition_manager'" type="warning" size="small">赛事负责人</el-tag>
+                    <el-tag v-if="row.role_code === 'college_admin'" type="success" size="small">院级管理员</el-tag>
+                    <el-tag v-else-if="row.role_code === 'competition_manager'" type="warning" size="small">赛事负责人</el-tag>
                     <el-tag v-else type="info" size="small">老师</el-tag>
                 </template>
             </el-table-column>
@@ -560,8 +561,8 @@ const selectTeacher = (row) => {
 .content-box {
     width: 100%;
     background-color: #ffffff;
-    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
-    border-radius: 4px;
+    box-shadow: var(--card-shadow);
+    border-radius: var(--card-radius);
     padding: 20px;
     box-sizing: border-box;
 }
@@ -584,7 +585,7 @@ const selectTeacher = (row) => {
         margin-top: 10px;
         padding: 10px;
         background-color: #f5f7fa;
-        border-radius: 4px;
+        border-radius: var(--card-radius);
         display: flex;
         flex-direction: column;
         gap: 6px;

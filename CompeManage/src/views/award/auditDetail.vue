@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import AwardChangeHistory from '@/components/AwardChangeHistory.vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   User,
@@ -54,7 +55,7 @@ const levelColorMap = {
 
 const awardLevelGroup = computed(() => {
   const level = detail.value.award_level || ''
-  return levelLabelMap[level] || '未知'
+  return detail.value.award_category || levelLabelMap[level] || (level.match(/国家级|省级|校级/)?.[0]) || '未知'
 })
 
 const awardLevelColor = computed(() => {
@@ -63,6 +64,13 @@ const awardLevelColor = computed(() => {
 
 const hasMultipleTeammates = computed(() => {
   return Array.isArray(detail.value.teammates) && detail.value.teammates.length > 1
+})
+
+const advisors = computed(() => {
+  try {
+    const data = typeof detail.value.advisor_info === 'string' ? JSON.parse(detail.value.advisor_info || '[]') : detail.value.advisor_info
+    return Array.isArray(data) ? data : []
+  } catch { return [] }
 })
 
 // --- 获取详情 ---
@@ -74,7 +82,7 @@ async function fetchDetail() {
       detail.value = res.data
     }
   } catch (error) {
-    ElMessage.error('获取详情失败')
+    if (!error.messageShown) ElMessage.error(error.message || '获取详情失败')
     console.error(error)
   } finally {
     loading.value = false
@@ -82,45 +90,39 @@ async function fetchDetail() {
 }
 
 // --- 审核操作 ---
-async function auditAward() {
-  try {
-    return { code: 200 }
-  } catch (error) {
-    ElMessage.error('审核操作失败')
-    throw error
+const showAuditError = (error) => {
+  if (error !== 'cancel' && error !== 'close' && !error?.messageShown) {
+    ElMessage.error(error?.message || '审核操作失败，请重试')
   }
 }
 
-const handlePass = () => {
-  ElMessageBox.confirm(
-    `确定通过 ${detail.value.student_name} 的获奖申报吗？`,
-    '通过审核',
-    {
-      confirmButtonText: '确定通过',
-      cancelButtonText: '取消',
-      type: 'success',
-    }
-  ).then(async () => {
-    const res = await api.passAwardAudit(awardID)
+const handlePass = async () => {
+  try {
+    await ElMessageBox.confirm(`确定通过 ${detail.value.student_name} 的获奖申报吗？`, '通过审核', {
+      confirmButtonText: '确定通过', cancelButtonText: '取消', type: 'success',
+    })
+    const res = await api.passAwardAudit(awardID, detail.value.update_time)
     if (res.code === 200) {
       detail.value.status = 1
-      await auditAward()
       ElMessage.success('审核已通过')
     }
-  })
+  } catch (error) {
+    showAuditError(error)
+  }
 }
 
 const handleReject = async () => {
-  if (!rejectReason.value.trim()) {
-    return ElMessage.warning('请输入驳回原因')
-  }
-  const res = await api.rejectAwardAudit(awardID, rejectReason.value)
-  if (res.code === 200) {
-    detail.value.status = 2
-    detail.value.reject_reason = rejectReason.value
-    await auditAward()
-    ElMessage.success('已驳回申请')
-    rejectDialogVisible.value = false
+  if (!rejectReason.value.trim()) return ElMessage.warning('请输入驳回原因')
+  try {
+    const res = await api.rejectAwardAudit(awardID, rejectReason.value, detail.value.update_time)
+    if (res.code === 200) {
+      detail.value.status = 2
+      detail.value.reject_reason = rejectReason.value
+      ElMessage.success('已驳回申请')
+      rejectDialogVisible.value = false
+    }
+  } catch (error) {
+    showAuditError(error)
   }
 }
 
@@ -132,7 +134,7 @@ const openCertificate = async () => {
     // 走预览分支（api 内已封装 window.open(blobUrl, '_blank')）
     await api.downloadFile(detail.value.cert_image, true)
   } catch (error) {
-    ElMessage.error('证书预览失败：' + (error.message || '未知错误'))
+    if (!error.messageShown) ElMessage.error('证书预览失败：' + (error.message || '未知错误'))
     console.error(error)
   }
 }
@@ -208,7 +210,7 @@ onMounted(() => {
           </div>
 
           <div class="award-item">
-            <div class="item-label">具体奖项等级</div>
+            <div class="item-label">获奖类别 / 等级</div>
             <div class="item-value">{{ awardLevelGroup }}{{ detail.award_specific }}</div>
           </div>
 
@@ -223,10 +225,13 @@ onMounted(() => {
 
           <!-- 团队/项目名称 -->
           <div class="award-item">
-            <div class="item-label">团队/项目名</div>
+            <div class="item-label">参赛项目名称</div>
             <div class="item-value">{{ detail.team_name || '（个人参赛）' }}</div>
           </div>
 
+          <div class="award-item"><div class="item-label">参赛类型</div><div class="item-value">{{ detail.participation_type === 'team' ? '团队赛' : detail.participation_type === 'individual' ? '个人赛' : (hasMultipleTeammates ? '团队赛' : '个人赛') }}</div></div>
+          <div class="award-item"><div class="item-label">备注</div><div class="item-value" style="white-space: pre-wrap">{{ detail.remark || '无' }}</div></div>
+          <AwardChangeHistory :award-id="detail.id" />
           <!-- 申报时间 -->
           <div class="award-item">
             <div class="item-label">申报时间</div>
@@ -243,9 +248,20 @@ onMounted(() => {
           <el-table-column prop="name" label="姓名" width="140" />
           <el-table-column prop="student_id" label="学号" width="160" />
           <el-table-column prop="college" label="所属学院" />
+          <el-table-column label="身份" width="90"><template #default="{ row }">{{ row.is_leader ? '队长' : '成员' }}</template></el-table-column>
+          <el-table-column prop="phone" label="手机号" min-width="130" />
+          <el-table-column prop="email" label="邮箱" min-width="180" />
         </el-table>
       </div>
 
+      <div class="info-section">
+        <h3 class="section-title">指导老师</h3>
+        <el-table :data="advisors" border stripe empty-text="未填写指导老师">
+          <el-table-column type="index" label="序号" width="70" />
+          <el-table-column prop="name" label="姓名" min-width="140" />
+          <el-table-column prop="college" label="学院 / 单位" min-width="200" />
+        </el-table>
+      </div>
       <!-- 证书材料 -->
       <div class="info-section">
         <h3 class="section-title">证明材料</h3>
@@ -320,7 +336,7 @@ onMounted(() => {
 .detail-page {
   min-height: 100%;
   background-color: var(--background-color);
-  padding: 16px;
+  padding: var(--container-padding);
   box-sizing: border-box;
 }
 
@@ -328,7 +344,7 @@ onMounted(() => {
 .page-header {
   background: #fff;
   padding: 16px 24px;
-  border-radius: 8px 8px 0 0;
+  border-radius: var(--card-radius) var(--card-radius) 0 0;
   border-bottom: 1px solid #ebeef5;
 
   .back-btn {
@@ -395,9 +411,9 @@ onMounted(() => {
 /* ====== 内容区域 ====== */
 .content-wrapper {
   background: #fff;
-  padding: 24px 30px 40px;
-  border-radius: 0 0 8px 8px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
+  padding: var(--item-padding) 30px 40px;
+  border-radius: 0 0 var(--card-radius) var(--card-radius);
+  box-shadow: var(--card-shadow);
 
   .info-section {
     margin-bottom: 40px;
@@ -433,7 +449,7 @@ onMounted(() => {
   .award-item {
     background: #fcfcfc;
     border: 1px solid #ebeef5;
-    border-radius: 6px;
+    border-radius: var(--card-radius);
     padding: 16px;
     display: flex;
     flex-direction: column;
@@ -481,7 +497,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   border: 1px solid #ebeef5;
-  border-radius: 6px;
+  border-radius: var(--card-radius);
   padding: 16px;
   cursor: pointer;
   transition: all 0.3s;
@@ -492,7 +508,7 @@ onMounted(() => {
     background-color: #f0fdfa;
 
     .cert-preview {
-      box-shadow: 0 4px 12px rgba(19, 194, 194, 0.15);
+      box-shadow: var(--primary-btn-shadow);
     }
   }
 
@@ -500,7 +516,7 @@ onMounted(() => {
     flex-shrink: 0;
     width: 80px;
     height: 80px;
-    border-radius: 4px;
+    border-radius: var(--card-radius);
     overflow: hidden;
     background: #f5f7fa;
     display: flex;
@@ -543,7 +559,7 @@ onMounted(() => {
   text-align: center;
   padding: 40px 20px;
   background: #fafafa;
-  border-radius: 6px;
+  border-radius: var(--card-radius);
   color: #909399;
 
   .el-icon {
@@ -557,7 +573,7 @@ onMounted(() => {
 .reject-box {
   background: #fef0f0;
   border: 1px solid #fde2e4;
-  border-radius: 6px;
+  border-radius: var(--card-radius);
   padding: 16px;
   display: flex;
   gap: 12px;

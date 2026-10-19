@@ -125,7 +125,7 @@ onMounted(async() => {
   /* 页面在顶栏+面包屑(约110px)之下，100vh 会固定多出滚动量 */
   min-height: calc(100vh - 110px);
   background-color: #dcfce7;
-  padding: 20px;
+  padding: var(--container-padding);
   background-image: radial-gradient(#13c2c2 1px, transparent 1px);
   background-size: 20px 20px;
 }
@@ -138,9 +138,7 @@ onMounted(async() => {
   flex-direction: column;
   overflow-y: auto;
   border: none;
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.05),
-    0 10px 40px -10px rgba(19, 194, 194, 0.2);
+  box-shadow: var(--card-shadow);
   position: relative;
   overflow: hidden;
 
@@ -185,7 +183,7 @@ onMounted(async() => {
       padding: 15px;
       background-color: #f8fafc;
       border-left: 4px solid #13c2c2;
-      border-radius: 4px;
+      border-radius: var(--card-radius);
 
       .content-text {
         margin: 0;
@@ -200,8 +198,8 @@ onMounted(async() => {
       align-items: center;
       padding: 15px;
       background-color: #f8fafc;
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
+      border: 1px solid #ebeef5;
+      border-radius: var(--card-radius);
       cursor: pointer;
       transition: all 0.3s ease;
 
@@ -246,7 +244,7 @@ onMounted(async() => {
         background-color: #f0fdfa;
         border-color: #13c2c2;
         transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(19, 194, 194, 0.15);
+        box-shadow: var(--primary-btn-shadow);
 
         .download-hint {
           opacity: 1;
@@ -260,7 +258,7 @@ onMounted(async() => {
       padding: 30px;
       text-align: center;
       background-color: #f8fafc;
-      border-radius: 8px;
+      border-radius: var(--card-radius);
       color: #999;
     }
   }

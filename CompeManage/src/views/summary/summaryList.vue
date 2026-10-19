@@ -129,26 +129,26 @@ onMounted(() => {
 <template>
     <div class="summary-list-container">
         <!-- 赛事总结搜索栏 -->
-        <div class="search-container">
-            <el-form :inline="true" :model="searchForm" class="search-form" label-width="100px" label-position="right">
+        <div class="filter-card">
+            <el-form :inline="true" :model="searchForm" class="search-form">
                 <el-form-item label="赛事名称">
                     <el-input v-model="searchForm.comp_name" placeholder="请输入赛事名称" clearable="true" style="width: 200px"
-                        maxlength="50">
+                        maxlength="50" @keyup.enter="handleSearch" @clear="handleSearch">
                     </el-input>
                 </el-form-item>
                 <el-form-item label="主办单位">
                     <el-input v-model="searchForm.organizer" placeholder="请输入主办单位" clearable="true" style="width: 200px"
-                        maxlength="50">
+                        maxlength="50" @keyup.enter="handleSearch" @clear="handleSearch">
                     </el-input>
                 </el-form-item>
                 <el-form-item label="赛事负责人">
                     <el-input v-model="searchForm.manager" placeholder="请输入赛事负责人" clearable="true" style="width: 200px"
-                        maxlength="50">
+                        maxlength="50" @keyup.enter="handleSearch" @clear="handleSearch">
                     </el-input>
                 </el-form-item>
                 <el-form-item label="总结状态">
-                    <el-select v-model="searchForm.summary_status" placeholder="请选择总结状态" clearable="true"
-                        style="width: 200px">
+                    <el-select v-model="searchForm.summary_status" placeholder="全部状态" clearable="true"
+                        style="width: 200px" @change="handleSearch">
                         <el-option label="未总结" value="0"></el-option>
                         <el-option label="已归档" value="1"></el-option>
                     </el-select>
@@ -208,7 +208,7 @@ onMounted(() => {
 
                 <el-table-column label="操作" width="130" align="center" fixed="right">
                     <template #default="scope">
-                        <el-button v-if="scope.row.summary_status === 0" type="primary" link :icon="Edit"
+                        <el-button v-if="scope.row.capabilities?.can_edit_summary" type="primary" link :icon="Edit"
                             @click="handleEdit(scope.row)">
                             去总结
                         </el-button>
@@ -241,18 +241,11 @@ onMounted(() => {
     box-sizing: border-box;
 }
 
-.search-container {
-    box-sizing: border-box;
-    margin-bottom: 15px;
-    padding: 20px 20px 10px 20px;
-    background-color: #ffffff;
-    box-shadow: var(--card-shadow);
-    border-radius: 4px;
-
+/* 筛选卡片外壳用全局 .filter-card；此页筛选条件多会换行，仅保留行间距与按钮位覆盖 */
+.filter-card {
     .search-form {
         .el-form-item {
             margin-bottom: 15px;
-            margin-left: 15px;
         }
 
         .search-actions {
@@ -270,7 +263,7 @@ onMounted(() => {
     padding: 20px 20px 10px 20px;
     background-color: #ffffff;
     box-shadow: var(--card-shadow);
-    border-radius: 4px;
+    border-radius: var(--card-radius);
 
     .table-toolbar {
         display: flex;
@@ -296,7 +289,7 @@ onMounted(() => {
                 height: 32px;
                 padding: 0 10px;
                 border: 1px solid var(--el-border-color-light);
-                border-radius: 4px;
+                border-radius: var(--card-radius);
                 white-space: nowrap;
                 transition: all 0.3s;
 

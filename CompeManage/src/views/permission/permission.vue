@@ -227,7 +227,7 @@ onMounted(() => {
   border: none;
   /* 与其他页面内容卡一致的阴影和圆角 */
   box-shadow: var(--card-shadow);
-  border-radius: 4px;
+  border-radius: var(--card-radius);
 }
 
 :deep(.el-card__body) {
@@ -268,7 +268,7 @@ onMounted(() => {
   align-items: center;
   padding: 10px 12px;
   margin-bottom: 8px;
-  border-radius: 6px;
+  border-radius: var(--card-radius);
   cursor: pointer;
   transition: all 0.2s;
   border: 1px solid transparent; 
@@ -302,7 +302,7 @@ onMounted(() => {
   border: none;
   /* 与其他页面内容卡一致的阴影和圆角 */
   box-shadow: var(--card-shadow);
-  border-radius: 4px;
+  border-radius: var(--card-radius);
 
   .scroll-content {
     flex: 1;

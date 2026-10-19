@@ -1,12 +1,12 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { Search, ArrowRight, Calendar, User, Bell } from '@element-plus/icons-vue'
+import { Search, ArrowRight, Calendar, User, Bell, Refresh } from '@element-plus/icons-vue'
 import { ElPagination, ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 import { api } from '@/api'
 import { formatTimeRange } from '@/utils/format'
-import { 
-  COMP_CATEGORIES, 
+import {
+  COMP_CATEGORIES,
   getParticipantType,
   getStatusConfig,
   getTimeState,
@@ -20,8 +20,8 @@ const queryParams = ref({
   page: 1,
   page_size: 10,
   comp_name: '',
-  comp_level:'',
-  category: '全部',
+  comp_level: '',
+  status: '',
   is_my: false,
   is_reg: true,
 })
@@ -60,11 +60,16 @@ async function fetchCompList() {
   }
 }
 
-function handleFilterChange(key, value) { 
-  if (queryParams.value[key] === value) return
-  queryParams.value[key] = value
+function applyFilters() {
   queryParams.value.page = 1
   fetchCompList()
+}
+
+function resetFilters() {
+  queryParams.value.comp_name = ''
+  queryParams.value.comp_level = ''
+  queryParams.value.status = ''
+  applyFilters()
 }
 
 onMounted(() => {
@@ -74,69 +79,35 @@ onMounted(() => {
 
 <template>
   <div class="page-container">
-    <div class="filter-panel">
-      <div class="search-row">
-        <el-input
-          v-model="queryParams.comp_name"
-          placeholder="搜索赛事名称"
-          clearable
-          @keyup.enter="fetchCompList"
-        >
-          <template #append><el-button @click="fetchCompList"  type="primary">搜索</el-button></template>
-        </el-input>
-      </div>
-
-      <el-divider class="filter-divider" />
-
-      <!-- <div class="discipline-row">
-        <span class="filter-label">学科分类：</span>
-        <div class="options-area">
-          <span
-            v-for="cat in COMP_CATEGORIES"
-            :key="cat"
-            class="filter-tag"
-            :class="{ active: queryParams.category === cat }"
-            @click="queryParams.category = cat"
-          >
-            {{ cat }}
-          </span>
-        </div>
-      </div> -->
-
-      <div class="level-row">
-        <span class="filter-label">赛事级别：</span>
-        <div class="options-area">
-          <span
-            v-for="lvl in ['全部', '国家级', '省级', '校级']"
-            :key="lvl"
-            class="filter-tag"
-            :class="{ active: queryParams.comp_level === lvl }"
-            @click="handleFilterChange('comp_level', lvl)"
-          >
-            {{ lvl }}
-          </span>
-        </div>
-      </div>
-
-      <div class="status-row">
-        <span class="filter-label">赛事状态：</span>
-        <div class="options-area">
-          <span
-            v-for="(label, value) in {
-              all: '全部',
-              upcoming: '未开始',
-              ongoing: '报名中',
-              ended: '已结束',
-            }"
-            :key="value"
-            class="filter-tag"
-            :class="{ active: queryParams.status === value }"
-           @click="handleFilterChange('status', value)"
-          >
-            {{ label }}
-          </span>
-        </div>
-      </div>
+    <div class="filter-card">
+      <el-form :inline="true" class="search-form" @submit.prevent>
+        <el-form-item label="赛事名称">
+          <el-input
+            v-model="queryParams.comp_name"
+            placeholder="请输入赛事名称"
+            clearable
+            style="width: 220px"
+            @keyup.enter="applyFilters"
+            @clear="applyFilters"
+          />
+        </el-form-item>
+        <el-form-item label="赛事级别">
+          <el-select v-model="queryParams.comp_level" placeholder="全部级别" clearable style="width: 130px" @change="applyFilters">
+            <el-option v-for="lvl in ['国家级', '省级', '校级']" :key="lvl" :label="lvl" :value="lvl" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="状态">
+          <el-select v-model="queryParams.status" placeholder="全部状态" clearable style="width: 130px" @change="applyFilters">
+            <el-option label="未开始" value="upcoming" />
+            <el-option label="报名中" value="ongoing" />
+            <el-option label="已结束" value="ended" />
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" :icon="Search" @click="applyFilters">搜索</el-button>
+          <el-button :icon="Refresh" @click="resetFilters">重置</el-button>
+        </el-form-item>
+      </el-form>
     </div>
 
     <div v-loading="loading" class="comp-list">
@@ -218,63 +189,6 @@ onMounted(() => {
   background-color: var(--background-color);
   padding: var(--container-padding);
 }
-.filter-panel {
-  box-sizing: border-box;
-  background-color: #fff;
-  padding: var(--item-padding);
-  border-radius: var(--card-radius);
-  box-shadow: var(--card-shadow);
-  .filter-divider {
-    margin: 16px 0;
-  }
-  .discipline-row,
-  .level-row,
-  .status-row {
-    display: flex;
-    align-items: flex-start;
-    margin-bottom: 12px;
-    font-size: var(--primary-font);
-    &:last-child {
-      margin-bottom: 0;
-    }
-    &.search-row {
-      margin-bottom: 0;
-    }
-    .filter-label {
-      width: 80px;
-      color: #909399;
-      line-height: 28px;
-      flex-shrink: 0;
-    }
-    .options-area {
-      flex: 1;
-      display: flex;
-      flex-wrap: wrap; /* 允许换行 */
-      gap: 10px;
-      .filter-tag {
-        padding: 4px 12px;
-        border-radius: 4px;
-        cursor: pointer;
-        color: #606266;
-        line-height: 20px;
-        transition: all 0.2s;
-        white-space: nowrap;
-
-        &:hover {
-          color: var(--primary-color);
-          background-color: #f0fdfa;
-        }
-
-        &.active {
-          background-color: var(--primary-color);
-          color: #fff;
-          font-weight: 500;
-        }
-      }
-    }
-  }
-}
-
 .comp-list {
   display: flex;
   flex-direction: column;
@@ -286,8 +200,8 @@ onMounted(() => {
   .comp-item {
     background-color: #fff;
     padding: var(--item-padding);
-    border-radius: 8px;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05); /* 默认微弱阴影 */
+    border-radius: var(--card-radius);
+    box-shadow: var(--card-shadow);
     border: 1px solid transparent;
     display: flex;
     justify-content: space-between; /* 左右布局 */
@@ -296,7 +210,7 @@ onMounted(() => {
     transition: all 0.3s;
     &:hover {
       transform: translateY(-2px);
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+      box-shadow: var(--card-hover-shadow);
       .comp-name {
         color: var(--primary-color);
       }

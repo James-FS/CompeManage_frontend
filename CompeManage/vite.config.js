@@ -46,7 +46,7 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
-    open: false,
+    open: '/#/login',
   },
   preview: {
     port: 5219,

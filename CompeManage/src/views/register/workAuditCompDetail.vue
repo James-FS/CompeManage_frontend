@@ -67,7 +67,7 @@ onMounted(() => {
 
 <template>
   <div class="competition-container">
-    <div class="search-container">
+    <div class="filter-card">
       <div class="header-row">
         <div class="title-text">{{ compName || '当前赛事' }}</div>
       </div>
@@ -75,7 +75,7 @@ onMounted(() => {
       <div class="search-row">
         <el-input
           v-model="queryForm.keyword"
-          placeholder="输入队伍名/负责人/学号搜索"
+          placeholder="请输入队伍名、负责人或学号"
           clearable
           style="width: 280px"
           @keyup.enter="fetchStudentList"
@@ -124,19 +124,11 @@ onMounted(() => {
   width: 100%;
   height: 100%;
   background-color: var(--background-color);
-  padding: 20px;
+  padding: var(--container-padding);
   box-sizing: border-box;
 }
 
-.search-container {
-  box-sizing: border-box;
-  margin-bottom: 15px;
-  padding: 20px;
-  background-color: #ffffff;
-  box-shadow: var(--card-shadow);
-  border-radius: 4px;
-}
-
+/* 筛选卡片外壳用全局 .filter-card */
 .header-row {
   display: flex;
   justify-content: space-between;
@@ -160,7 +152,7 @@ onMounted(() => {
   padding: 20px 20px 10px 20px;
   background-color: #ffffff;
   box-shadow: var(--card-shadow);
-  border-radius: 4px;
+  border-radius: var(--card-radius);
 }
 
 .pagination-wrapper {

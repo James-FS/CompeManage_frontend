@@ -89,23 +89,17 @@ test.describe.serial('赛事申报审核功能测试', () => {
     // 承办单位
     await page.fill('input[placeholder="请填写承办单位"]', 'E2E测试承办方')
 
-    // 赛事负责人（弹窗选择）
-    const managerRespPromise = page.waitForResponse(
-      (resp) => resp.url().includes('/api/comp/manager/list') && resp.status() === 200,
-      { timeout: 10000 }
-    )
-
+    // 赛事负责人（弹窗选择）——新版弹窗打开时不自动加载列表，需按工号搜索后再选
     const managerInput = page.locator('.manager-input input')
     await managerInput.click()
 
-    const managerDialog = page.locator('.el-dialog:has-text("选择赛事负责人")')
+    const managerDialog = page.locator('.el-dialog:has-text("选择负责人（教职工）")')
     await expect(managerDialog).toBeVisible({ timeout: 10000 })
-    await managerRespPromise
-    await page.waitForTimeout(800)
+    await managerDialog.locator('input[placeholder="输入工号"]').fill('T2023012')
 
     // 点击第一行的"选择"按钮
     const firstRow = managerDialog.locator('.el-table__body tr').first()
-    await expect(firstRow).toBeVisible({ timeout: 5000 })
+    await expect(firstRow).toBeVisible({ timeout: 10000 })
     const managerName = await firstRow.locator('td').nth(1).textContent()
     console.log(`选择赛事负责人: ${managerName}`)
     await firstRow.locator('button:has-text("选择")').click()
@@ -144,7 +138,7 @@ test.describe.serial('赛事申报审核功能测试', () => {
 
     // ========== 提交申报到校级审核 ==========
     // 搜索刚创建的申报
-    await page.fill('.filter-card input[placeholder="搜索赛事名称"]', DECLARE_NAME)
+    await page.fill('.filter-card input[placeholder="请输入赛事名称"]', DECLARE_NAME)
     await page.locator('button:has-text("搜索")').click()
     await page.waitForTimeout(1000)
 
@@ -198,7 +192,7 @@ test.describe.serial('赛事申报审核功能测试', () => {
     await expect(page.locator('.el-tabs')).toBeVisible()
 
     // 搜索刚提交的申报
-    await page.fill('.filter-card input[placeholder="搜索赛事名称"]', DECLARE_NAME)
+    await page.fill('.filter-card input[placeholder="请输入赛事名称"]', DECLARE_NAME)
     await page.locator('button:has-text("搜索")').click()
     await page.waitForTimeout(1000)
 
@@ -230,7 +224,7 @@ test.describe.serial('赛事申报审核功能测试', () => {
     await page.waitForTimeout(500)
 
     // 搜索申报
-    await page.fill('.filter-card input[placeholder="搜索赛事名称"]', DECLARE_NAME)
+    await page.fill('.filter-card input[placeholder="请输入赛事名称"]', DECLARE_NAME)
     await page.locator('button:has-text("搜索")').click()
     await page.waitForTimeout(1000)
 
@@ -312,17 +306,13 @@ test.describe.serial('赛事申报审核功能测试', () => {
     await page.fill('input[placeholder="请填写主办单位"]', '驳回测试主办方')
     await page.fill('input[placeholder="请填写承办单位"]', '驳回测试承办方')
 
-    // 选择负责人
-    const mgrRespPromise = page.waitForResponse(
-      (resp) => resp.url().includes('/api/comp/manager/list') && resp.status() === 200,
-      { timeout: 10000 }
-    )
+    // 选择负责人——新版弹窗打开时不自动加载列表，需按工号搜索后再选
     await page.locator('.manager-input input').click()
-    const mgrDialog = page.locator('.el-dialog:has-text("选择赛事负责人")')
+    const mgrDialog = page.locator('.el-dialog:has-text("选择负责人（教职工）")')
     await expect(mgrDialog).toBeVisible({ timeout: 10000 })
-    await mgrRespPromise
-    await page.waitForTimeout(500)
+    await mgrDialog.locator('input[placeholder="输入工号"]').fill('T2023012')
     const firstMgrRow = mgrDialog.locator('.el-table__body tr').first()
+    await expect(firstMgrRow).toBeVisible({ timeout: 10000 })
     await firstMgrRow.locator('button:has-text("选择")').click()
     await expect(mgrDialog).not.toBeVisible({ timeout: 5000 })
 
@@ -351,7 +341,7 @@ test.describe.serial('赛事申报审核功能测试', () => {
     await page.waitForTimeout(500)
 
     // 搜索并提交
-    await page.fill('.filter-card input[placeholder="搜索赛事名称"]', rejectName)
+    await page.fill('.filter-card input[placeholder="请输入赛事名称"]', rejectName)
     await page.locator('button:has-text("搜索")').click()
     await page.waitForTimeout(1000)
 
@@ -379,7 +369,7 @@ test.describe.serial('赛事申报审核功能测试', () => {
     await page.waitForTimeout(500)
 
     // 搜索
-    await page.fill('.filter-card input[placeholder="搜索赛事名称"]', rejectName)
+    await page.fill('.filter-card input[placeholder="请输入赛事名称"]', rejectName)
     await page.locator('button:has-text("搜索")').click()
     await page.waitForTimeout(1000)
 

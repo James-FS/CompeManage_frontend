@@ -1,6 +1,7 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import MainLayout from '@/layouts/MainLayout.vue'
 import EmptyLayout from '@/layouts/EmptyLayout.vue'
+import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 
 const routes = [
@@ -56,7 +57,7 @@ const routes = [
         props: true,
         meta: {
           title: '编辑赛事',
-          roles: ['school_admin'],
+          roles: ['school_admin', 'college_admin', 'competition_manager'],
           parent: 'CompetitionList',
           activeMenu: '/competition/list',
         }
@@ -212,12 +213,18 @@ const routes = [
     component: MainLayout,
     children: [
       {
+        path: 'advisor',
+        name: 'AwardAdvisor',
+        component: () => import('@/views/award/advisor.vue'),
+        meta: { title: '我的指导获奖', roles: ['teacher', 'competition_manager'] },
+      },
+      {
         path: 'list',
         name: 'AwardList',
         component: () => import('@/views/award/list.vue'),
         meta: {
           title: '获奖填报',
-          roles: ['school_admin', 'college_admin', 'competition_manager', 'student'],
+          roles: ['school_admin', 'college_admin', 'competition_manager'],
         },
       },
       {
@@ -228,6 +235,7 @@ const routes = [
           title: '获奖详情',
           parent: 'AwardList',
           activeMenu: '/award/list',
+          roles: ['school_admin', 'college_admin', 'competition_manager'],
         },
       },
       {
@@ -238,6 +246,7 @@ const routes = [
           title: '导入获奖名单',
           parent: 'AwardDetail',
           activeMenu: '/award/list',
+          roles: ['school_admin', 'college_admin', 'competition_manager'],
         },
       },
       {
@@ -275,6 +284,7 @@ const routes = [
         meta: {
           title: '审核详情',
           parent: 'AwardAudit',
+          roles: ['school_admin', 'college_admin', 'competition_manager'],
         },
       },
     ],
@@ -564,9 +574,9 @@ router.beforeEach((to, from, next) => {
     if (allowedRoles.includes(userStore.role)) {
       next()
     } else {
-      // 无权限，跳转首页或显示错误页面
-      alert('您无权访问该页面')
-      next(from.path)
+      // 无权限：轻提示并留在当前页，避免误以为平台故障
+      ElMessage.error('您暂无访问该页面的权限')
+      next(from.path === '/' ? '/home' : from.path)
     }
   } else {
     // 没有设置roles，默认允许访问

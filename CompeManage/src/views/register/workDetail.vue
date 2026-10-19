@@ -272,13 +272,13 @@ onMounted(() => {
   /* 页面在顶栏+面包屑(约110px)之下，100vh 会固定多出滚动量 */
   min-height: calc(100vh - 110px);
   background-color: var(--background-color);
-  padding: 20px;
+  padding: var(--container-padding);
 }
 
 .page-header {
   background: #fff;
   padding: 20px 30px;
-  border-radius: 8px 8px 0 0;
+  border-radius: var(--card-radius) var(--card-radius) 0 0;
   border-bottom: 1px solid #ebeef5;
 
   .back-btn {
@@ -312,7 +312,7 @@ onMounted(() => {
 .content-wrapper {
   background: #fff;
   padding: 30px 40px;
-  border-radius: 0 0 8px 8px;
+  border-radius: 0 0 var(--card-radius) var(--card-radius);
   min-height: 500px;
 }
 
@@ -346,7 +346,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   border: 1px solid #ebeef5;
-  border-radius: 6px;
+  border-radius: var(--card-radius);
   padding: 12px 16px;
   background: #fbfbfb;
   transition: all 0.2s;

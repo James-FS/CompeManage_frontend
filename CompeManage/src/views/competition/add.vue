@@ -368,6 +368,7 @@ const selectTeacher = (row) => {
 // Tab 3 从Excel导入赛事
 const excelList = ref([]); // 存放解析后的 Excel 数据
 const excelLoading = ref(false); // 解析 loading 状态
+const excelImportSubmitting = ref(false); // 正在提交批量导入
 
 // 模板下载
 const downloadTemplate = () => {
@@ -389,29 +390,26 @@ const downloadTemplate = () => {
 
 // 自动批量查询工号对应的负责人信息
 const autoMatchManagersByWorkIds = async (items) => {
-    const itemsWithWorkId = items.filter(item => item.work_id);
-    if (itemsWithWorkId.length === 0) return;
+    const workIDs = [...new Set(items
+        .filter(item => item.work_id && !item.manager_id)
+        .map(item => String(item.work_id).trim())
+        .filter(Boolean))];
+    if (workIDs.length === 0) return;
 
     try {
-        for (const item of itemsWithWorkId) {
-            if (!item.work_id || item.manager_id) continue; // 跳过没有工号或已有manager_id的项
-            
-            const res = await api.getManagerList({
-                page: 1,
-                page_size: 10,
-                work_id: item.work_id
-            });
-
-            if (res.code === 200 && res.data.list && res.data.list.length > 0) {
-                const teacher = res.data.list[0];
-                item.manager = teacher.name;
-                item.manager_id = teacher.id;
+        const res = await api.lookupManagersByWorkIds({ work_ids: workIDs });
+        const managerByWorkID = new Map((res.data?.list || []).map(manager => [String(manager.work_id), manager]));
+        for (const item of items) {
+            if (item.manager_id || !item.work_id) continue;
+            const manager = managerByWorkID.get(String(item.work_id).trim());
+            if (manager) {
+                item.manager = manager.name;
+                item.manager_id = manager.id;
             }
         }
-        // 计算匹配成功的数量
-        const successCount = items.filter(item => item.manager_id).length;
     } catch (error) {
         console.error('自动匹配负责人失败', error);
+        ElMessage.warning('负责人自动匹配失败，请检查网络后重新上传或手动选择负责人');
     }
 };
 
@@ -490,6 +488,7 @@ const openManagerSelectForExcel = (index) => {
 
 // 提交 Excel 导入
 const handleExcelImportSubmit = () => {
+    if (excelImportSubmitting.value) return;
     if (excelList.value.length === 0) {
         ElMessage.warning('没有可导入的数据');
         return;
@@ -516,6 +515,7 @@ const handleExcelImportSubmit = () => {
         '提示',
         { confirmButtonText: '确认', cancelButtonText: '取消', type: 'warning' }
     ).then(async () => {
+        excelImportSubmitting.value = true;
         try {
             await api.batchImportCompetition({ items: excelList.value });
             ElMessage.success('批量导入成功');
@@ -523,6 +523,8 @@ const handleExcelImportSubmit = () => {
         } catch (error) {
             ElMessage.error(error.message || '导入失败');
             console.error('Excel导入失败:', error);
+        } finally {
+            excelImportSubmitting.value = false;
         }
     }).catch(() => { });
 };
@@ -777,7 +779,8 @@ const queryManagerByWorkId = async (row) => {
                                     </el-button>
                                 </el-upload>
                                 <el-button type="success" @click="handleExcelImportSubmit"
-                                    :disabled="excelList.length === 0">
+                                    :disabled="excelList.length === 0 || excelImportSubmitting"
+                                    :loading="excelImportSubmitting">
                                     <el-icon class="el-icon--left">
                                         <Check />
                                     </el-icon>确认导入
@@ -903,7 +906,8 @@ const queryManagerByWorkId = async (row) => {
             <el-table-column prop="college" label="所属部门" min-width="200" align="center" />
             <el-table-column label="当前角色" width="120" align="center">
                 <template #default="{ row }">
-                    <el-tag v-if="row.role_code === 'competition_manager'" type="warning" size="small">赛事负责人</el-tag>
+                    <el-tag v-if="row.role_code === 'college_admin'" type="success" size="small">院级管理员</el-tag>
+                    <el-tag v-else-if="row.role_code === 'competition_manager'" type="warning" size="small">赛事负责人</el-tag>
                     <el-tag v-else type="info" size="small">老师</el-tag>
                 </template>
             </el-table-column>

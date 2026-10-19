@@ -7,7 +7,13 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Local Vite environment files; keep the safe template trackable
+.env
+.env.*
+!.env.example
+
 node_modules
+/.npm-cache/
 .DS_Store
 dist
 dist-ssr

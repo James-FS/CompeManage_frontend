@@ -3,6 +3,10 @@ import { get, post, put, del } from '@/utils/request'
 export const api = {
   // 健康检查
   health: () => get('/health'),
+  getAdvisorAwards: (params) => get('/api/award/advisor/list', params),
+  getAwardChanges: (id) => get(`/api/award/${id}/changes`),
+  getAdvisorAwardDetail: (id) => get(`/api/award/advisor/${id}`),
+  updateAdvisorAward: (id, data) => put(`/api/award/advisor/${id}`, data),
 
   // ==================== 认证相关 ====================
   // 用户登录
@@ -31,12 +35,16 @@ export const api = {
   // ==================== 竞赛相关 ====================
   getCompetitionList: (params) => get('/api/comp/list', params),
   createCompetition: (data) => post('/api/comp/create', data),
-  batchImportCompetition: (data) => post('/api/comp/batch-import', data),
+  batchImportCompetition: (data) => post('/api/comp/batch-import', data, { timeout: 120000 }),
   deleteCompetition: (id) => del(`/api/comp/${id}`),
   batchDeleteCompetition: (ids) => post('/api/comp/batch-delete', { ids }),
   restoreCompetition: (id) => put(`/api/comp/${id}/restore`),
   getManagerList: (params) => get('/api/comp/manager/list', params),
+  lookupManagersByWorkIds: (data) => post('/api/comp/manager/lookup-by-work-ids', data),
   getCompetitionYears: () => get('/api/comp/years'),
+  createCompetitionYear: (data) => post('/api/comp/years', data),
+  updateCompetitionYear: (year, data) => put(`/api/comp/years/${year}`, data),
+  deleteCompetitionYear: (year) => del(`/api/comp/years/${year}`),
   getCompetitionDetail: (id) => get(`/api/comp/${id}`),
   updateCompetition: (id, data) => put(`/api/comp/${id}`, data),
 
@@ -86,15 +94,21 @@ export const api = {
   getAwardCompList: (params) => get('/api/award/list', params),
   getCompAwards: (comp_id) => get(`/api/award/comp-awards?comp_id=${comp_id}`),
   getAwardTemplate: (comp_id) => get(`/api/award/export-template?comp_id=${comp_id}`, {}, { responseType: 'blob' }),
+  // 指导教师候选（按身份取在职教职工，支持姓名/工号搜索）
+  getTeacherList: (params) => get('/api/reg/user/list', { ...params, role: 'teacher' }),
+  exportAwardProjects: (year) => get(`/api/award/export/projects${year ? `?year=${year}` : ''}`, {}, { responseType: 'blob' }),
+  exportAwardStudents: (year) => get(`/api/award/export/students${year ? `?year=${year}` : ''}`, {}, { responseType: 'blob' }),
+  // 一键三合一上报 Excel（附件1+附件2+汇总表）
+  exportAwardReport: (year) => get(`/api/award/export/report${year ? `?year=${year}` : ''}`, {}, { responseType: 'blob' }),
   getAwardCompList:(params) => get('/api/award/list', params),
   getCompAwards:(comp_id) => get(`/api/award/comp-awards?comp_id=${comp_id}`),
   getMyAwardList:(params) => get('/api/award/student/my-awards', params),
   getAwardAuditList: (params) => get('/api/award/audit/list', params),
   getAwardAuditDetail: (id) => get(`/api/award/audit/detail/${id}`),
-  passAwardAudit: (id) => put(`/api/award/audit/${id}/pass`),
-  rejectAwardAudit: (id, reason) => put(`/api/award/audit/${id}/reject`, { reason }),
-  batchPassAwardAudit: (ids) => put('/api/award/audit/batch/pass', { ids }),
-  batchRejectAwardAudit: (ids, reason) => put('/api/award/audit/batch/reject', { ids, reason }),
+  passAwardAudit: (id, updateTime) => put(`/api/award/audit/${id}/pass`, { update_time: updateTime }),
+  rejectAwardAudit: (id, reason, updateTime) => put(`/api/award/audit/${id}/reject`, { reason, update_time: updateTime }),
+  batchPassAwardAudit: (ids, versions) => put('/api/award/audit/batch/pass', { ids, versions }),
+  batchRejectAwardAudit: (ids, reason, versions) => put('/api/award/audit/batch/reject', { ids, reason, versions }),
   searchCompList: (params) => get('/api/award/comp/list', params),
   submitAward: (data) => post('/api/award/student/supplement', data),
 

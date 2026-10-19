@@ -72,13 +72,13 @@ const allMenus = [
   },
   {
     path: '/award',
-    title: '获奖填报',
+    title: '获奖管理',
     roles: ['school_admin', 'college_admin', 'competition_manager', 'student'],
     icon: Medal,
     children: [
       {
         path: '/award/list',
-        title: '校赛填报',
+        title: '获奖填报',
         roles: ['school_admin', 'college_admin', 'competition_manager',],
       },
       {
@@ -87,6 +87,12 @@ const allMenus = [
         roles: ['school_admin', 'college_admin', 'competition_manager'],
       }
     ],
+  },
+  {
+    path: '/award/advisor',
+    title: '我的指导获奖',
+    roles: ['teacher', 'competition_manager'],
+    icon: Medal,
   },
   {
     path: '/award/student',
@@ -240,7 +246,12 @@ const handleLink = (item) => {
     return
   }
 
-  router.push(path)
+  // 面包屑父级路由可能带路径参数（如 /award/detail/:id），
+  // 用当前路由的同名参数回填，避免把 ":id" 占位符字面量当作参数值跳转
+  const resolved = path.includes(':')
+    ? path.replace(/:([A-Za-z0-9_]+)/g, (raw, key) => route.params[key] ?? raw)
+    : path
+  router.push(resolved)
 }
 
 // 获取面包屑项的显示标题

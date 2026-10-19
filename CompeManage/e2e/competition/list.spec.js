@@ -38,7 +38,7 @@ test.describe('赛事目录页面测试', () => {
   });
 
   test('页面基本元素验证', async ({ page }) => {
-    await expect(page.locator('.search-container')).toBeVisible();
+    await expect(page.locator('.filter-card')).toBeVisible();
     await expect(page.locator('.search-form')).toBeVisible();
     await expect(page.locator('.table-toolbar')).toBeVisible();
     await expect(page.locator('.el-table')).toBeVisible();
@@ -130,7 +130,7 @@ test.describe('赛事目录页面测试', () => {
     console.log(`筛选前数据行数: ${rowsBefore}`);
 
     // 找到赛事级别选择器
-    const levelSelect = page.locator('.el-select').filter({ hasText: '请选择赛事级别' }).first();
+    const levelSelect = page.locator('.el-select').filter({ hasText: '全部级别' }).first();
 
     // 点击打开下拉框
     await levelSelect.click();
@@ -160,7 +160,7 @@ test.describe('赛事目录页面测试', () => {
     console.log(`筛选前数据行数: ${rowsBefore}`);
 
     // 找到赛事状态下拉框
-    const statusSelect = page.locator('.el-select').filter({ hasText: '请选择赛事状态' }).first();
+    const statusSelect = page.locator('.el-select').filter({ hasText: '全部状态' }).first();
 
     await statusSelect.click();
     await page.waitForSelector('.el-select-dropdown__item:has-text("进行中")', { timeout: 5000 });

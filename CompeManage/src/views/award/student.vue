@@ -1,13 +1,20 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { Trophy, Timer, DocumentChecked, Calendar, Paperclip } from '@element-plus/icons-vue'
 import api from '@/api'
+import AwardChangeHistory from '@/components/AwardChangeHistory.vue'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
 const loading = ref(false)
-const activeTab = ref('registration')
+const route = useRoute()
+const activeTab = ref(['registration', 'declaration', 'award'].includes(route.query.tab) ? route.query.tab : 'registration')
+const awardTabs = [
+  { name: 'declaration', label: '我的申报', empty: '暂无奖项申报记录' },
+  { name: 'award', label: '我的获奖', empty: '暂无获奖记录' },
+]
+let requestSequence = 0
 const myRegList = ref([])
 const myAwardList = ref([])
 const total = ref(0)
@@ -17,18 +24,23 @@ const awardQuery = ref({
 })
 
 watch(activeTab, (newTab) => {
+  router.replace({ query: { ...route.query, tab: newTab } })
+  total.value = 0
+  myAwardList.value = []
   if (newTab === 'registration') {
     fetchMyRegList()
-  } else if (newTab === 'award') {
+  } else if (newTab === 'award' || newTab === 'declaration') {
     awardQuery.value.page = 1
     fetchMyAwardList()
   }
 })
 
 async function fetchMyRegList() {
+  const sequence = ++requestSequence
   loading.value = true
   try {
-    const response = await api.getMyReg()
+    const response = await api.getMyReg({ registration_only: true })
+    if (sequence !== requestSequence) return
     if (response.code == 200) {
       myRegList.value = response.data.list || []
       total.value = response.data.total
@@ -36,19 +48,23 @@ async function fetchMyRegList() {
       ElMessage.error('获取列表失败:' + (response.message || response.msg || '未知错误'))
     }
   } catch (error) {
+    if (sequence !== requestSequence) return
     ElMessage.error(error?.response?.data?.msg || error?.response?.data?.message || '获取列表失败')
   } finally {
-    loading.value = false
+    if (sequence === requestSequence) loading.value = false
   }
 }
 
 async function fetchMyAwardList() {
+  const sequence = ++requestSequence
   loading.value = true
   try {
     const response = await api.getMyAwardList({
       page: awardQuery.value.page,
       size: awardQuery.value.size,
+      ...(activeTab.value === 'declaration' ? { source: 'supplement' } : { status: 'approved' }),
     })
+    if (sequence !== requestSequence) return
     if (response.code == 200) {
       myAwardList.value = response.data.list || []
       total.value = response.data.total || 0
@@ -56,9 +72,10 @@ async function fetchMyAwardList() {
       ElMessage.error('获取列表失败:' + (response.message || response.msg || '未知错误'))
     }
   } catch (error) {
+    if (sequence !== requestSequence) return
     ElMessage.error(error?.response?.data?.msg || error?.response?.data?.message || '获取列表失败')
   } finally {
-    loading.value = false
+    if (sequence === requestSequence) loading.value = false
   }
 }
 
@@ -70,7 +87,7 @@ const awardStatusMap = {
 
 const awardSourceMap = {
   import: { type: 'info', text: '系统导入' },
-  supplement: { type: 'primary', text: '学生补录' },
+  supplement: { type: 'primary', text: '学生申报' },
 }
 
 const awardStats = computed(() => {
@@ -86,8 +103,8 @@ const awardStats = computed(() => {
 const getAwardStatusTag = (status) => awardStatusMap[status] || { type: 'info', text: '未知状态' }
 const getAwardSourceTag = (source) => awardSourceMap[source] || { type: 'info', text: '未标注' }
 
-const getAwardCompName = (award) => award.comp_name || award?.register?.competition?.comp_name || '未关联赛事'
-const getAwardTeamName = (award) => award.team_name || award?.register?.team_name || '个人参赛'
+const getAwardCompName = (award) => award.comp_name || award?.competition?.comp_name || award?.register?.competition?.comp_name || '未关联赛事'
+const getAwardTeamName = (award) => award.project_name || award.team_name || award?.register?.team_name || '个人参赛'
 
 const formatDateTime = (value) => {
   if (!value) return '--'
@@ -120,15 +137,26 @@ const goDeclare = () => {
   router.push('/award/student/declare')
 }
 
+async function downloadProof(award) {
+  try { await api.downloadFile(award.proof_url, false, '获奖证明') }
+  catch (error) { if (!error.messageShown) ElMessage.error(error.message || '下载证明失败') }
+}
+
 const goResubmit = (award) => {
-  const compName = award.register?.competition?.comp_name || award.comp_name || ''
+  const compName = getAwardCompName(award)
   sessionStorage.setItem('resubmitAward', JSON.stringify({
     comp_id: award.comp_id,
     comp_name: compName,
+    participation_type: award.participation_type,
+    award_category: award.award_category,
+    award_time: award.award_time,
+    advisor_info: award.advisor_info,
+    remark: award.remark,
     award_level: award.award_level,
     award_name: award.award_name,
-    team_name: award.register?.team_name || '',
+    team_name: getAwardTeamName(award),
     proof_url: award.proof_url || '',
+    update_time: award.update_time,
     members: award.register?.members || [],
     leader: award.register?.leader || null,
   }))
@@ -198,7 +226,8 @@ const getStatusTag = (status) => {
 }
 
 onMounted(() => {
-  fetchMyRegList()
+  if (activeTab.value === 'registration') fetchMyRegList()
+  else fetchMyAwardList()
 })
 </script>
 
@@ -210,7 +239,7 @@ onMounted(() => {
         <!-- <span class="subtitle">My Competition Center</span> -->
       </div>
       <el-button type="primary" @click="goDeclare" class="declare-btn">
-        <el-icon class="mr-1"><Trophy /></el-icon> 申报校外奖项
+        <el-icon class="mr-1"><Trophy /></el-icon> 申报奖项
       </el-button>
     </div>
 
@@ -281,27 +310,27 @@ onMounted(() => {
         </div>
       </el-tab-pane>
 
-      <el-tab-pane label="我的获奖" name="award">
-        <div v-loading="loading" class="list-wrapper">
-          <el-empty v-if="myAwardList.length === 0" description="暂无获奖记录" />
+      <el-tab-pane v-for="tab in awardTabs" :key="tab.name" :label="tab.label" :name="tab.name">
+        <div v-if="activeTab === tab.name" v-loading="loading" class="list-wrapper">
+          <el-empty v-if="myAwardList.length === 0" :description="tab.empty" />
 
           <div class="award-list" v-if="myAwardList.length > 0">
             <div class="award-overview">
               <div class="overview-card">
                 <div class="num">{{ total }}</div>
-                <div class="label">累计记录</div>
+                <div class="label">{{ tab.name === 'declaration' ? '累计申报' : '累计获奖' }}</div>
               </div>
-              <div class="overview-card approved">
+              <div v-if="tab.name === 'declaration'" class="overview-card approved">
                 <div class="num">{{ awardStats.approved }}</div>
-                <div class="label">已通过</div>
+                <div class="label">本页已通过</div>
               </div>
-              <div class="overview-card pending">
+              <div v-if="tab.name === 'declaration'" class="overview-card pending">
                 <div class="num">{{ awardStats.draft }}</div>
-                <div class="label">待审核</div>
+                <div class="label">本页待审核</div>
               </div>
-              <div class="overview-card rejected">
+              <div v-if="tab.name === 'declaration'" class="overview-card rejected">
                 <div class="num">{{ awardStats.rejected }}</div>
-                <div class="label">已驳回</div>
+                <div class="label">本页已驳回</div>
               </div>
             </div>
 
@@ -309,7 +338,7 @@ onMounted(() => {
               <div class="award-head">
                 <div class="title-wrap">
                   <h4 class="comp-title">{{ getAwardCompName(award) }}</h4>
-                  <p class="team-name">参赛队伍：{{ getAwardTeamName(award) }}</p>
+                  <p class="team-name">参赛项目：{{ getAwardTeamName(award) }}</p>
                 </div>
 
                 <div class="tag-group">
@@ -328,9 +357,10 @@ onMounted(() => {
               </div>
 
               <div class="award-meta">
+                <AwardChangeHistory :award-id="award.id" />
                 <span class="meta-item">
                   <el-icon><Calendar /></el-icon>
-                  申报时间：{{ formatDateTime(award.create_time) }}
+                  {{ tab.name === 'declaration' ? '申报时间' : '获奖时间' }}：{{ formatDateTime(tab.name === 'declaration' ? award.create_time : award.award_time) }}
                 </span>
                 <span class="meta-item" v-if="award.audit_time">
                   <el-icon><Calendar /></el-icon>
@@ -340,6 +370,7 @@ onMounted(() => {
                   v-if="award.proof_url"
                   class="proof-link"
                   :href="award.proof_url"
+                  @click.prevent="downloadProof(award)"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
@@ -348,7 +379,7 @@ onMounted(() => {
                 </a>
               </div>
 
-              <div class="reject-box" v-if="award.status === 'rejected'">
+              <div class="reject-box" v-if="tab.name === 'declaration' && award.status === 'rejected'">
                 <span v-if="award.reject_reason">驳回原因：{{ award.reject_reason }}</span>
                 <span v-else>审核未通过</span>
                 <el-button type="primary" size="small" class="resubmit-btn" @click="goResubmit(award)">
@@ -377,7 +408,7 @@ onMounted(() => {
 <style scoped lang="scss">
 .page-container {
   box-sizing: border-box;
-  padding: 24px;
+  padding: var(--container-padding);
   flex-direction: column;
   min-height: calc(100vh - 110px);
   display: flex;
@@ -414,9 +445,9 @@ onMounted(() => {
 /* 卡片样式 */
 .comp-card {
   background-color: #fff;
-  padding: 24px;
-  border-radius: 8px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  padding: var(--item-padding);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
   border: 1px solid #ebeef5;
   
   display: flex;
@@ -426,7 +457,7 @@ onMounted(() => {
   
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    box-shadow: var(--card-hover-shadow);
     border-color: #dcdfe6;
   }
 
@@ -500,10 +531,10 @@ onMounted(() => {
         &.el-button--primary:not(.is-disabled) {
           background: linear-gradient(135deg, #13c2c2 0%, #36cfc9 100%);
           border: none;
-          box-shadow: 0 4px 12px rgba(19, 194, 194, 0.3);
+          box-shadow: var(--primary-btn-shadow);
           &:hover {
             transform: translateY(-1px);
-            box-shadow: 0 6px 16px rgba(19, 194, 194, 0.4);
+            box-shadow: var(--primary-btn-hover-shadow);
           }
         }
       }
@@ -532,11 +563,11 @@ onMounted(() => {
   margin-bottom: 4px;
 
   .overview-card {
-    border-radius: 10px;
+    border-radius: var(--card-radius);
     border: 1px solid #ebeef5;
     background: #ffffff;
     padding: 14px 16px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    box-shadow: var(--card-shadow);
 
     .num {
       font-size: 24px;
@@ -560,13 +591,13 @@ onMounted(() => {
 .award-card {
   background: #fff;
   border: 1px solid #ebeef5;
-  border-radius: 10px;
+  border-radius: var(--card-radius);
   padding: 18px 20px;
   transition: all 0.25s ease;
 
   &:hover {
     border-color: #dcdfe6;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+    box-shadow: var(--card-hover-shadow);
     transform: translateY(-1px);
   }
 
@@ -646,7 +677,7 @@ onMounted(() => {
   .reject-box {
     margin-top: 12px;
     padding: 8px 12px;
-    border-radius: 6px;
+    border-radius: var(--card-radius);
     background: #fff2f0;
     border: 1px solid #ffccc7;
     color: #a8071a;

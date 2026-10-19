@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { User, UserFilled } from '@element-plus/icons-vue'
+import { User, UserFilled, Search, Refresh } from '@element-plus/icons-vue'
 import api from '@/api'
 import { debounce } from '@/utils/debounce'
 import { useUserStore } from '@/stores/user'
@@ -26,6 +26,7 @@ const filters = reactive({
   role_id: undefined,
   identity_type: undefined,
   managed_college_id: undefined,
+  college_id: undefined,
 })
 
 const roleOrder = [
@@ -41,7 +42,6 @@ const roleOrder = [
 const identityOptions = [
   { value: 'staff', label: '教职工' },
   { value: 'student', label: '本科生' },
-  { value: 'postgraduate', label: '研究生' },
   { value: 'external', label: '外部/人工账号' },
 ]
 
@@ -111,7 +111,7 @@ async function loadUsers({ preserveSelection = true } = {}) {
       search: filters.search.trim() || undefined,
       role_id: filters.role_id || undefined,
       identity_type: filters.identity_type || undefined,
-      managed_college_id: filters.managed_college_id || undefined,
+      college_id: filters.college_id || undefined,
     })
     if (sequence !== requestSequence) return
     userList.value = response.data?.list || []
@@ -133,6 +133,16 @@ const debouncedSearch = debounce(() => {
 }, 300)
 
 function handleFilterChange() {
+  filters.page = 1
+  loadUsers({ preserveSelection: false })
+}
+
+function handleFilterReset() {
+  filters.search = ''
+  filters.role_id = undefined
+  filters.identity_type = undefined
+  filters.managed_college_id = undefined
+  filters.college_id = undefined
   filters.page = 1
   loadUsers({ preserveSelection: false })
 }
@@ -218,7 +228,7 @@ onMounted(async () => {
 <template>
   <div class="user-manage-page" v-loading="loading">
     <div class="filter-card">
-      <el-form :inline="true" class="filter-form" label-width="90px" label-position="right">
+      <el-form :inline="true" class="filter-form">
         <el-form-item label="关键字">
           <el-input
             v-model="filters.search"
@@ -226,28 +236,33 @@ onMounted(async () => {
             placeholder="请输入账号、姓名或所属单位"
             @input="debouncedSearch"
             @clear="debouncedSearch"
+            @keyup.enter="debouncedSearch"
           />
         </el-form-item>
         <el-form-item label="角色">
-          <el-select v-model="filters.role_id" clearable placeholder="请选择角色" @change="handleFilterChange">
+          <el-select v-model="filters.role_id" clearable placeholder="全部角色" @change="handleFilterChange">
             <el-option v-for="role in roleList" :key="role.id" :label="role.role_name" :value="role.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="人员身份">
-          <el-select v-model="filters.identity_type" clearable placeholder="请选择身份" @change="handleFilterChange">
+          <el-select v-model="filters.identity_type" clearable placeholder="全部身份" @change="handleFilterChange">
             <el-option v-for="item in identityOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
         </el-form-item>
-        <el-form-item label="管理学院">
+        <el-form-item label="所属学院">
           <el-select
-            v-model="filters.managed_college_id"
+            v-model="filters.college_id"
             clearable
             filterable
-            placeholder="请选择学院"
+            placeholder="全部学院"
             @change="handleFilterChange"
           >
             <el-option v-for="college in collegeList" :key="college.id" :label="college.name" :value="college.id" />
           </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" :icon="Search" @click="debouncedSearch">搜索</el-button>
+          <el-button :icon="Refresh" @click="handleFilterReset">重置</el-button>
         </el-form-item>
       </el-form>
     </div>
@@ -382,16 +397,8 @@ onMounted(async () => {
   background-color: var(--background-color);
 }
 
-/* 与赛事目录等页面统一的筛选卡样式：白底+卡片阴影+圆角 */
-.filter-card {
-  box-sizing: border-box;
-  padding: 20px 20px 10px;
-  background-color: #ffffff;
-  box-shadow: var(--card-shadow);
-  border-radius: 4px;
-}
-
-.filter-form :deep(.el-form-item) { margin-bottom: 15px; margin-left: 15px; }
+/* 筛选卡片外壳用全局 .filter-card；此页筛选条件多会换行，仅保留行间距覆盖 */
+.filter-form :deep(.el-form-item) { margin-bottom: 15px; }
 .filter-form :deep(.el-input),
 .filter-form :deep(.el-select) { width: 220px; }
 
@@ -412,7 +419,7 @@ onMounted(async () => {
   border: none;
   /* 与赛事目录内容卡一致的阴影和圆角 */
   box-shadow: var(--card-shadow);
-  border-radius: 4px;
+  border-radius: var(--card-radius);
 }
 
 /* 用户列表卡片填满行高，列表区滚动、分页固定底部 */
@@ -456,7 +463,7 @@ onMounted(async () => {
   width: 100%;
   padding: 12px;
   border: 1px solid var(--el-border-color-light);
-  border-radius: 8px;
+  border-radius: var(--card-radius);
   background: var(--el-bg-color);
   color: inherit;
   text-align: left;

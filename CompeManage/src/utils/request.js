@@ -55,7 +55,9 @@ service.interceptors.response.use(
         window.location.href = '/login'
       }
       
-      return Promise.reject(new Error(errorMsg))
+      const error = new Error(errorMsg)
+      error.messageShown = true
+      return Promise.reject(error)
     }
     
     return res
@@ -77,7 +79,8 @@ service.interceptors.response.use(
         localStorage.removeItem('userInfo')
         window.location.href = '/login'
       } else if (status === 403) {
-        ElMessage.error('没有权限访问该资源')
+        error.message = data?.message || data?.msg || '没有权限访问该资源'
+        ElMessage.error(error.message)
       } else if (status === 404) {
         ElMessage.error('请求的资源不存在')
       } else if (status === 500) {
@@ -91,6 +94,7 @@ service.interceptors.response.use(
       ElMessage.error(error.message || '请求失败')
     }
     
+    error.messageShown = true
     return Promise.reject(error)
   }
 )
