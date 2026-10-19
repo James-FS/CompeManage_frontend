@@ -226,14 +226,14 @@ onMounted(fetchList)
         </el-form-item>
       </el-form>
     </div>
-    <div v-if="userStore.role === 'school_admin'" class="export-bar">
+    <div v-if="['school_admin', 'college_admin', 'competition_manager'].includes(userStore.role)" class="export-bar">
       <el-button type="success" :icon="Download" :loading="exporting" @click="downloadExport('projects')">
         导出附件1（省级以上项目）
       </el-button>
       <el-button type="primary" :icon="Download" :loading="exporting" @click="downloadExport('students')">
         导出附件2（省级以上学生）
       </el-button>
-      <span class="settings-entry">
+      <span v-if="userStore.role === 'school_admin'" class="settings-entry">
         <el-divider direction="vertical" />
         <el-button :icon="Setting" :disabled="settingsLoading && !importSettingsVisible" @click="openImportSettings">
           导入设置
