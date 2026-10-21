@@ -86,10 +86,14 @@ service.interceptors.response.use(
       } else if (status === 500) {
         ElMessage.error('服务器内部错误')
       } else {
-        ElMessage.error(data?.message || data?.msg || error.message || '请求失败')
+        const message = data?.message || data?.msg || error.message || '请求失败'
+        if (status === 400 && error.config?.warningOnBadRequest) ElMessage.warning(message)
+        else ElMessage.error(message)
       }
     } else if (error.request) {
-      ElMessage.error('网络错误，请检查网络连接')
+      ElMessage.error(error.code === 'ECONNABORTED' && error.config?.url?.startsWith('/api/award/import?')
+        ? '导入请求超时，结果尚未确认，请先刷新获奖列表核实后再操作'
+        : '网络错误，请检查网络连接')
     } else {
       ElMessage.error(error.message || '请求失败')
     }

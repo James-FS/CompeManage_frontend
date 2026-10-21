@@ -16,6 +16,7 @@ const compID = useRoute().params.id
 const router = useRouter()
 const userStore = useUserStore()
 const loading = ref(false)
+const competitionName = ref('')
 const teams = ref([])
 const keyword = ref('')
 const page = ref(1)
@@ -31,6 +32,12 @@ watch(keyword, () => { page.value = 1 })
 watch(pageSize, () => { page.value = 1 })
 const studentCount = computed(() => filteredTeams.value.reduce((n, t) => n + t.members.length, 0))
 const errorMessage = e => e.response?.data?.message || e.message || '操作失败'
+const fetchCompetitionName = async () => {
+  try {
+    const res = await api.getCompetitionDetail(compID)
+    competitionName.value = res.data?.comp_name || ''
+  } catch (e) { ElMessage.error(errorMessage(e)) }
+}
 const fetchData = async () => {
   loading.value = true
   try {
@@ -120,7 +127,7 @@ const handleExport = async () => {
   catch (e) { ElMessage.error(errorMessage(e)) }
 }
 onMounted(async () => {
-  await fetchData()
+  await Promise.all([fetchData(), fetchCompetitionName()])
   if (userStore.role === 'school_admin') {
     try { colleges.value = (await api.getCollegeList()).data || [] }
     catch (e) { ElMessage.error(errorMessage(e)) }
@@ -130,7 +137,15 @@ onMounted(async () => {
 <template>
   <div class="award-detail">
     <el-card shadow="never">
-      <template #header><div class="header"><span>获奖名单</span><span>{{ filteredTeams.length }} 个团队项目 · {{ studentCount }} 名获奖学生</span></div></template>
+      <template #header>
+        <div class="header">
+          <div class="title">
+            <strong>{{ competitionName || `赛事 ${compID}` }}</strong>
+            <span>获奖名单</span>
+          </div>
+          <span>{{ filteredTeams.length }} 个团队项目 · {{ studentCount }} 名获奖学生</span>
+        </div>
+      </template>
       <div class="toolbar">
         <el-input v-model="keyword" placeholder="搜索项目、姓名、学号或学院" clearable style="width: 320px" />
         <el-button :icon="Refresh" @click="fetchData">刷新</el-button>
@@ -171,7 +186,7 @@ onMounted(async () => {
           <el-form-item label="项目名称"><el-input v-model="teamEdit.project_name" maxlength="255" /></el-form-item>
           <el-form-item label="获奖类别"><el-select v-model="teamEdit.award_category"><el-option v-for="c in ['校赛', '国家级', '省级', '国际级']" :key="c" :label="c" :value="c" /></el-select></el-form-item>
           <el-form-item label="获奖等级"><el-input v-model="teamEdit.award_name" maxlength="100" /></el-form-item>
-          <el-form-item label="获奖时间"><el-date-picker v-model="teamEdit.award_month" type="month" value-format="YYYY-MM" /></el-form-item>
+          <el-form-item label="获奖时间"><el-date-picker v-model="teamEdit.award_month" type="month" format="YYYY-MM" value-format="YYYY-MM" /></el-form-item>
           <el-form-item label="指导老师">
             <div class="advisor-chips">
               <el-tag v-for="a in teamEdit.advisors || []" :key="a.username" closable size="small" @close="removeAdvisor(a)">{{ a.name }}（{{ a.username }}）· {{ a.college }}</el-tag>
@@ -207,6 +222,8 @@ onMounted(async () => {
 .award-detail { padding: 20px; }
 .header, .toolbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 .header { justify-content: space-between; }
+.title { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+.title strong { font-size: 18px; }
 .hint { font-size: 12px; color: #909399; margin-top: 6px; }
 .advisor-chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .teacher-list { margin-top: 12px; max-height: 320px; overflow-y: auto; }
