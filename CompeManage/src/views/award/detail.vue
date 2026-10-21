@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Download, Upload, Edit, Refresh } from '@element-plus/icons-vue'
+import { Download, Upload, Edit } from '@element-plus/icons-vue'
 import ExcelJS from 'exceljs'
 import { saveAs } from 'file-saver'
 import api from '@/api'
@@ -19,6 +19,8 @@ const loading = ref(false)
 const competitionName = ref('')
 const teams = ref([])
 const keyword = ref('')
+const categoryFilter = ref('')
+const levelFilter = ref('')
 const page = ref(1)
 const pageSize = ref(10)
 const memberTeam = ref(null)
@@ -26,9 +28,39 @@ const teamEdit = ref(null)
 const memberEdit = ref(null)
 const saving = ref(false)
 const colleges = ref([])
-const filteredTeams = computed(() => teams.value.filter(t => !keyword.value || [t.project_name, ...t.members.map(m => `${m.name} ${m.student_id} ${m.college}`)].some(v => v?.includes(keyword.value.trim()))))
+const awardLevelMatches = (awardName, selectedLevel) => {
+  if (!selectedLevel) return true
+  const value = String(awardName || '').replace(/[\s\u3000（）()]/g, '')
+  const aliases = {
+    一等奖: ['一等奖', '一等', '冠军', '金奖', '特等奖'],
+    二等奖: ['二等奖', '二等', '亚军', '银奖'],
+    三等奖: ['三等奖', '三等', '季军', '铜奖'],
+  }
+  return aliases[selectedLevel].some(alias => value.includes(alias))
+}
+const awardCategoryMatches = (category, selectedCategory) => {
+  if (!selectedCategory) return true
+  if (selectedCategory === '校级') return ['校级', '校赛'].includes(category)
+  if (selectedCategory === '国家级') return ['国家级', '国际级'].includes(category)
+  return category === selectedCategory
+}
+const filteredTeams = computed(() => teams.value.filter(t => {
+  const searchText = keyword.value.trim().toLowerCase()
+  const advisorText = [
+    advisorNames(t.advisor_info),
+    ...(t.advisors || []).flatMap(advisor => [advisor.name, advisor.username, advisor.college]),
+  ].join(' ').toLowerCase()
+  const keywordMatches = !searchText || [
+    t.project_name,
+    ...((t.members || []).map(m => `${m.name} ${m.student_id} ${m.college}`)),
+    advisorText,
+  ].some(value => String(value || '').toLowerCase().includes(searchText))
+  return keywordMatches
+    && awardCategoryMatches(t.award_category, categoryFilter.value)
+    && awardLevelMatches(t.award_name, levelFilter.value)
+}))
 const pagedTeams = computed(() => filteredTeams.value.slice((page.value - 1) * pageSize.value, page.value * pageSize.value))
-watch(keyword, () => { page.value = 1 })
+watch([keyword, categoryFilter, levelFilter], () => { page.value = 1 })
 watch(pageSize, () => { page.value = 1 })
 const studentCount = computed(() => filteredTeams.value.reduce((n, t) => n + t.members.length, 0))
 const errorMessage = e => e.response?.data?.message || e.message || '操作失败'
@@ -114,15 +146,16 @@ const handleExport = async () => {
   if (!studentCount.value) { ElMessage.warning('暂无可导出的成员数据'); return }
   const workbook = new ExcelJS.Workbook()
   const sheet = workbook.addWorksheet('获奖名单')
-  const headers = ['序号', '学号', '学生姓名', '所属学院', '所在专业', '参赛项目名称', '获奖时间（年/月）', '获奖类别', '获奖等级', '指导教师工号', '备注']
+  const headers = ['序号', '学号', '学生姓名', '所属学院', '所在专业', '参赛项目名称', '获奖时间（年/月）', '获奖类别', '获奖等级', '指导老师', '备注']
   const widths = [7, 15, 12, 23, 21, 38, 15, 13, 13, 24, 14]
   sheet.columns = headers.map((header, i) => ({ header, width: widths[i] }))
   sheet.getColumn(2).numFmt = '@'
   sheet.getColumn(7).numFmt = '@'
   let index = 0
   filteredTeams.value.forEach(t => {
-    const advisorUsernames = (t.advisors || []).map(a => a.username).filter(Boolean).join(' ')
-    t.members.forEach(m => sheet.addRow([++index, m.student_id, m.name, m.college, m.major, t.project_name, t.award_month, t.award_category, t.award_name, advisorUsernames, m.remark]))
+    const advisorNameList = (t.advisors || []).map(a => a.name).filter(Boolean)
+    const teacherNames = advisorNameList.length ? advisorNameList.join(' ') : advisorNames(t.advisor_info).replace(/、/g, ' ')
+    t.members.forEach(m => sheet.addRow([++index, m.student_id, m.name, m.college, m.major, t.project_name, t.award_month, t.award_category, t.award_name, teacherNames, m.remark]))
   })
   const cellBorder = {
     top: { style: 'thin', color: { argb: 'FF000000' } },
@@ -139,7 +172,8 @@ const handleExport = async () => {
       cell.alignment = { horizontal: cell.col === 6 && !isHeader ? 'left' : 'center', vertical: 'middle', wrapText: true }
     })
   })
-  try { saveAs(new Blob([await workbook.xlsx.writeBuffer()]), `获奖名单_${compID}.xlsx`) }
+  const safeCompetitionName = (competitionName.value || `赛事${compID}`).replace(/[\\/:*?"<>|]/g, '_').trim()
+  try { saveAs(new Blob([await workbook.xlsx.writeBuffer()]), `${safeCompetitionName}获奖名单.xlsx`) }
   catch (e) { ElMessage.error(errorMessage(e)) }
 }
 onMounted(async () => {
@@ -163,12 +197,21 @@ onMounted(async () => {
         </div>
       </template>
       <div class="toolbar">
-        <el-input v-model="keyword" placeholder="搜索项目、姓名、学号或学院" clearable style="width: 320px" />
-        <el-button :icon="Refresh" @click="fetchData">刷新</el-button>
+        <el-input v-model="keyword" placeholder="搜索项目、姓名、学号、学院或指导老师" clearable style="width: 360px" />
+        <el-select v-model="categoryFilter" placeholder="获奖类别" clearable style="width: 150px">
+          <el-option label="校级" value="校级" />
+          <el-option label="省级" value="省级" />
+          <el-option label="国家级" value="国家级" />
+        </el-select>
+        <el-select v-model="levelFilter" placeholder="获奖等级" clearable style="width: 150px">
+          <el-option label="一等奖" value="一等奖" />
+          <el-option label="二等奖" value="二等奖" />
+          <el-option label="三等奖" value="三等奖" />
+        </el-select>
         <el-button type="primary" :icon="Upload" @click="router.push({ name: 'AwardImport', params: { id: compID } })">导入名单</el-button>
         <el-button type="success" :icon="Download" @click="handleExport">导出 Excel</el-button>
       </div>
-      <el-table :data="pagedTeams" v-loading="loading" border style="margin-top: 18px" max-height="calc(100vh - 260px)">
+      <el-table :data="pagedTeams" v-loading="loading" border :header-cell-style="{ textAlign: 'center' }" :cell-style="{ textAlign: 'center' }" style="margin-top: 18px" max-height="calc(100vh - 260px)">
         <el-table-column type="index" label="序号" width="65" align="center" />
         <el-table-column prop="project_name" label="参赛项目名称" min-width="240" show-overflow-tooltip align="center" />
         <el-table-column prop="award_category" label="获奖类别" width="120" align="center" />
@@ -178,13 +221,14 @@ onMounted(async () => {
         <el-table-column label="指导老师" min-width="170" show-overflow-tooltip><template #default="{ row }">{{ advisorNames(row.advisor_info) }}</template></el-table-column>
         <el-table-column prop="remark" label="备注" min-width="180" show-overflow-tooltip />
         <el-table-column label="操作" width="140" align="center"><template #default="{ row }"><el-button v-if="row.can_edit_team" link type="primary" :icon="Edit" @click="openTeam(row)">修改获奖信息</el-button></template></el-table-column>
+        <template #empty><el-empty description="暂无数据" /></template>
       </el-table>
       <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="filteredTeams.length" :page-sizes="[10,20,50]" layout="total, sizes, prev, pager, next" style="margin-top: 18px; justify-content: flex-end" />
     </el-card>
     <el-dialog :model-value="!!memberTeam" title="获奖成员" width="1000px" @close="memberTeam = null">
       <template v-if="memberTeam">
         <p>{{ memberTeam.project_name }}</p>
-        <el-table :data="memberTeam.members" border>
+        <el-table :data="memberTeam.members" border :header-cell-style="{ textAlign: 'center' }" :cell-style="{ textAlign: 'center' }">
           <el-table-column prop="student_id" label="学号" width="150" />
           <el-table-column prop="name" label="姓名" width="110" />
           <el-table-column prop="college" label="所属学院" min-width="200" />
@@ -192,6 +236,7 @@ onMounted(async () => {
           <el-table-column prop="remark" label="备注" min-width="180" />
           <el-table-column label="填报归属" width="150"><template #default="{ row }">{{ row.submitted_college_name || colleges.find(c => c.id === row.submitted_college_id)?.name || (row.submitted_college_id ? '已确认' : '待校管理员确认') }}</template></el-table-column>
           <el-table-column label="操作" width="90"><template #default="{ row }"><el-button v-if="row.can_edit" link type="primary" @click="memberEdit = { ...row }">编辑</el-button></template></el-table-column>
+          <template #empty><el-empty description="暂无数据" /></template>
         </el-table>
       </template>
     </el-dialog>
