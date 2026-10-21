@@ -114,15 +114,31 @@ const handleExport = async () => {
   if (!studentCount.value) { ElMessage.warning('暂无可导出的成员数据'); return }
   const workbook = new ExcelJS.Workbook()
   const sheet = workbook.addWorksheet('获奖名单')
-  const headers = ['序号', '学号', '学生姓名', '所属学院', '所在专业', '参赛项目名称', '获奖时间（年/月）', '获奖类别', '获奖等级', '备注']
-  sheet.columns = headers.map((header, i) => ({ header, width: i === 0 ? 8 : i === 5 ? 35 : 22 }))
+  const headers = ['序号', '学号', '学生姓名', '所属学院', '所在专业', '参赛项目名称', '获奖时间（年/月）', '获奖类别', '获奖等级', '指导教师工号', '备注']
+  const widths = [7, 15, 12, 23, 21, 38, 15, 13, 13, 24, 14]
+  sheet.columns = headers.map((header, i) => ({ header, width: widths[i] }))
   sheet.getColumn(2).numFmt = '@'
   sheet.getColumn(7).numFmt = '@'
   let index = 0
-  filteredTeams.value.forEach(t => t.members.forEach(m => sheet.addRow([++index, m.student_id, m.name, m.college, m.major, t.project_name, t.award_month, t.award_category, t.award_name, m.remark])))
-  sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } }
-  sheet.getRow(1).eachCell(c => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F81BD' } } })
-  sheet.eachRow(row => row.eachCell(c => { c.alignment = { vertical: 'middle', wrapText: true } }))
+  filteredTeams.value.forEach(t => {
+    const advisorUsernames = (t.advisors || []).map(a => a.username).filter(Boolean).join(' ')
+    t.members.forEach(m => sheet.addRow([++index, m.student_id, m.name, m.college, m.major, t.project_name, t.award_month, t.award_category, t.award_name, advisorUsernames, m.remark]))
+  })
+  const cellBorder = {
+    top: { style: 'thin', color: { argb: 'FF000000' } },
+    right: { style: 'thin', color: { argb: 'FF000000' } },
+    bottom: { style: 'thin', color: { argb: 'FF000000' } },
+    left: { style: 'thin', color: { argb: 'FF000000' } }
+  }
+  sheet.eachRow(row => {
+    const isHeader = row.number === 1
+    row.height = isHeader ? 42 : 34
+    row.eachCell({ includeEmpty: true }, cell => {
+      cell.font = { name: '宋体', size: isHeader ? 12 : 11, bold: isHeader, color: { argb: 'FF000000' } }
+      cell.border = cellBorder
+      cell.alignment = { horizontal: cell.col === 6 && !isHeader ? 'left' : 'center', vertical: 'middle', wrapText: true }
+    })
+  })
   try { saveAs(new Blob([await workbook.xlsx.writeBuffer()]), `获奖名单_${compID}.xlsx`) }
   catch (e) { ElMessage.error(errorMessage(e)) }
 }

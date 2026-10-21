@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { Download, UploadFilled, Delete, Plus, CircleCheck } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import * as XLSX from 'xlsx'
+import ExcelJS from 'exceljs'
 import { saveAs } from 'file-saver'
 import api from '@/api'
 import { post } from '@/utils/request'
@@ -80,31 +81,60 @@ const columns = [
 ]
 const categories = ['校赛', '国家级', '省级', '国际级']
 const awardLevels = ['一等奖', '二等奖', '三等奖']
-const exportValidationReport = () => {
-  const reportColumns = [
-    { label: '序号', value: row => row.sequence },
-    ...columns.map(column => ({ label: column.label, value: row => row[column.key] || '' })),
-    { label: '指导教师工号', value: row => row.advisor_usernames || '' },
-    { label: '指导教师所在学院', value: row => row.advisor_colleges || '' },
-    { label: '导入结果', value: row => row.existing ? '已存在，本次未新增或修改' : '未导入' },
-    { label: '校验结果', value: row => row.error ? '校验失败' : validationStage.value === 'server' ? '本行校验通过' : '尚未完成服务端校验' },
-    { label: '未导入原因', value: row => row.error || (row.existing
-      ? '系统已有该记录，保留原填报归属；本批校验未通过，未新增或修改数据'
-      : validationStage.value === 'server'
-        ? '本行校验通过，但本批存在校验失败记录，整批未导入'
-        : '本批存在解析校验错误，尚未提交导入；本行仍需服务端校验') },
-    { label: '来源文件', value: () => validationSourceFile.value || '手工录入' },
-  ]
-  const sheet = XLSX.utils.aoa_to_sheet([
-    reportColumns.map(column => column.label),
-    ...validationReport.value.map(row => reportColumns.map(column => String(column.value(row)))),
-  ])
-  sheet['!cols'] = reportColumns.map(column => ({ wch: column.label === '未导入原因' ? 70 : column.label === '参赛项目名称' ? 30 : 22 }))
-  sheet['!autofilter'] = { ref: sheet['!ref'] }
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, sheet, '未导入名单')
+const exportValidationReport = async () => {
+  const failedRows = reportErrors.value
+  if (!failedRows.length) {
+    ElMessage.info('暂无校验失败记录可导出')
+    return
+  }
+  const headers = ['序号', '学号', '学生姓名', '所属学院', '所在专业', '参赛项目名称', '获奖时间（年/月）', '获奖类别', '获奖等级', '指导教师工号', '备注', '校验失败原因']
+  const widths = [7, 15, 12, 23, 21, 38, 15, 13, 13, 24, 14, 48]
+  const workbook = new ExcelJS.Workbook()
+  const sheet = workbook.addWorksheet('校验失败名单')
+  sheet.columns = headers.map((header, index) => ({ header, width: widths[index] }))
+  sheet.getColumn(2).numFmt = '@'
+  sheet.getColumn(7).numFmt = '@'
+  failedRows.forEach(row => sheet.addRow([
+    row.sequence,
+    row.student_id,
+    row.name,
+    row.college,
+    row.major,
+    row.project_name,
+    row.award_month,
+    row.award_category,
+    row.award_name,
+    row.advisor_usernames,
+    row.remark,
+    row.error,
+  ]))
+  const cellBorder = {
+    top: { style: 'thin', color: { argb: 'FF000000' } },
+    right: { style: 'thin', color: { argb: 'FF000000' } },
+    bottom: { style: 'thin', color: { argb: 'FF000000' } },
+    left: { style: 'thin', color: { argb: 'FF000000' } },
+  }
+  sheet.eachRow(row => {
+    const isHeader = row.number === 1
+    const reason = isHeader ? '' : String(row.getCell(12).value || '')
+    row.height = isHeader ? 42 : Math.max(34, Math.min(82, Math.ceil(reason.length / 32) * 18))
+    row.eachCell({ includeEmpty: true }, cell => {
+      cell.font = { name: '宋体', size: isHeader ? 12 : 11, bold: isHeader, color: { argb: 'FF000000' } }
+      cell.border = cellBorder
+      cell.alignment = {
+        horizontal: !isHeader && (cell.col === 6 || cell.col === 12) ? 'left' : 'center',
+        vertical: 'middle',
+        wrapText: true,
+      }
+    })
+  })
+  sheet.autoFilter = { from: 'A1', to: `L${sheet.rowCount}` }
   const sourceName = (validationSourceFile.value || `赛事${compID}`).replace(/\.[^.]+$/, '').replace(/[\\/:*?"<>|]/g, '_')
-  XLSX.writeFile(workbook, `${sourceName}_未导入名单.xlsx`)
+  try {
+    saveAs(new Blob([await workbook.xlsx.writeBuffer()]), `${sourceName}_校验失败名单.xlsx`)
+  } catch (error) {
+    ElMessage.error(error.message || '导出失败')
+  }
 }
 const normalizeAwardLevel = value => {
   const text = String(value || '').replace(/[\s\u3000（）()]/g, '')
@@ -133,41 +163,6 @@ const loadCompetitionName = async () => {
 const downloadTemplate = async () => {
   try { saveAs(await api.getAwardTemplate(compID), '获奖名单导入模板.xlsx') }
   catch (error) { ElMessage.error(errorMessage(error)) }
-}
-const revalidateImport = async () => {
-  if (loading.value) return
-  if (!tableData.value.length) {
-    ElMessage.warning('请先导入或新增数据')
-    return
-  }
-  loadingText.value = '正在重新校验，请稍候…'
-  loading.value = true
-  try {
-    const currentRows = tableData.value
-    const rows = currentRows.map(({ _rowKey, ...row }) => row)
-    const res = await post(`/api/award/import/preview?comp_id=${compID}`, { rows }, { timeout: 120000 })
-    const validatedRows = res.data?.rows
-    if (!Array.isArray(validatedRows)) throw new Error('校验结果格式错误')
-    tableData.value = validatedRows.map((row, index) => ({
-      ...row,
-      _rowKey: currentRows[index]?._rowKey ?? ++nextRowKey,
-    }))
-    saveValidationReport('server')
-    const firstError = tableData.value.find(row => row.error)
-    if (firstError) {
-      showErrorRow(firstError)
-      openValidationReport()
-      ElMessage.warning('数据校验未通过')
-    } else {
-      validationDialogVisible.value = false
-      ElMessage.success('校验通过，可以提交导入')
-    }
-  } catch (error) {
-    if (!error.messageShown) ElMessage.error(errorMessage(error))
-  } finally {
-    loading.value = false
-    loadingText.value = ''
-  }
 }
 const handleFileChange = async uploadFile => {
   if (!uploadFile?.raw || loading.value) return
@@ -334,10 +329,16 @@ onMounted(() => {
       </div>
     </el-card>
     <el-dialog v-model="validationDialogVisible" title="校验失败结果" width="min(1100px, 94vw)" append-to-body destroy-on-close align-center>
-      <el-alert type="warning" :closable="false" show-icon>
-        <template #title>本次导入 {{ validationReport.length }} 行，其中 {{ reportErrors.length }} 行校验失败。</template>
-        <div>修改预览数据后，请重新提交更新校验结果。</div>
-      </el-alert>
+      <div class="validation-dialog-summary">
+        <el-alert type="warning" :closable="false" show-icon>
+          <template #title>
+            <div class="validation-alert-content">
+              <span class="validation-alert-text">本次导入 {{ validationReport.length }} 行，其中 {{ reportErrors.length }} 行校验失败。修改预览数据后，请重新提交更新校验结果。</span>
+              <el-button :icon="Download" type="primary" plain @click="exportValidationReport">导出校验失败名单（{{ reportErrors.length }} 行）</el-button>
+            </div>
+          </template>
+        </el-alert>
+      </div>
       <el-table :data="reportPageRows" row-key="_rowKey" border max-height="48vh" class="validation-result-table">
         <el-table-column align="center" header-align="center" prop="sequence" label="序号" width="75" />
         <el-table-column align="center" header-align="center" prop="student_id" label="学号" width="150" />
@@ -350,8 +351,6 @@ onMounted(() => {
       <template #footer>
         <div class="validation-dialog-footer">
           <el-pagination v-model:current-page="reportPage" v-model:page-size="reportPageSize" :page-sizes="[20, 50, 100]" :total="reportErrors.length" layout="total, sizes, prev, pager, next" />
-          <el-button :icon="Download" type="primary" @click="exportValidationReport">导出未导入名单（{{ validationReport.length }} 行）</el-button>
-          <el-button type="primary" :loading="loading" @click="revalidateImport">重新校验</el-button>
         </div>
       </template>
     </el-dialog>
@@ -387,5 +386,10 @@ onMounted(() => {
 .actions, .footer { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .footer { flex: 0 0 auto; justify-content: flex-end; margin-top: 12px; }
 .validation-result-table { margin-top: 16px; }
+.validation-dialog-summary { min-width: 0; }
+:deep(.validation-dialog-summary .el-alert__content) { flex: 1 1 auto; min-width: 0; }
+.validation-alert-content { display: flex; align-items: center; gap: 16px; width: 100%; padding-right: 12px; }
+.validation-alert-text { white-space: nowrap; }
+.validation-alert-content :deep(.el-button) { flex: 0 0 auto; margin-left: auto; }
 .validation-dialog-footer { display: flex; align-items: center; justify-content: flex-end; gap: 12px; flex-wrap: wrap; }
 </style>
