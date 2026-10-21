@@ -9,7 +9,7 @@ import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 import istanbul from 'vite-plugin-istanbul'
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(() => ({
   plugins: [
     vue(),
     vueDevTools(),
@@ -19,12 +19,12 @@ export default defineConfig({
     Components({
       resolvers: [ElementPlusResolver()],
     }),
-    istanbul({
+    ...(process.env.COVERAGE === '1' || process.env.NODE_ENV === 'coverage' ? [istanbul({
       include: 'src/**',
       exclude: ['**/node_modules/**', 'e2e/**'],
       extension: ['.js', '.vue'],
       forceBuildInstrument: true,
-    }),
+    })] : []),
   ],
   resolve: {
     alias: {
@@ -40,6 +40,8 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:8080',
         changeOrigin: true,
+        timeout: 130000,
+        proxyTimeout: 130000,
       },
       '/static': {
         target: 'http://localhost:8080',
@@ -54,6 +56,8 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:8080',
         changeOrigin: true,
+        timeout: 130000,
+        proxyTimeout: 130000,
       },
       '/static': {
         target: 'http://localhost:8080',
@@ -61,4 +65,4 @@ export default defineConfig({
       },
     },
   },
-})
+}))
