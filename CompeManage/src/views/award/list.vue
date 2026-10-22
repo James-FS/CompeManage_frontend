@@ -20,9 +20,6 @@ const total = ref(0)
 // 其中年份同时用作附件导出的年份口径
 const filters = ref({ keyword: '', level: '', year: '', status: '' })
 const levelOptions = ['校级', '省级', '国家级', '国际级']
-// 获取 Token 用于上传鉴权
-const token = localStorage.getItem('token')
-const uploadHeaders = { Authorization: `Bearer ${token}` }
 const buildListParams = () => {
   const { keyword, level, year, status } = filters.value
   const params = { page: queryParams.value.page, size: queryParams.value.size }
@@ -101,24 +98,12 @@ async function downloadTemplate(id) {
   }
 }
 
-// 3. 导入成功回调
-const handleUploadSuccess = (response, uploadFile) => {
-  if (response.code === 200) {
-    ElMessage.success(response.message || `成功导入: ${uploadFile.name}`)
-  } else {
-    ElMessage.error(response.message || '导入失败')
-  }
-}
-
-// 导入失败回调
-const handleUploadError = (error) => {
-  console.error(error)
-  ElMessage.error('网络错误，文件上传失败')
-}
-
 // 4. 跳转详情
 const goDetail = (id) => {
   router.push({ name: 'AwardDetail', params: { id } })
+}
+const goImport = (id) => {
+  router.push({ name: 'AwardImport', params: { id } })
 }
 
 // 5. 按赛事年份导出省级以上获奖附件，留空则按年份分别生成工作表
@@ -290,22 +275,12 @@ onMounted(fetchList)
                 </el-button>
               </el-tooltip>
 
-              <el-upload
-                class="upload-wrapper"
-                :action="`/api/award/import?comp_id=${item.id}`"
-                :headers="uploadHeaders"
-                :show-file-list="false"
-                accept=".xlsx"
-                :on-success="handleUploadSuccess"
-                :on-error="handleUploadError"
-              >
-                <el-tooltip content="导入获奖名单" placement="top">
-                  <el-button link class="icon-btn">
-                    <el-icon><Upload /></el-icon>
-                    <span class="btn-text">导入数据</span>
-                  </el-button>
-                </el-tooltip>
-              </el-upload>
+              <el-tooltip content="导入获奖名单" placement="top">
+                <el-button link class="icon-btn" @click="goImport(item.id)">
+                  <el-icon><Upload /></el-icon>
+                  <span class="btn-text">导入数据</span>
+                </el-button>
+              </el-tooltip>
 
               <div class="btn-container">
                 <el-button type="primary" class="primary-btn" @click="goDetail(item.id)">
@@ -499,11 +474,6 @@ onMounted(fetchList)
         .btn-text {
           display: inline-block;
         }
-      }
-
-      .upload-wrapper {
-        display: inline-flex;
-        align-items: center;
       }
 
       .primary-btn {

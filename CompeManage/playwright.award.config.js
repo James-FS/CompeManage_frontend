@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test'
 process.env.NO_PROXY = [process.env.NO_PROXY, 'localhost', '127.0.0.1', '::1'].filter(Boolean).join(',')
 export default defineConfig({
   testDir: './e2e/award',
-  testMatch: ['import.spec.js', 'detail.spec.js', 'export.spec.js', 'student-declare.spec.js', 'my-competition.spec.js', 'audit.spec.js', 'advisor.spec.js'],
+  testMatch: ['import.spec.js', 'partial-import.spec.js', 'detail.spec.js', 'export.spec.js', 'student-declare.spec.js', 'my-competition.spec.js', 'audit.spec.js', 'advisor.spec.js'],
   fullyParallel: false,
   workers: 1,
   retries: 0,
