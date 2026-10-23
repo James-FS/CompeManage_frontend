@@ -341,6 +341,7 @@ test('院管理员为赛事C手动新增 2 人团队获奖', async ({ page }) =>
 })
 
 test('校管理员按赛事年份导出附件1/附件2并核对内容', async ({ page }) => {
+  test.setTimeout(120_000) // 全量并行下导出+解析耗时
   const comps = state.comps
   await login(page, SCHOOL_ADMIN)
   await page.goto('/#/award/list')

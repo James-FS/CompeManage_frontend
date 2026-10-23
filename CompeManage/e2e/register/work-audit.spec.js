@@ -264,7 +264,7 @@ test.describe('作品审核 E2E 测试', () => {
     compId = data.compId
     regId = data.regId
     console.log(`作品审核测试数据就绪: compId=${compId}, regId=${regId}, compName=${compName}`)
-  })
+  }, 90_000) // 全量并行时默认 30s 不够（创建赛事+报名+作品）
 
   test.beforeEach(async ({ page }) => {
     await login(page, ADMIN_USER)

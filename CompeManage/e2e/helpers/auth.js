@@ -19,7 +19,7 @@ export const DEFAULT_USER = {
  */
 export async function login(page, user, options = {}) {
   const u = user || DEFAULT_USER
-  const timeout = options.timeout || 15000
+  const timeout = options.timeout || 30000
 
   // 移除 Vue DevTools 悬浮按钮（Vue 应用挂载后才创建，用观察器持续清除），
   // 避免其遮挡页面底部元素（分页等）导致点击被拦截
@@ -39,11 +39,11 @@ export async function login(page, user, options = {}) {
   await page.waitForLoadState('networkidle')
 
   // 展开管理员密码登录表单
-  const adminToggle = page.locator('text=管理员账号登录')
+  const adminToggle = page.locator('button:has-text("管理员账号登录")').first()
   if (await adminToggle.isVisible().catch(() => false)) {
     await adminToggle.click()
-    // 等待表单渲染
-    await page.waitForSelector('input[placeholder="管理员用户名"]', { timeout: 5000 })
+    // 等待表单渲染（负载下 5s 偶发不够）
+    await page.waitForSelector('input[placeholder="管理员用户名"]', { timeout: 15000 })
   }
 
   await page.fill('input[placeholder="管理员用户名"]', u.username)
