@@ -189,41 +189,34 @@ async function getRegList(page, token, compName) {
 
 // 完整的测试数据准备流程：创建赛事 → 配置 → 报名 → 审核 → 提交作品
 async function setupWorkAuditData(browser, compName, teamName) {
-  const page = await browser.newPage()
+  // 每个账号用独立页面：同页多次清 token 重登会触发 401 拦截器整页跳转，
+  // 与登录表单展开互相打断（表现为 beforeAll 偶发超时）
+  const adminPage = await browser.newPage()
+  await login(adminPage, ADMIN_USER)
+  const adminToken = await getAuthToken(adminPage)
+  const compId = await createCompetitionWithName(adminPage, compName)
 
-  // 1. 管理员登录并创建赛事
-  await login(page, ADMIN_USER)
-  const adminToken = await getAuthToken(page)
-  const compId = await createCompetitionWithName(page, compName)
+  // 保存报名配置（含作品提交时间窗口）
+  await saveRegConfig(adminPage, adminToken, compId)
+  await adminPage.close()
 
-  // 2. 保存报名配置（含作品提交时间窗口）
-  await saveRegConfig(page, adminToken, compId)
-
-  // 3. 学生登录并提交报名
-  await page.evaluate(() => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('userInfo')
-  })
-  await login(page, STUDENT_USER)
-
-  const studentToken = await getAuthToken(page)
-  const regResp = await submitRegistration(page, studentToken, compId, teamName)
+  // 学生登录并提交报名
+  const studentPage = await browser.newPage()
+  await login(studentPage, STUDENT_USER)
+  const studentToken = await getAuthToken(studentPage)
+  const regResp = await submitRegistration(studentPage, studentToken, compId, teamName)
   const regId = regResp.data?.id || regResp.data?.ID || regResp.data?.reg_id
+  await studentPage.close()
 
-  // 4. 管理员审核通过
-  // 切回管理员
-  await page.evaluate(() => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('userInfo')
-  })
-  await login(page, ADMIN_USER)
-
-  const adminToken2 = await getAuthToken(page)
+  // 管理员审核通过
+  const adminPage2 = await browser.newPage()
+  await login(adminPage2, ADMIN_USER)
+  const adminToken2 = await getAuthToken(adminPage2)
 
   // 通过列表 API 获取 reg_id（如果 submit 没返回 id）
   let finalRegId = regId
   if (!finalRegId) {
-    const listData = await getRegList(page, adminToken2, compName)
+    const listData = await getRegList(adminPage2, adminToken2, compName)
     if (listData.data?.list?.length > 0) {
       finalRegId = listData.data.list[0].id
     }
@@ -231,22 +224,19 @@ async function setupWorkAuditData(browser, compName, teamName) {
   console.log(`最终 regId: ${finalRegId}`)
 
   if (finalRegId) {
-    await approveRegistration(page, adminToken2, finalRegId)
+    await approveRegistration(adminPage2, adminToken2, finalRegId)
   }
+  await adminPage2.close()
 
-  // 5. 学生提交作品
-  await page.evaluate(() => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('userInfo')
-  })
-  await login(page, STUDENT_USER)
-
-  const studentToken2 = await getAuthToken(page)
+  // 学生提交作品
+  const studentPage2 = await browser.newPage()
+  await login(studentPage2, STUDENT_USER)
+  const studentToken2 = await getAuthToken(studentPage2)
   if (finalRegId) {
-    await submitWork(page, studentToken2, finalRegId)
+    await submitWork(studentPage2, studentToken2, finalRegId)
   }
+  await studentPage2.close()
 
-  await page.close()
   return { compId, regId: finalRegId }
 }
 
