@@ -8,7 +8,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './e2e',
-  testIgnore: ['**/prod-*.spec.js'],
+  testIgnore: ['**/prod-*.spec.js', '**/multi-college/**'],
   globalSetup: './e2e/global-setup.js',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
