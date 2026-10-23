@@ -17,7 +17,7 @@
     "test:multi-college": "playwright test --config=playwright.multi-college.config.js",
     "test:export-style": "playwright test --config=playwright.export-style.config.js",
     "test:award-boundary": "playwright test --config=playwright.award-boundary.config.js",
-    "test:coverage": "npm run build:coverage && nyc --reporter=text --reporter=html --report-dir=coverage playwright test"
+    "test:coverage": "npm run build:coverage && nyc --reporter=text --reporter=html --report-dir=coverage playwright test --config=playwright.coverage.config.js"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.2",

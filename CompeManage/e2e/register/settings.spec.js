@@ -77,7 +77,7 @@ test.describe('报名设置功能测试', () => {
     const managerInput = page.locator('.manager-input input')
     await managerInput.click()
 
-    const managerDialog = page.locator('.el-dialog:has-text("选择赛事负责人")')
+    const managerDialog = page.locator('.el-dialog:has-text("选择负责人")')
     await expect(managerDialog).toBeVisible({ timeout: 10000 })
 
     // 等待负责人列表加载

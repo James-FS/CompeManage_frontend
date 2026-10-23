@@ -324,7 +324,7 @@ test.describe('编辑赛事页面 - 赛事负责人弹窗', () => {
     await page.locator('input[placeholder="请选择赛事负责人"]').click()
 
     // 验证弹窗出现
-    await expect(page.locator('.el-dialog:has-text("选择赛事负责人")')).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('.el-dialog:has-text("选择负责人")')).toBeVisible({ timeout: 5000 })
 
     // 验证弹窗内搜索表单
     await expect(page.locator('.el-dialog input[placeholder="输入姓名"]')).toBeVisible()
@@ -349,7 +349,7 @@ test.describe('编辑赛事页面 - 赛事负责人弹窗', () => {
     )
 
     await page.locator('input[placeholder="请选择赛事负责人"]').click()
-    await expect(page.locator('.el-dialog:has-text("选择赛事负责人")')).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('.el-dialog:has-text("选择负责人")')).toBeVisible({ timeout: 5000 })
     await listRespPromise
     await page.waitForTimeout(500)
 
@@ -358,8 +358,8 @@ test.describe('编辑赛事页面 - 赛事负责人弹窗', () => {
     await nameInput.fill('张')
     await page.waitForTimeout(600) // 等待防抖
 
-    // 点击重置
-    await page.locator('.el-dialog button:has-text("重置")').click()
+    // 清空输入（新版弹窗无重置按钮，直接清空输入框）
+    await nameInput.fill('')
     await page.waitForTimeout(300)
 
     // 验证输入框已清空
@@ -380,7 +380,7 @@ test.describe('编辑赛事页面 - 赛事负责人弹窗', () => {
     )
 
     await managerInput.click()
-    await expect(page.locator('.el-dialog:has-text("选择赛事负责人")')).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('.el-dialog:has-text("选择负责人")')).toBeVisible({ timeout: 5000 })
     await listRespPromise
     await page.waitForTimeout(500)
 
@@ -409,7 +409,7 @@ test.describe('编辑赛事页面 - 赛事负责人弹窗', () => {
     )
 
     await page.locator('input[placeholder="请选择赛事负责人"]').click()
-    await expect(page.locator('.el-dialog:has-text("选择赛事负责人")')).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('.el-dialog:has-text("选择负责人")')).toBeVisible({ timeout: 5000 })
     await listRespPromise
     await page.waitForTimeout(500)
 
@@ -444,7 +444,7 @@ test.describe('编辑赛事页面 - 赛事负责人弹窗', () => {
     )
 
     await page.locator('input[placeholder="请选择赛事负责人"]').click()
-    await expect(page.locator('.el-dialog:has-text("选择赛事负责人")')).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('.el-dialog:has-text("选择负责人")')).toBeVisible({ timeout: 5000 })
     await listRespPromise
     await page.waitForTimeout(500)
 
