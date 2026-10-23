@@ -113,7 +113,9 @@ test.describe.serial('API全业务链路', () => {
     expect(createBody.code, `通知创建: ${JSON.stringify(createBody).slice(0, 150)}`).toBe(200);
     const noticeId = createBody?.data?.id ?? createBody?.data?.ID;
 
-    const list = await apiGet(request, admin, '/api/notice/list?page=1&page_size=20');
+    // 列表按 publish_time 降序——新通知未发布排在最后，历史跑批数据多时会掉出首页；
+    // 用 compID + status=0 收窄到本赛事未发布通知，断言稳定
+    const list = await apiGet(request, admin, `/api/notice/list?page=1&page_size=50&compID=${compID}&status=0`);
     expect(list.body.code).toBe(200);
     const found = JSON.stringify(list.body.data || '').includes(`发布测试通知_${RUN}`);
     expect(found, '通知列表应包含新通知').toBeTruthy();
