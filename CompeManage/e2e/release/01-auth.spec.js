@@ -1,6 +1,6 @@
 // @ts-check
 // 01 认证模块：登录/登出/错误处理/路由守卫
-import { test, expect } from '@playwright/test';
+import { test, expect } from 'playwright-test-coverage';
 import { ACCOUNTS } from './helpers.js';
 
 const BASE = process.env.E2E_BASE || 'http://localhost:5219';

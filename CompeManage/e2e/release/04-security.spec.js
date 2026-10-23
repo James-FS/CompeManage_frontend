@@ -1,6 +1,6 @@
 // @ts-check
 // 04 安全越权矩阵：未登录401、各角色对管理接口的403、学生页面访问限制
-import { test, expect } from '@playwright/test';
+import { test, expect } from 'playwright-test-coverage';
 import { ACCOUNTS, apiLogin, tryApiLogin, apiGet } from './helpers.js';
 
 const ADMIN_APIS = [

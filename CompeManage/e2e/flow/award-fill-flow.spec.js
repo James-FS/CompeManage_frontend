@@ -13,7 +13,7 @@
  * 运行：npx playwright test --config=playwright.flow.config.js
  * 前置：后端 8080 已启动（globalSetup 会检查），学生样例由 globalSetup 播种。
  */
-import { test, expect } from '@playwright/test'
+import { test, expect } from 'playwright-test-coverage'
 import * as XLSX from 'xlsx'
 import { readFileSync } from 'node:fs'
 import { login } from '../helpers/auth'

@@ -1,6 +1,6 @@
 // @ts-check
 // 03 API 全业务链路：赛事→申报→审核→通知→获奖→统计（串行，数据用唯一后缀，可重复运行）
-import { test, expect } from '@playwright/test';
+import { test, expect } from 'playwright-test-coverage';
 import { ACCOUNTS, apiLogin, apiGet, apiPost, getManagerId } from './helpers.js';
 
 const RUN = Date.now().toString(36);

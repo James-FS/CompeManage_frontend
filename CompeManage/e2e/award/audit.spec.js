@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from 'playwright-test-coverage'
 
 async function setup(page, fail = false) {
   await page.addInitScript(() => {

@@ -7,7 +7,7 @@
  * 前置：后端 8080；2025 年已播种 SRC350 数据（export-test/parse_and_seed.py）
  * 运行：npx playwright test --config=playwright.export-style.config.js
  */
-import { test, expect } from '@playwright/test'
+import { test, expect } from 'playwright-test-coverage'
 import * as XLSX from 'xlsx'
 import { readFileSync } from 'node:fs'
 import { login } from '../helpers/auth.js'

@@ -1,0 +1,33 @@
+{
+  "cookies": [
+    {
+      "name": "SF_cookie_8",
+      "value": "88678201",
+      "domain": "xkjs.gzhu.edu.cn",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": [
+    {
+      "origin": "https://xkjs.gzhu.edu.cn",
+      "localStorage": [
+        {
+          "name": "role",
+          "value": "student"
+        },
+        {
+          "name": "token",
+          "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxNCwidXNlcm5hbWUiOiI5MDAwMDYiLCJyb2xlX2NvZGUiOiJzdHVkZW50IiwiaXNzIjoiY29tcGVfYmFja2VuZCIsImV4cCI6MTc5MjgyMTMxOCwiaWF0IjoxNzkyNzM0OTE4fQ.7FjZ3_PrX8_o6dFFlp1XRQoXJvXrWO_3LR8fYmiIKPE"
+        },
+        {
+          "name": "userInfo",
+          "value": "{\"id\":14,\"name\":\"测试学生\",\"username\":\"900006\"}"
+        }
+      ]
+    }
+  ]
+}

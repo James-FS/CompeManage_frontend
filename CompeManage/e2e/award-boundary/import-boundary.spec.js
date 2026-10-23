@@ -4,7 +4,7 @@
  *
  * 运行：npx playwright test --config=playwright.award-boundary.config.js
  */
-import { test, expect } from '@playwright/test'
+import { test, expect } from 'playwright-test-coverage'
 
 const BACKEND = 'http://127.0.0.1:8080'
 const SCHOOL = { username: 'T2023001', password: '123' }

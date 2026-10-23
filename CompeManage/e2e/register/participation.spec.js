@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from 'playwright-test-coverage'
 const students = [{ id: 1, name: '学生甲', username: '00123', college: '学院甲' }, { id: 2, name: '学生乙', username: '00456', college: '学院乙' }]
 async function setup(page, config = {}, status = null) {
   await page.addInitScript(() => {
