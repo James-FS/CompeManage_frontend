@@ -413,9 +413,12 @@ test('校管理员按赛事年份导出附件1/附件2并核对内容', async ({
     expect(studentRows.some(t => t.includes(id)), `附件2应含学号 ${id}`).toBe(true)
   }
   expect(studentRows.some(t => t.includes('E2E2607')), '校赛学生不应出现在附件2').toBe(false)
-  expect(studentRows.filter(t => t.includes('E2E2601')), '王奕辰跨赛重复队员应有2行').toHaveLength(2)
+  expect(
+    studentRows.filter(t => t.includes('E2E2601') && t.includes(RUN_TAG)),
+    '王奕辰（本批）跨赛重复队员应有2行'
+  ).toHaveLength(2)
 
-  const r2605 = studentRows.find(t => t.includes('E2E2605'))
+  const r2605 = studentRows.find(t => t.includes('E2E2605') && t.includes(RUN_TAG))
   expect(r2605).toContain('林芷晴')
   expect(r2605).toContain(P.B1)
   expect(r2605).toContain('省级')
@@ -432,11 +435,13 @@ test('校赛填报列表支持关键词/级别筛选（服务端过滤）', asyn
   await expect(filterBar).toBeVisible()
 
   // 关键词搜索：断言请求带 keyword 参数且 total 为 1（total 是全量匹配数，能证明是服务端过滤）
+  // 用含 RUN_TAG 的完整赛事名，避免历史跑批同名数据干扰
+  const keywordA = state.comps.A.name
   const keywordResp = page.waitForResponse(r => {
     if (!r.url().includes('/api/award/list')) return false
-    return new URL(r.url()).searchParams.get('keyword') === '蓝桥杯校赛选拔'
+    return new URL(r.url()).searchParams.get('keyword') === keywordA
   })
-  await filterBar.locator('input[placeholder="请输入赛事名称或编号"]').fill('蓝桥杯校赛选拔')
+  await filterBar.locator('input[placeholder="请输入赛事名称或编号"]').fill(keywordA)
   await filterBar.getByRole('button', { name: '搜索' }).click()
   const json = await (await keywordResp).json()
   expect(json.data.total, '关键词应精确匹配到赛事A').toBe(1)
