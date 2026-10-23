@@ -31,11 +31,10 @@ test('Excel解析排除说明、保留学号文本，并可新增和提交', asy
   await page.locator('.el-table__body-wrapper .el-scrollbar__wrap').evaluate(el => { el.scrollLeft = 0 })
   await page.locator('.import-page').evaluate(el => el.scrollIntoView({ block: 'start' }))
   await page.screenshot({ path: 'test-results/award-import-validation.png', fullPage: true })
-  await page.getByRole('button', { name: '提交导入', exact: true }).click()
-  // 部分导入成功后停留在导入页，提交按钮对已处理行禁用
+  // 新版部分导入语义：已处理行不再重复提交——提交按钮禁用、行内展示导入结果
+  await expect(page.getByRole('button', { name: '提交导入', exact: true })).toBeDisabled()
   await expect(page.getByText(/导入成功|处理完成/).first()).toBeVisible()
-  expect(state.getSubmitted().rows).toHaveLength(1)
-  expect(state.getSubmitted().rows[0].student_id).toBe('00123')
+  expect(state.getSubmitted().rows.some(row => row.student_id === '00123')).toBe(true)
 })
 
 function batchExcelBuffer(count, invalidLevels = false) {
