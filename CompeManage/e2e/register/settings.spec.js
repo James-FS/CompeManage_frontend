@@ -68,25 +68,19 @@ test.describe('报名设置功能测试', () => {
     await firstCollegeOption.click()
     await page.waitForTimeout(300)
 
-    // 选择赛事负责人（通过弹窗）——先注册响应监听再打开弹窗
-    const managerRespPromise = page.waitForResponse(
-      (resp) => resp.url().includes('/api/comp/manager/list') && resp.status() === 200,
-      { timeout: 10000 }
-    )
-
+    // 选择赛事负责人（通过弹窗）——新版弹窗打开时不自动加载，需先搜索
     const managerInput = page.locator('.manager-input input')
     await managerInput.click()
 
     const managerDialog = page.locator('.el-dialog:has-text("选择负责人")')
     await expect(managerDialog).toBeVisible({ timeout: 10000 })
 
-    // 等待负责人列表加载
-    await managerRespPromise
-    await page.waitForTimeout(800) // 等待表格渲染
+    // 搜索教职工池后加载列表（关键词"何"命中教师池测试账号）
+    await managerDialog.locator('input[placeholder="输入姓名"]').fill('何')
 
     // 点击第一行的"选择"按钮
     const firstRow = managerDialog.locator('.el-table__body tr').first()
-    await expect(firstRow).toBeVisible({ timeout: 5000 })
+    await expect(firstRow).toBeVisible({ timeout: 10000 })
     const managerName = await firstRow.locator('td').nth(1).textContent()
     console.log(`选择赛事负责人: ${managerName}`)
     await firstRow.locator('button:has-text("选择")').click()
