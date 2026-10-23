@@ -50,5 +50,8 @@ __screenshots__/
 
 # NYC coverage
 /.nyc_output/
+/coverage-e2e/
+/coverage-vitest/
+/coverage-merged/
 e2e/coverage-summary.md
 test.md
