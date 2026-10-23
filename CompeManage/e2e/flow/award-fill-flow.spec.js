@@ -91,17 +91,24 @@ test('院管理员在校赛填报用"导入数据"直传赛事A获奖名单', as
   await expect(card).toBeVisible()
   await expect(card.locator('.btn-text', { hasText: '导入数据' })).toBeVisible()
 
+  // 列表卡片"导入数据"进入导入页（不再是卡片内直传）
+  await card.locator('.btn-text', { hasText: '导入数据' }).click()
+  await expect(page).toHaveURL(new RegExp(`award/import/${comp.id}`))
+
+  await page.locator('input[type="file"]').setInputFiles(awardExcelFile(`赛事A获奖名单_${RUN_TAG}.xlsx`, rowsA))
+  await expect(page.getByText('已读取 4 名学生数据')).toBeVisible()
+  await expect(page.locator('.preview-table .el-table__body tbody tr')).toHaveCount(4)
+
   const importResp = page.waitForResponse(r => r.url().includes('/api/award/import?') && r.request().method() === 'POST')
-  await card.locator('.upload-wrapper input[type="file"]').setInputFiles(awardExcelFile(`赛事A获奖名单_${RUN_TAG}.xlsx`, rowsA))
+  await page.getByRole('button', { name: '提交导入', exact: true }).click()
   const json = await (await importResp).json()
-  expect(json.code, `赛事A直传导入应成功：${JSON.stringify(json)}`).toBe(200)
-  expect(json.message).toContain('处理4名学生、2个团队')
-  expect(json.message).toContain('新增4人')
+  expect(json.code, `赛事A导入应成功：${JSON.stringify(json)}`).toBe(200)
+  expect(json.message).toContain('4 行成功导入')
   expect(json.data).toMatchObject({ student_count: 4, team_count: 2, success_count: 4, fail_count: 0 })
-  await expect(page.locator('.el-message--success').first()).toBeVisible()
+  await expect(page.locator('.preview-table').getByText('导入成功', { exact: true })).toHaveCount(4)
 
   // 查看结果 → 获奖名单页
-  await card.locator('.primary-btn').click()
+  await page.goto(`/#/award/detail/${comp.id}`)
   await expect(page).toHaveURL(new RegExp(`award/detail/${comp.id}`))
   await expect(page.getByText(/2 个团队项目\s*·\s*4 名获奖学生/)).toBeVisible()
 
@@ -145,27 +152,38 @@ test('院管理员为赛事B走导入页：校验报错、删错行、提交成�
 
   await page.getByRole('button', { name: '导入名单' }).click()
   await expect(page).toHaveURL(new RegExp(`award/import/${comp.id}`))
-  await expect(page.getByText('当前报名要求：无需报名')).toBeVisible()
 
   await page.locator('input[type="file"]').setInputFiles(awardExcelFile(`赛事B获奖名单_${RUN_TAG}.xlsx`, rowsB))
-  await expect(page.getByText(/读取 5 名学生，示例和说明行已排除/)).toBeVisible()
-  await expect(page.locator('.el-table__body tbody tr')).toHaveCount(5)
+  await expect(page.getByText('已读取 5 名学生数据')).toBeVisible()
+  await expect(page.locator('.preview-table .el-table__body tbody tr')).toHaveCount(5)
 
-  // 提交时自动校验：学号不存在的行应报错且不写入
-  const invalidImportResp = page.waitForResponse(r => r.url().includes('/api/award/import?') && r.request().method() === 'POST')
-  await page.getByRole('button', { name: '提交导入', exact: true }).click()
-  expect((await (await invalidImportResp).json()).code).toBe(400)
-  await expect(page.getByText('1 行需要修正；本批数据未写入，请根据下方提示修改后重新提交。')).toBeVisible()
-  const badRow = page.locator('.el-table__body tbody tr').filter({ hasText: '学号不存在' })
-  await expect(badRow).toHaveCount(1)
-
-  await badRow.getByRole('button').click()
-  await expect(page.locator('.el-table__body tbody tr')).toHaveCount(4)
-
+  // 部分导入语义：有效行照常写入，无效行标记失败，整批返回 200
   const importResp = page.waitForResponse(r => r.url().includes('/api/award/import?') && r.request().method() === 'POST')
   await page.getByRole('button', { name: '提交导入', exact: true }).click()
-  expect((await (await importResp).json()).code).toBe(200)
+  const importJson = await (await importResp).json()
+  expect(importJson.code, `赛事B部分导入应返回 200：${JSON.stringify(importJson)}`).toBe(200)
+  expect(importJson.data).toMatchObject({ student_count: 5, success_count: 4, fail_count: 1 })
+  expect(importJson.data.rows[4].error).toContain('学号不存在')
 
+  // 校验失败结果弹窗：仅 1 行未导入，其余已成功
+  const dialog = page.getByRole('dialog', { name: '校验失败结果' })
+  await expect(dialog).toBeVisible()
+  await expect(dialog).toContainText('本次导入 5 行，其中 1 行校验失败，4 行成功导入')
+  await expect(dialog.locator('.el-table__body tbody tr')).toHaveCount(1)
+  await expect(dialog).toContainText('学号不存在')
+
+  // 定位失败行并删除，剩余行均已导入 → 无待提交数据
+  await dialog.getByRole('button', { name: '定位修改', exact: true }).first().click()
+  const preview = page.locator('.preview-table .el-table__body tbody tr')
+  await expect(preview).toHaveCount(5)
+  await expect(preview.getByText('导入成功', { exact: true })).toHaveCount(4)
+  await expect(preview.getByText('导入失败', { exact: true })).toHaveCount(1)
+  const failedRow = preview.filter({ hasText: '导入失败' })
+  await failedRow.locator('td').last().getByRole('button').click()
+  await expect(preview).toHaveCount(4)
+  await expect(page.getByRole('button', { name: '提交导入', exact: true })).toBeDisabled()
+
+  await page.goto(`/#/award/detail/${comp.id}`)
   await expect(page).toHaveURL(new RegExp(`award/detail/${comp.id}`))
   await expect(page.getByText(/3 个团队项目\s*·\s*4 名获奖学生/)).toBeVisible()
 
@@ -229,6 +247,7 @@ test('已导入成员不能重复补录，同赛事重复获奖记录整批拒�
       award_name: '二等奖',
       award_date: '2026-04-01',
       proof_url: '/uploads/e2e-duplicate-award.pdf',
+      advisors: [{ username: 'T2023003', name: '张伟', college: '计算机科学与网络工程学院' }],
       members: [{
         name: STUDENT.E2E2605.name,
         student_id: STUDENT.E2E2605.username,
@@ -244,6 +263,7 @@ test('已导入成员不能重复补录，同赛事重复获奖记录整批拒�
 
   await login(page, SCHOOL_ADMIN)
   const managerToken = await page.evaluate(() => localStorage.getItem('token'))
+  // 部分导入语义：重复记录不再整批 400，而是 200 + 该行 error + import_status=failed
   const duplicateExistingResponse = await page.request.post(`/api/award/import?comp_id=${comp.id}`, {
     headers: { Authorization: `Bearer ${managerToken}` },
     data: { rows: [{
@@ -257,9 +277,11 @@ test('已导入成员不能重复补录，同赛事重复获奖记录整批拒�
       award_name: '一等奖',
     }] },
   })
-  expect(duplicateExistingResponse.status()).toBe(400)
+  expect(duplicateExistingResponse.status()).toBe(200)
   const duplicateExistingBody = await duplicateExistingResponse.json()
+  expect(duplicateExistingBody.data.success_count).toBe(0)
   expect(duplicateExistingBody.data.rows[0].error).toContain('该学生在本赛事已有其他获奖记录')
+  expect(duplicateExistingBody.data.rows[0].import_status).toBe('failed')
 
   const duplicateBatchResponse = await page.request.post(`/api/award/import?comp_id=${comp.id}`, {
     headers: { Authorization: `Bearer ${managerToken}` },
@@ -274,9 +296,10 @@ test('已导入成员不能重复补录，同赛事重复获奖记录整批拒�
       award_name: '二等奖',
     })) },
   })
-  expect(duplicateBatchResponse.status()).toBe(400)
+  expect(duplicateBatchResponse.status()).toBe(200)
   const duplicateBatchBody = await duplicateBatchResponse.json()
-  expect(duplicateBatchBody.data.error_count).toBe(1)
+  expect(duplicateBatchBody.data.success_count).toBe(0)
+  expect(duplicateBatchBody.data.error_count).toBe(2)
   expect(duplicateBatchBody.data.rows[1].error).toContain('同一赛事中，每名学生只能申报一条获奖记录')
 })
 
@@ -306,6 +329,11 @@ test('院管理员为赛事C手动新增 2 人团队获奖', async ({ page }) =>
   await page.getByRole('button', { name: '提交导入', exact: true }).click()
   expect((await (await importResp).json()).code).toBe(200)
 
+  // 新版导入页提交后停留在预览并回写导入状态，不回跳详情页
+  await expect(page).toHaveURL(new RegExp(`award/import/${comp.id}`))
+  await expect(page.locator('.preview-table').getByText('导入成功', { exact: true })).toHaveCount(2)
+
+  await page.goto(`/#/award/detail/${comp.id}`)
   await expect(page).toHaveURL(new RegExp(`award/detail/${comp.id}`))
   await expect(page.getByText(/1 个团队项目\s*·\s*2 名获奖学生/)).toBeVisible()
   // 详情页成员展示顺序与提交顺序无关，只断言两名成员都在
@@ -351,8 +379,9 @@ test('校管理员按赛事年份导出附件1/附件2并核对内容', async ({
   expect(rA1, `附件1应含项目 ${P.A1}`).toBeTruthy()
   expect(rA1).toContain(comps.A.name)
   expect(rA1).toContain('省级一等奖')
-  expect(rA1).toContain('王奕辰 刘思远 陈嘉懿')
-  expect(rA1).toContain('计算机科学与网络工程学院 数学与信息科学学院 电子与通信工程学院')
+  // 成员与学院在导出中均以「、」分隔（awardJoinMembers）
+  expect(rA1).toContain('王奕辰、刘思远、陈嘉懿')
+  expect(rA1).toContain('计算机科学与网络工程学院、数学与信息科学学院、电子与通信工程学院')
 
   const rA2 = findProjectRow(P.A2)
   expect(rA2, `附件1应含项目 ${P.A2}`).toBeTruthy()
@@ -362,7 +391,7 @@ test('校管理员按赛事年份导出附件1/附件2并核对内容', async ({
   const rB1 = findProjectRow(P.B1)
   expect(rB1, `附件1应含项目 ${P.B1}`).toBeTruthy()
   expect(rB1).toContain('省级二等奖')
-  expect(rB1).toContain('林芷晴 黄子涛')
+  expect(rB1).toContain('林芷晴、黄子涛')
 
   const rB3 = findProjectRow(P.B3)
   expect(rB3, `附件1应含项目 ${P.B3}`).toBeTruthy()
@@ -486,29 +515,46 @@ async function gotoAwardListViaMenu(page) {
   await expect(page).toHaveURL(/award\/list/)
 }
 
-/** 导入页表格行填充：td 0=序号，1-9 对应九个数据列，获奖类别为下拉 */
+/**
+ * 导入页表格行填充。
+ * 列顺序：0 序号 | 1 学号 | 2 姓名 | 3 学院(下拉) | 4 专业 | 5 项目 | 6 获奖时间(月选择器)
+ *        | 7 类别(下拉) | 8 等级(下拉) | 9 指导老师 | 10 导入状态 | 11 备注 | 12 操作
+ */
 async function fillImportRow(page, index, data) {
-  const rows = page.locator('.el-table__body tbody tr')
+  const rows = page.locator('.preview-table .el-table__body tbody tr')
   await expect(rows).toHaveCount(index + 1)
   const row = rows.nth(index)
   const cell = i => row.locator('td').nth(i)
   await cell(1).locator('input').fill(data.学号)
   await cell(2).locator('input').fill(data.姓名)
-  await cell(3).locator('input').fill(data.学院)
+  await selectCellOption(page, cell(3), data.学院)
   if (data.专业) await cell(4).locator('input').fill(data.专业)
   await cell(5).locator('input').fill(data.项目)
-  await cell(6).locator('input').fill(data.时间)
-  await cell(7).locator('.el-select').click()
-  // 通过展开态 combobox 的 aria-controls 精确定位它自己的下拉 listbox，
-  // 避免命中其他行已收起但仍在 DOM 中的 popper
-  const combobox = cell(7).locator('[role="combobox"][aria-expanded="true"]')
+  await fillMonth(cell(6), data.时间)
+  await selectCellOption(page, cell(7), data.类别)
+  await selectCellOption(page, cell(8), data.等级)
+  if (data.备注) await cell(11).locator('input').fill(data.备注)
+}
+
+/** 单元格内 el-select 选择指定文本（用 aria-controls 精确定位本次展开的 listbox） */
+async function selectCellOption(page, cell, optionText) {
+  await cell.locator('.el-select').click()
+  const combobox = cell.locator('[role="combobox"][aria-expanded="true"]')
   await combobox.waitFor({ state: 'visible', timeout: 5000 })
   const listboxId = await combobox.getAttribute('aria-controls')
   const listbox = page.locator(`ul[role="listbox"]#${listboxId}`)
-  await listbox.getByRole('option', { name: data.类别, exact: true }).click()
-  await expect(cell(7)).toContainText(data.类别)
-  await cell(8).locator('input').fill(data.等级)
-  if (data.备注) await cell(9).locator('input').fill(data.备注)
+  await listbox.getByRole('option', { name: optionText, exact: true }).click()
+  await expect(cell).toContainText(optionText)
+}
+
+/** 单元格内 el-date-picker（type=month）：直接输入 YYYY-MM 并回车提交 */
+async function fillMonth(cell, value) {
+  const input = cell.locator('input').first()
+  await input.click()
+  await input.fill(value)
+  await input.press('Enter')
+  await input.blur()
+  await expect(input).toHaveValue(value)
 }
 
 /** 读取下载的 xlsx 指定工作表，返回每行所有单元格拼接后的文本数组 */
