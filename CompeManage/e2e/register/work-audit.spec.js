@@ -253,6 +253,8 @@ async function setupWorkAuditData(browser, compName, teamName) {
 // ==================== 测试套件 ====================
 
 test.describe('作品审核 E2E 测试', () => {
+  test.describe.configure({ timeout: 120_000 })
+
   // 每个测试独立准备数据，避免测试间干扰
   // 共享变量在 beforeAll 中赋值
   let compName, teamName, compId, regId

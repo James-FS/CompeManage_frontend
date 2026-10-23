@@ -39,11 +39,20 @@ export async function login(page, user, options = {}) {
   await page.waitForLoadState('networkidle')
 
   // 展开管理员密码登录表单
-  const adminToggle = page.locator('button:has-text("管理员账号登录")').first()
-  if (await adminToggle.isVisible().catch(() => false)) {
-    await adminToggle.click()
-    // 等待表单渲染（负载下 5s 偶发不够）
-    await page.waitForSelector('input[placeholder="管理员用户名"]', { timeout: 15000 })
+  // 展开密码登录表单。带重试：页面可能被 401 拦截器重定向到 /login 或整体刷新，
+  // 导致展开动作与导航互相打断（work-audit 等多账号切换场景易触发）。
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const adminToggle = page.locator('button:has-text("管理员账号登录")').first()
+    if (await adminToggle.isVisible().catch(() => false)) {
+      await adminToggle.click().catch(() => {})
+    }
+    const formVisible = await page
+      .waitForSelector('input[placeholder="管理员用户名"]', { timeout: 8000 })
+      .then(() => true)
+      .catch(() => false)
+    if (formVisible) break
+    await page.goto('/#/login')
+    await page.waitForLoadState('networkidle')
   }
 
   await page.fill('input[placeholder="管理员用户名"]', u.username)
