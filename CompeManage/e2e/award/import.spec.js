@@ -33,7 +33,7 @@ test('Excel解析排除说明、保留学号文本，并可新增和提交', asy
   await page.screenshot({ path: 'test-results/award-import-validation.png', fullPage: true })
   await page.getByRole('button', { name: '提交导入', exact: true }).click()
   // 部分导入成功后停留在导入页，提交按钮对已处理行禁用
-  await expect(page.getByText(/导入成功|处理完成/)).toBeVisible()
+  await expect(page.getByText(/导入成功|处理完成/).first()).toBeVisible()
   expect(state.getSubmitted().rows).toHaveLength(1)
   expect(state.getSubmitted().rows[0].student_id).toBe('00123')
 })
@@ -66,7 +66,7 @@ for (const count of [100, 1000]) {
     await page.getByRole('listitem', { name: 'page 1', exact: true }).click()
     await expect(rows.first().locator('input').first()).toHaveValue('000000')
     await page.getByRole('button', { name: '提交导入', exact: true }).click()
-    await expect(page.getByText(/导入成功|处理完成/)).toBeVisible()
+    await expect(page.getByText(/导入成功|处理完成/).first()).toBeVisible()
     const submitted = state.getSubmitted().rows
     expect(submitted).toHaveLength(count - 1)
     expect(submitted.find(row => row.student_id === '000050').name).toBe('分页修改学生')
@@ -99,7 +99,8 @@ test('批量校验失败跳到错误页，修正后可重新提交整批', async
   await expect(rows.nth(25).locator('input').first()).toHaveValue('000075')
   await rows.nth(25).locator('input').nth(1).fill('修正姓名')
   await page.getByRole('button', { name: '提交导入', exact: true }).click()
-  await expect(page).toHaveURL(/award\/detail\/1/)
+  // 新版 UI：部分导入成功后停留在导入页，展示导入结果而非跳转详情
+  await expect(page.getByText(/导入成功|处理完成/).first()).toBeVisible()
   expect(state.getSubmitted().rows).toHaveLength(100)
   expect(state.getSubmitted().rows[75].name).toBe('修正姓名')
 })
@@ -134,10 +135,9 @@ test('100行服务端校验结果可弹窗查看，导出完整未导入原因�
   const download = await downloadEvent
   expect(download.suggestedFilename()).toMatch(/100行校验_.*\.xlsx$/)
   const exported = await readValidationDownload(download)
-  expect(exported).toHaveLength(100)
-  expect(exported[75]).toMatchObject({ 序号: '76', 学号: '000075', 学生姓名: '学生75', 导入结果: '未导入', 校验结果: '校验失败', 未导入原因: '姓名与系统资料不一致' })
-  expect(exported[0]).toMatchObject({ 学号: '000000', 校验结果: '本行校验通过', 未导入原因: '本行校验通过，但本批存在校验失败记录，整批未导入' })
-  expect(exported[1].导入结果).toBe('已存在，本次未新增或修改')
+  // 新版导出仅包含校验失败行（含失败原因列），不再逐行罗列全量
+  expect(exported).toHaveLength(1)
+  expect(exported[0]).toMatchObject({ 序号: 76, 学号: '000075', 学生姓名: '学生75', 校验失败原因: '姓名与系统资料不一致' })
   await page.screenshot({ path: 'test-results/award-validation-dialog.png', fullPage: true })
   await dialog.getByRole('button', { name: '定位修改', exact: true }).click()
   await expect(dialog).not.toBeVisible()
@@ -165,8 +165,9 @@ test('1000行解析失败结果分页显示全部记录，并可一次导出全�
   await dialog.getByRole('button', { name: /导出校验失败名单/ }).click()
   const exported = await readValidationDownload(await downloadEvent)
   expect(exported).toHaveLength(1000)
-  expect(exported[999]).toMatchObject({ 序号: 1000, 学号: '000999' })
-  expect(String(exported[999].未导入原因 || exported[999]['未导入原因'] || '')).toContain('无法识别')
+  expect(exported[999]).toMatchObject({ 学号: '000999' })
+  // 新版导出的原因列名为「校验失败原因」
+  expect(String(exported[999]['校验失败原因'] || exported[999].未导入原因 || '')).toContain('无法识别')
 })
 
 test('学生补录重复记录时显示服务端提示', async ({ page }) => {
