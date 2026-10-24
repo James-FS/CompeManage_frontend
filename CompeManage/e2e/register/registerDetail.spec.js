@@ -68,6 +68,8 @@ async function fillContactInfo(page, type = 'leader') {
   }
 }
 
+test.describe.configure({ timeout: 90_000 }) // 全量并行+插桩下 30s 不足（断言不放松）
+
 test.describe('报名详情页面 - 页面元素验证', () => {
   test.beforeEach(async ({ page }) => {
     await login(page)
