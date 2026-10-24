@@ -23,6 +23,8 @@ for (const file of sources) {
   // 因此键与对象内部的 path 字段都要改写，否则同文件裂成两条无法并集。
   const norm = {}
   for (const key of Object.keys(data)) {
+    // 测试文件不计入口径（nyc 的 node 进程转储会把 *.test.js 语句图混进来，分母虚高）
+    if (/\.test\.(js|ts|jsx|tsx)$/.test(key)) continue
     const abs = /^[A-Za-z]:[\\/]/.test(key) ? key : resolve(root, key)
     const flat = abs.split('\\').join('/')
     norm[flat] = { ...data[key], path: flat }
