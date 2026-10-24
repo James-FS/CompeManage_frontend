@@ -17,7 +17,7 @@
     "test:multi-college": "playwright test --config=playwright.multi-college.config.js",
     "test:export-style": "playwright test --config=playwright.export-style.config.js",
     "test:award-boundary": "playwright test --config=playwright.award-boundary.config.js",
-    "test:coverage": "npm run build:coverage && nyc --reporter=text --reporter=html --report-dir=coverage playwright test --config=playwright.coverage.config.js",
+    "test:coverage": "npm run build:coverage && nyc --reporter=text --reporter=html --reporter=json --report-dir=coverage playwright test --config=playwright.coverage.config.js",
     "test:unit": "vitest run",
     "test:unit-coverage": "vitest run --coverage --coverage.provider=istanbul --coverage.reporter=json --coverage.reporter=text --coverage.reportsDirectory=coverage-vitest --coverage.include=src/utils/** --coverage.include=src/stores/** --coverage.include=src/api/** --coverage.exclude=src/**/*.test.js",
     "test:coverage:merged": "node scripts/merge-coverage.mjs"
