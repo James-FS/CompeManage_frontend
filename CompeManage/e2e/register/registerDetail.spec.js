@@ -58,13 +58,11 @@ async function fillContactInfo(page, type = 'leader') {
     const memberEmail = page.locator('.member-card').first().locator('input[placeholder="请输入邮箱"]')
     await memberEmail.fill('member@example.com')
   } else if (type === 'advisor') {
-    // 填写指导老师手机号
-    const advisorPhone = page.locator('.info-grid input[placeholder="请输入手机号"]').nth(1)
-    await advisorPhone.fill('13900139000')
-
-    // 填写指导老师邮箱
-    const advisorEmail = page.locator('.info-grid input[placeholder="请输入邮箱"]').nth(1)
-    await advisorEmail.fill('advisor@example.com')
+    // 页面有多个 .info-grid（队长/指导老师各一块），全局 nth 随数据状态漂移——
+    // 按「指导老师信息」区块圈定（原 nth(1) 是本文件唯一 flaky 的根因）
+    const advisorSection = page.locator('.form-section').filter({ hasText: '指导老师信息' })
+    await advisorSection.getByPlaceholder('请输入手机号').fill('13900139000')
+    await advisorSection.getByPlaceholder('请输入邮箱').fill('advisor@example.com')
   }
 }
 
@@ -294,10 +292,10 @@ test.describe('报名详情页面 - 指导老师选择', () => {
       // 验证弹窗标题
       await expect(page.locator('.el-dialog__title')).toContainText('选择指导老师')
 
-      // 选择一个老师
+      // 选择一个老师（等按钮可点击，防表格 loading 中落空）
       const firstRow = page.locator('.el-dialog .el-table__body tr').first()
+      await expect(firstRow.locator('button:has-text("选择")')).toBeVisible()
       await firstRow.locator('button:has-text("选择")').click()
-      await page.waitForTimeout(500)
 
       // 验证弹窗关闭
       await expect(page.locator('.el-dialog')).not.toBeVisible()
