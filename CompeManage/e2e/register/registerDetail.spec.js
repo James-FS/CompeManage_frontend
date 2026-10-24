@@ -276,40 +276,52 @@ test.describe('报名详情页面 - 成员管理', () => {
 })
 
 test.describe('报名详情页面 - 指导老师选择', () => {
+  // 确定性 mock：真实后端数据 + 弹窗在全量并行下三度 flaky（失败点逐次漂移），
+  // 行为断言不变，改为路由 mock 消除时序依赖
   test.beforeEach(async ({ page }) => {
-    await login(page)
-    await navigateToRegisterDetail(page)
+    await page.addInitScript(() => {
+      localStorage.setItem('token', 'reg-detail-advisor-test')
+      localStorage.setItem('role', 'student')
+      localStorage.setItem('userInfo', JSON.stringify({ id: 9, name: '学生甲', username: '00123' }))
+    })
+    await page.route((url) => url.pathname.startsWith('/api/'), async (route) => {
+      const url = new URL(route.request().url())
+      const p = url.pathname
+      let data = []
+      if (p === '/api/reg/config/get') {
+        data = {
+          comp_name: '指导老师测试赛', participant_type: 2, min_team_member: 1, max_team_member: 3,
+          need_advisor: 1, need_attachment: 0, track: [],
+          capabilities: { can_edit_registration: true },
+        }
+      }
+      if (p === '/api/reg/status') data = null
+      if (p === '/api/reg/user/list') {
+        data = { list: [{ id: 11, name: '张老师', username: 'T001', college: '学院甲' }], total: 1 }
+      }
+      await route.fulfill({ json: { code: 200, message: 'success', data } })
+    })
+    await page.goto('/#/register/detail/7')
+    await expect(page.getByRole('heading', { name: '指导老师测试赛' })).toBeVisible()
   })
 
   test('选择指导老师 - 基本流程', async ({ page }) => {
-    await page.waitForSelector('.page-wrapper', { timeout: 10000 }).catch(() => {})
-
     const selectAdvisorBtn = page.locator('.section-header button:has-text("选择指导老师")').first()
-    const btnVisible = await selectAdvisorBtn.isVisible({ timeout: 5000 }).catch(() => false)
+    await expect(selectAdvisorBtn).toBeVisible({ timeout: 10000 })
+    await selectAdvisorBtn.click()
 
-    if (btnVisible) {
-      await selectAdvisorBtn.click()
+    // 弹窗标题 + 选人
+    await expect(page.locator('.el-dialog__title')).toContainText('选择指导老师')
+    const firstRow = page.locator('.el-dialog .el-table__body tr').first()
+    await expect(firstRow.locator('button:has-text("选择")')).toBeVisible()
+    await firstRow.locator('button:has-text("选择")').click()
+    await expect(page.locator('.el-dialog')).not.toBeVisible()
 
-      // 等待弹窗
-      await page.waitForSelector('.el-dialog:visible', { timeout: 8000 })
-
-      // 验证弹窗标题
-      await expect(page.locator('.el-dialog__title')).toContainText('选择指导老师')
-
-      // 选择一个老师（等按钮可点击，防表格 loading 中落空）
-      const firstRow = page.locator('.el-dialog .el-table__body tr').first()
-      await expect(firstRow).toBeVisible({ timeout: 10000 })
-      await expect(firstRow.locator('button:has-text("选择")')).toBeVisible()
-      await firstRow.locator('button:has-text("选择")').click()
-
-      // 验证弹窗关闭
-      await expect(page.locator('.el-dialog')).not.toBeVisible()
-
-      // 填写联系方式
-      await fillContactInfo(page, 'advisor')
-    } else {
-      console.log('该赛事不需要选择指导老师或按钮不可见')
-    }
+    // 指导老师区块只有 姓名/工号/所属部门（registerDetail.vue:985-1005，无联系方式输入），
+    // 断言选择结果回填即可
+    const advisorSection = page.locator('.form-section').filter({ hasText: '指导老师信息' })
+    await expect(advisorSection.locator('input').first()).toHaveValue('张老师')
+    await expect(advisorSection.locator('input').nth(1)).toHaveValue('T001')
   })
 })
 
