@@ -19,7 +19,7 @@
     "test:award-boundary": "playwright test --config=playwright.award-boundary.config.js",
     "test:coverage": "npm run build:coverage && node -e \"require('fs').rmSync('.nyc_output',{recursive:true,force:true})\" && nyc --reporter=text --reporter=html --reporter=json --report-dir=coverage playwright test --config=playwright.coverage.config.js",
     "test:unit": "vitest run",
-    "test:unit-coverage": "vitest run --coverage --coverage.provider=istanbul --coverage.reporter=json --coverage.reporter=text --coverage.reportsDirectory=coverage-vitest --coverage.include=src/utils/** --coverage.include=src/stores/** --coverage.include=src/api/** --coverage.exclude=src/**/*.test.js",
+    "test:unit-coverage": "vitest run --coverage --coverage.provider=istanbul --coverage.reporter=json --coverage.reporter=text --coverage.reportsDirectory=coverage-vitest --coverage.include=src/utils/** --coverage.include=src/stores/** --coverage.include=src/api/** --coverage.include=src/components/** --coverage.include=src/views/** --coverage.exclude=src/**/*.test.js",
     "test:coverage:merged": "node scripts/merge-coverage.mjs"
   },
   "dependencies": {
@@ -42,6 +42,7 @@
     "@types/node": "^25.6.2",
     "@vitejs/plugin-vue": "^6.0.3",
     "@vitest/coverage-istanbul": "^2.1.9",
+    "@vue/test-utils": "^2.5.1",
     "babel-plugin-istanbul": "^8.0.0",
     "cross-env": "^10.1.0",
     "jsdom": "^29.1.1",
