@@ -61,6 +61,8 @@ async function fillContactInfo(page, type = 'leader') {
     // 页面有多个 .info-grid（队长/指导老师各一块），全局 nth 随数据状态漂移——
     // 按「指导老师信息」区块圈定（原 nth(1) 是本文件唯一 flaky 的根因）
     const advisorSection = page.locator('.form-section').filter({ hasText: '指导老师信息' })
+    // 先等输入框渲染（全量并行下 info-grid 从空态到表单有延迟），再填写
+    await expect(advisorSection.getByPlaceholder('请输入手机号')).toBeVisible({ timeout: 15000 })
     await advisorSection.getByPlaceholder('请输入手机号').fill('13900139000')
     await advisorSection.getByPlaceholder('请输入邮箱').fill('advisor@example.com')
   }
@@ -294,6 +296,7 @@ test.describe('报名详情页面 - 指导老师选择', () => {
 
       // 选择一个老师（等按钮可点击，防表格 loading 中落空）
       const firstRow = page.locator('.el-dialog .el-table__body tr').first()
+      await expect(firstRow).toBeVisible({ timeout: 10000 })
       await expect(firstRow.locator('button:has-text("选择")')).toBeVisible()
       await firstRow.locator('button:has-text("选择")').click()
 
