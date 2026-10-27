@@ -204,7 +204,7 @@ test.describe('新增赛事页面 - 手动录入新赛事', () => {
     await page.waitForSelector('.el-dialog:visible', { timeout: 5000 })
 
     // 验证弹窗标题
-    await expect(page.locator('.el-dialog__title')).toContainText('选择赛事负责人')
+    await expect(page.locator('.el-dialog__title')).toContainText('选择负责人')
 
     // 验证搜索表单
     await expect(page.locator('.el-dialog input[placeholder="输入姓名"]')).toBeVisible()
@@ -415,6 +415,9 @@ test.describe('新增赛事页面 - 从往年赛事复用', () => {
 
         // 等待弹窗
         await page.waitForSelector('.el-dialog:visible', { timeout: 5000 })
+        // 新版弹窗不自动加载：按工号搜索触发列表加载
+        await page.locator('.el-dialog:visible input[placeholder="输入姓名"]').fill('何')
+        await expect(page.locator('.el-dialog .el-table__body tr').first()).toBeVisible({ timeout: 10000 })
 
         // 选择一个负责人
         const firstSelectBtn = page.locator('.el-dialog .el-table__body tr').first().locator('button:has-text("选择")')
@@ -796,18 +799,17 @@ test.describe('新增赛事页面 - 负责人弹窗深度测试', () => {
     await page.waitForLoadState('networkidle')
     await page.waitForTimeout(500)
 
-    // 验证搜索表单
+    // 验证搜索表单（弹窗改版后无独立搜索/重置按钮，输入即过滤）
     await expect(page.locator('.el-dialog input[placeholder="输入姓名"]')).toBeVisible()
     await expect(page.locator('.el-dialog input[placeholder="输入工号"]')).toBeVisible()
-    await expect(page.locator('.el-dialog button:has-text("重置")')).toBeVisible()
 
     // 输入姓名搜索
     const nameInput = page.locator('.el-dialog input[placeholder="输入姓名"]')
     await nameInput.fill('张')
     await page.waitForTimeout(600)
 
-    // 点击重置
-    await page.locator('.el-dialog button:has-text("重置")').click()
+    // 清空输入（新版无重置按钮，直接清空输入框）
+    await nameInput.fill('')
     await page.waitForTimeout(300)
 
     // 验证输入框已清空
@@ -903,6 +905,9 @@ test.describe('新增赛事页面 - 负责人弹窗深度测试', () => {
     await page.waitForSelector('.el-dialog:visible', { timeout: 5000 })
     await page.waitForLoadState('networkidle')
     await page.waitForTimeout(500)
+    // 新版弹窗不自动加载：按工号搜索触发列表加载
+    await page.locator('.el-dialog:visible input[placeholder="输入姓名"]').fill('何')
+    await expect(page.locator('.el-dialog .el-table__body tr').first()).toBeVisible({ timeout: 10000 })
 
     // 获取第一行数据
     const firstRow = page.locator('.el-dialog .el-table__body tr').first()
@@ -1217,6 +1222,9 @@ test.describe('新增赛事页面 - 往年复用深度测试', () => {
         const dialogVisible = await page.locator('.el-dialog:visible').isVisible().catch(() => false)
 
         if (dialogVisible) {
+          // 新版弹窗不自动加载：按工号搜索触发列表加载
+          await page.locator('.el-dialog:visible input[placeholder="输入姓名"]').fill('何')
+          await expect(page.locator('.el-dialog .el-table__body tr').first()).toBeVisible({ timeout: 10000 })
           // 选择第一行
           await page.locator('.el-dialog .el-table__body tr').first().locator('button:has-text("选择")').click()
           await page.waitForTimeout(500)

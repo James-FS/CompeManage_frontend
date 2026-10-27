@@ -48,15 +48,11 @@ test.describe('通知详情页面 - 基本功能', () => {
     await page.getByRole('option').first().click()
     await page.waitForTimeout(300)
 
-    // 选择赛事负责人
-    const managerRespPromise = page.waitForResponse(
-      resp => resp.url().includes('/api/comp/manager/list') && resp.status() === 200,
-      { timeout: 10000 }
-    )
+    // 选择赛事负责人（新版弹窗打开不自动加载，需先搜索）
     await page.locator('.manager-input input').click()
     await page.waitForSelector('.el-dialog:visible', { timeout: 10000 })
-    await managerRespPromise
-    await page.waitForTimeout(800)
+    await page.locator('.el-dialog:visible input[placeholder="输入姓名"]').fill('何')
+    await expect(page.locator('.el-dialog .el-table__body tr').first()).toBeVisible({ timeout: 10000 })
     await page.locator('.el-dialog .el-table__body tr').first().locator('button:has-text("选择")').click()
     await page.waitForTimeout(500)
 

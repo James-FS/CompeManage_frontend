@@ -102,8 +102,6 @@ export const api = {
   exportAwardStudents: (year) => get(`/api/award/export/students${year ? `?year=${year}` : ''}`, {}, { responseType: 'blob' }),
   // 一键三合一上报 Excel（附件1+附件2+汇总表）
   exportAwardReport: (year) => get(`/api/award/export/report${year ? `?year=${year}` : ''}`, {}, { responseType: 'blob' }),
-  getAwardCompList:(params) => get('/api/award/list', params),
-  getCompAwards:(comp_id) => get(`/api/award/comp-awards?comp_id=${comp_id}`),
   getMyAwardList:(params) => get('/api/award/student/my-awards', params),
   getAwardAuditList: (params) => get('/api/award/audit/list', params),
   getAwardAuditDetail: (id) => get(`/api/award/audit/detail/${id}`),

@@ -147,7 +147,7 @@ test.describe('获奖填报列表页面', () => {
     // 验证每个卡片都有"导入数据"按钮
     for (let i = 0; i < cardCount; i++) {
       const card = cards.nth(i)
-      const uploadBtn = card.locator('.upload-wrapper')
+      const uploadBtn = card.locator('button:has-text("导入数据")')
       await expect(uploadBtn).toBeVisible()
       console.log(`第 ${i + 1} 张卡片: "导入数据"按钮可见`)
     }
@@ -233,7 +233,7 @@ test.describe('获奖填报列表页面', () => {
       .catch(() => null)
 
     // 点击第2页
-    await page.locator('.el-pager .number:has-text("2")').click()
+    await page.locator('.el-pager .number:text-is("2")').click()
     await page2RespPromise
     await page.waitForTimeout(800)
 

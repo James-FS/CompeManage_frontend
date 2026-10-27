@@ -50,5 +50,13 @@ __screenshots__/
 
 # NYC coverage
 /.nyc_output/
+/coverage-e2e/
+/coverage-vitest/
+/coverage-merged/
 e2e/coverage-summary.md
 test.md
+
+# 临时探针与本地产物不入库（交接档案待确认#3 的既有口径）
+/e2e/artifacts/
+/e2e/prod-*.spec.js
+/e2e/multi-college/.multi-college-state.json

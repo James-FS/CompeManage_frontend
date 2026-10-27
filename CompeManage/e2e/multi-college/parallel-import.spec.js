@@ -11,7 +11,7 @@
  * 运行：npx playwright test --config=playwright.multi-college.config.js
  * 前置：后端 8080 已启动；globalSetup 播种账号并建赛。
  */
-import { test, expect } from '@playwright/test'
+import { test, expect } from 'playwright-test-coverage'
 import {
   SCHOOL_ADMIN, COLLEGES, collegeAdmin, awardRowsForCollege,
   crossCollegeAttackRow, toImportRows,

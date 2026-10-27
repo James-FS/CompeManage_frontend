@@ -324,7 +324,7 @@ test.describe('编辑赛事页面 - 赛事负责人弹窗', () => {
     await page.locator('input[placeholder="请选择赛事负责人"]').click()
 
     // 验证弹窗出现
-    await expect(page.locator('.el-dialog:has-text("选择赛事负责人")')).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('.el-dialog:has-text("选择负责人")')).toBeVisible({ timeout: 5000 })
 
     // 验证弹窗内搜索表单
     await expect(page.locator('.el-dialog input[placeholder="输入姓名"]')).toBeVisible()
@@ -342,24 +342,19 @@ test.describe('编辑赛事页面 - 赛事负责人弹窗', () => {
   })
 
   test('负责人弹窗 - 搜索功能', async ({ page }) => {
-    // 先注册响应监听
-    const listRespPromise = page.waitForResponse(
-      resp => resp.url().includes('/api/comp/manager/list') && resp.status() === 200,
-      { timeout: 10000 }
-    )
-
     await page.locator('input[placeholder="请选择赛事负责人"]').click()
-    await expect(page.locator('.el-dialog:has-text("选择赛事负责人")')).toBeVisible({ timeout: 5000 })
-    await listRespPromise
-    await page.waitForTimeout(500)
+    await expect(page.locator('.el-dialog:has-text("选择负责人")')).toBeVisible({ timeout: 5000 })
+    // 新版弹窗不自动加载：按工号搜索触发列表加载
+    await page.locator('.el-dialog input[placeholder="输入姓名"]').fill('何')
+    await expect(page.locator('.el-dialog .el-table__body tr').first()).toBeVisible({ timeout: 10000 })
 
     // 输入姓名搜索
     const nameInput = page.locator('.el-dialog input[placeholder="输入姓名"]')
     await nameInput.fill('张')
     await page.waitForTimeout(600) // 等待防抖
 
-    // 点击重置
-    await page.locator('.el-dialog button:has-text("重置")').click()
+    // 清空输入（新版弹窗无重置按钮，直接清空输入框）
+    await nameInput.fill('')
     await page.waitForTimeout(300)
 
     // 验证输入框已清空
@@ -373,16 +368,11 @@ test.describe('编辑赛事页面 - 赛事负责人弹窗', () => {
     const managerInput = page.locator('input[placeholder="请选择赛事负责人"]')
     const originalValue = await managerInput.inputValue()
 
-    // 先注册响应监听
-    const listRespPromise = page.waitForResponse(
-      resp => resp.url().includes('/api/comp/manager/list') && resp.status() === 200,
-      { timeout: 10000 }
-    )
-
     await managerInput.click()
-    await expect(page.locator('.el-dialog:has-text("选择赛事负责人")')).toBeVisible({ timeout: 5000 })
-    await listRespPromise
-    await page.waitForTimeout(500)
+    await expect(page.locator('.el-dialog:has-text("选择负责人")')).toBeVisible({ timeout: 5000 })
+    // 新版弹窗不自动加载：按工号搜索触发列表加载
+    await page.locator('.el-dialog input[placeholder="输入姓名"]').fill('何')
+    await expect(page.locator('.el-dialog .el-table__body tr').first()).toBeVisible({ timeout: 10000 })
 
     // 获取第一行数据
     const firstRow = page.locator('.el-dialog .el-table__body tr').first()
@@ -409,9 +399,10 @@ test.describe('编辑赛事页面 - 赛事负责人弹窗', () => {
     )
 
     await page.locator('input[placeholder="请选择赛事负责人"]').click()
-    await expect(page.locator('.el-dialog:has-text("选择赛事负责人")')).toBeVisible({ timeout: 5000 })
-    await listRespPromise
-    await page.waitForTimeout(500)
+    await expect(page.locator('.el-dialog:has-text("选择负责人")')).toBeVisible({ timeout: 5000 })
+    // 新版弹窗不自动加载：按工号搜索触发列表加载
+    await page.locator('.el-dialog input[placeholder="输入姓名"]').fill('何')
+    await expect(page.locator('.el-dialog .el-table__body tr').first()).toBeVisible({ timeout: 10000 })
 
     // 检查分页器
     const pagination = page.locator('.el-dialog .el-pagination')
@@ -444,9 +435,10 @@ test.describe('编辑赛事页面 - 赛事负责人弹窗', () => {
     )
 
     await page.locator('input[placeholder="请选择赛事负责人"]').click()
-    await expect(page.locator('.el-dialog:has-text("选择赛事负责人")')).toBeVisible({ timeout: 5000 })
-    await listRespPromise
-    await page.waitForTimeout(500)
+    await expect(page.locator('.el-dialog:has-text("选择负责人")')).toBeVisible({ timeout: 5000 })
+    // 新版弹窗不自动加载：按工号搜索触发列表加载
+    await page.locator('.el-dialog input[placeholder="输入姓名"]').fill('何')
+    await expect(page.locator('.el-dialog .el-table__body tr').first()).toBeVisible({ timeout: 10000 })
 
     // 检查学院下拉
     const collegeSelect = page.locator('.el-dialog .el-select').filter({ hasText: '选择学院' }).first()
@@ -548,13 +540,12 @@ test.describe('编辑赛事页面 - 表单验证', () => {
     if (hasClearBtn) {
       await clearBtn.click()
       await page.waitForTimeout(300)
-    } else {
-      // 如果 clear 按钮没出现，清空赛事名称（必填项）来触发验证即可
-      // 因为本测试的核心目的是验证"必填项为空时提交会触发验证"
-      const nameInput = page.locator('input[placeholder="请输入赛事名称"]')
-      await nameInput.clear()
-      await page.waitForTimeout(200)
     }
+
+    // 再清空必填项赛事名称，确保提交必触发表单校验（学院本身可能非必填）
+    const nameInput = page.locator('input[placeholder="请输入赛事名称"]')
+    await nameInput.clear()
+    await page.waitForTimeout(200)
 
     // 点击保存
     await page.locator('button:has-text("保存")').click()

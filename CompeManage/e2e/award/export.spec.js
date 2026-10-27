@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from 'playwright-test-coverage'
 import { mockAwardSession } from '../helpers/award-mock.js'
 
 test('附件导出使用赛事年份，下载新版格式并显示后端错误', async ({ page }) => {
