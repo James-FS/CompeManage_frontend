@@ -96,7 +96,8 @@ export const api = {
   getAwardTemplate: (comp_id) => get(`/api/award/export-template?comp_id=${comp_id}`, {}, { responseType: 'blob' }),
   // 指导教师候选（按身份取在职教职工，支持姓名/工号搜索）
   getTeacherList: (params) => get('/api/reg/user/list', { ...params, role: 'teacher' }),
-  getAwardAdvisorList: (params) => get('/api/reg/user/list', { ...params, role: 'award_advisor' }),
+  // 2026-10-29：指导老师候选=全校各部门教职工（身份口径），工号/姓名检索均放行
+  getAwardAdvisorList: (params) => get('/api/reg/user/list', { ...params, role: 'teacher' }),
   lookupAwardAdvisors: (usernames) => post('/api/award/advisors/lookup', { usernames }),
   exportAwardProjects: (year) => get(`/api/award/export/projects${year ? `?year=${year}` : ''}`, {}, { responseType: 'blob' }),
   exportAwardStudents: (year) => get(`/api/award/export/students${year ? `?year=${year}` : ''}`, {}, { responseType: 'blob' }),

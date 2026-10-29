@@ -64,6 +64,7 @@ const form = reactive({
   remark: '',
   advisors: [],
   awardLevel: '',
+  awardLevelOther: '',
   teamName: '',
   certImage: '',
   awardDate: '',
@@ -245,7 +246,7 @@ async function fetchStudentList() {
       page: studentCurrentPage.value,
       page_size: studentPageSize.value,
       role: isSelectingAdvisor.value ? 'teacher' : 'student',
-      search: searchForm.name || searchForm.username || '',
+      search: searchForm.name || searchForm.username || '', // 工号/姓名任一命中即返回（后端 realname/username LIKE 双字段）
     })
     if (response.code === 200) {
       studentList.value = response.data.list.filter(row => !searchForm.college || row.college === searchForm.college)
@@ -323,8 +324,8 @@ const handleSubmit = async () => {
           comp_id: form.compID,
           participation_type: form.participationType,
           award_category: form.awardCategory,
-          award_level: form.awardCategory + form.awardLevel,
-          award_name: form.awardLevel,
+          award_level: form.awardCategory + (form.awardLevel === '其他' ? (form.awardLevelOther.trim() || '其他') : form.awardLevel),
+          award_name: form.awardLevel === '其他' ? (form.awardLevelOther.trim() || '其他') : form.awardLevel,
           advisors: form.advisors.map(a => ({ id: a.id, username: a.username, name: a.name.trim(), college: (a.college || '').trim() })),
           remark: form.remark.trim(),
           award_date: form.awardDate,
@@ -404,8 +405,10 @@ onMounted(async () => {
       if (data.comp_id === form.compID) {
         resubmitVersion.value = data.update_time || null
         form.participationType = data.participation_type || ((data.members || []).length > 1 ? 'team' : 'individual')
-        form.awardCategory = data.award_category || (data.award_level || '').match(/国家级|省级|校级/)?.[0] || ''
-        form.awardLevel = (data.award_level || '').match(/一等奖|二等奖|三等奖/)?.[0] || ''
+        form.awardCategory = data.award_category || (data.award_level || '').match(/国家级|省级|校级|国际级/)?.[0] || ''
+        const lvMatch = (data.award_level || '').match(/一等奖|二等奖|三等奖/)
+        if (lvMatch) form.awardLevel = lvMatch[0]
+        else if (data.award_level) { form.awardLevel = '其他'; form.awardLevelOther = data.award_name || data.award_level }
         form.awardDate = data.award_time?.slice(0, 10) || ''
         form.remark = data.remark || ''
         const advisors = typeof data.advisor_info === 'string' ? JSON.parse(data.advisor_info || '[]') : data.advisor_info
@@ -677,17 +680,18 @@ onMounted(async () => {
               <el-form-item prop="awardCategory">
                 <template #label>获奖类别 <el-tooltip :content="categoryNote" placement="top" :show-after="150"><el-icon tabindex="0" :aria-label="categoryNote"><InfoFilled /></el-icon></el-tooltip></template>
                 <el-select v-model="form.awardCategory" placeholder="请选择获奖类别" style="width: 100%">
-                  <el-option v-for="category in ['国家级', '省级', '校级']" :key="category" :label="category" :value="category" />
+                  <el-option v-for="category in ['校级', '国家级', '省级', '国际级']" :key="category" :label="category" :value="category" />
                 </el-select>
               </el-form-item>
               <el-form-item prop="awardLevel">
                 <template #label>获奖等级 <el-tooltip :content="levelNote" placement="top" :show-after="150"><el-icon tabindex="0" :aria-label="levelNote"><InfoFilled /></el-icon></el-tooltip></template>
                 <el-select v-model="form.awardLevel" placeholder="请选择获奖等级" style="width: 100%">
-                  <el-option v-for="level in ['一等奖', '二等奖', '三等奖']" :key="level" :label="level" :value="level" />
+                  <el-option v-for="level in ['一等奖', '二等奖', '三等奖', '其他']" :key="level" :label="level" :value="level" />
+                <el-input v-if="form.awardLevel === '其他'" v-model="form.awardLevelOther" placeholder="请填写具体获奖等级（如：优胜奖）" style="margin-top: 8px" />
                 </el-select>
               </el-form-item>
             </div>
-            <el-form-item label="获奖时间" prop="awardDate"><el-date-picker v-model="form.awardDate" type="date" placeholder="选择获奖日期" format="YYYY-MM-DD" value-format="YYYY-MM-DD" style="width: 100%" /></el-form-item>
+            <el-form-item label="获奖时间" prop="awardDate"><el-date-picker v-model="form.awardDate" type="date" placeholder="选择获奖日期" format="YYYY年M月D日" value-format="YYYY-MM-DD" style="width: 100%" /></el-form-item>
             <el-form-item label="备注"><el-input v-model="form.remark" type="textarea" :rows="3" maxlength="2000" show-word-limit placeholder="填写需要补充说明的信息（选填）" /></el-form-item>
           </div>
 
