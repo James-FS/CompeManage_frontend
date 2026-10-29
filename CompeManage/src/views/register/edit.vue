@@ -96,7 +96,7 @@ onMounted(() => {
         </el-form-item>
         <el-form-item label="赛事级别">
           <el-select v-model="queryParams.comp_level" placeholder="全部级别" clearable style="width: 130px" @change="applyFilters">
-            <el-option v-for="lvl in ['国家级', '省级', '校级']" :key="lvl" :label="lvl" :value="lvl" />
+            <el-option v-for="lvl in ['校级', '省级', '国家级', '国际级']" :key="lvl" :label="lvl" :value="lvl" />
           </el-select>
         </el-form-item>
         <el-form-item label="状态">

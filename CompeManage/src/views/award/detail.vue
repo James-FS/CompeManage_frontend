@@ -245,7 +245,7 @@ onMounted(async () => {
         <el-alert title="修改将影响该团队所有获奖成员。不同学院提交的信息不会被删除。" type="info" :closable="false" />
         <el-form label-width="110px" style="margin-top: 18px">
           <el-form-item label="项目名称"><el-input v-model="teamEdit.project_name" maxlength="255" /></el-form-item>
-          <el-form-item label="获奖类别"><el-select v-model="teamEdit.award_category"><el-option v-for="c in ['校赛', '国家级', '省级', '国际级']" :key="c" :label="c" :value="c" /></el-select></el-form-item>
+          <el-form-item label="获奖类别"><el-select v-model="teamEdit.award_category"><el-option v-for="c in ['校级', '省级', '国家级', '国际级']" :key="c" :label="c" :value="c" /></el-select></el-form-item>
           <el-form-item label="获奖等级"><el-input v-model="teamEdit.award_name" maxlength="100" /></el-form-item>
           <el-form-item label="获奖时间"><el-date-picker v-model="teamEdit.award_month" type="month" format="YYYY-MM" value-format="YYYY-MM" /></el-form-item>
           <el-form-item label="指导老师">
