@@ -680,7 +680,7 @@ onMounted(async () => {
               <el-form-item prop="awardCategory">
                 <template #label>获奖类别 <el-tooltip :content="categoryNote" placement="top" :show-after="150"><el-icon tabindex="0" :aria-label="categoryNote"><InfoFilled /></el-icon></el-tooltip></template>
                 <el-select v-model="form.awardCategory" placeholder="请选择获奖类别" style="width: 100%">
-                  <el-option v-for="category in ['校级', '国家级', '省级', '国际级']" :key="category" :label="category" :value="category" />
+                  <el-option v-for="category in ['校级', '省级', '国家级', '国际级']" :key="category" :label="category" :value="category" />
                 </el-select>
               </el-form-item>
               <el-form-item prop="awardLevel">
