@@ -6,6 +6,7 @@ import {
   ArrowLeft, Trophy, UploadFilled, InfoFilled, Plus, Delete, User, Postcard, Iphone, Message, Document
 } from '@element-plus/icons-vue'
 import api from '@/api'
+import { phoneRule, emailRule } from '@/utils/validators'
 import { debounce } from '@/utils/debounce'
 
 const router = useRouter()
@@ -91,6 +92,8 @@ const rules = {
   awardLevel: [{ required: true, message: '请选择获奖等级', trigger: 'change' }],
   certImage: [{ required: true, message: '请上传获奖证书证明', trigger: 'change' }],
   awardDate: [{ required: true, message: '请选择获奖日期', trigger: 'change' }],
+  'leader.phone': [phoneRule],
+  'leader.email': [emailRule],
 }
 
 // ==================== 赛事搜索相关方法 ====================
@@ -630,7 +633,7 @@ onMounted(async () => {
                       </el-form-item>
                     </el-col>
                     <el-col :span="12" :xs="24">
-                      <el-form-item label="手机号">
+                      <el-form-item label="手机号" :prop="'members.' + i + '.phone'" :rules="[phoneRule]">
                         <el-input
                           v-model="m.phone"
                           placeholder="请输入手机号"
@@ -639,7 +642,7 @@ onMounted(async () => {
                       </el-form-item>
                     </el-col>
                     <el-col :span="12" :xs="24">
-                      <el-form-item label="邮箱">
+                      <el-form-item label="邮箱" :prop="'members.' + i + '.email'" :rules="[emailRule]">
                         <el-input
                           v-model="m.email"
                           placeholder="请输入邮箱"
