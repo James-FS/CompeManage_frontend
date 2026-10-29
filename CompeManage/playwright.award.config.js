@@ -4,7 +4,7 @@ export default defineConfig({
   testDir: './e2e/award',
   // import.spec.js 仍保留旧版整批拒绝断言，与「部分导入」新交互不一致；
   // 导入主路径以 partial-import.spec 为准，待 import.spec 全面改写后再并回。
-  testMatch: ['partial-import.spec.js', 'detail.spec.js', 'export.spec.js', 'student-declare.spec.js', 'my-competition.spec.js', 'audit.spec.js', 'advisor.spec.js'],
+  testMatch: ['partial-import.spec.js', 'unified-import.spec.js', 'unified-import-live.spec.js', 'detail.spec.js', 'export.spec.js', 'student-declare.spec.js', 'my-competition.spec.js', 'audit.spec.js', 'advisor.spec.js'],
   fullyParallel: false,
   workers: 1,
   retries: 0,

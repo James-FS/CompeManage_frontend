@@ -94,13 +94,13 @@ describe('request HTTP 错误分支', () => {
     expect(ElMessage.warning).toHaveBeenCalledWith('数据校验未通过')
   })
 
-  it('导入接口超时：专属超时文案', async () => {
+  it.each(['/api/award/import?comp_id=1', '/api/award/import/unified'])('导入接口 %s 超时：提示先核实写入结果', async url => {
     rejectWith({
-      config: { url: '/api/award/import?comp_id=1' },
+      config: { url },
       request: {},
       code: 'ECONNABORTED',
     })
-    await expect(get('/api/award/import?comp_id=1')).rejects.toMatchObject({ messageShown: true })
+    await expect(get(url)).rejects.toMatchObject({ messageShown: true })
     expect(ElMessage.error).toHaveBeenCalledWith(
       '导入请求超时，结果尚未确认，请先刷新获奖列表核实后再操作',
     )

@@ -94,6 +94,9 @@ export const api = {
   getAwardCompList: (params) => get('/api/award/list', params),
   getCompAwards: (comp_id) => get(`/api/award/comp-awards?comp_id=${comp_id}`),
   getAwardTemplate: (comp_id) => get(`/api/award/export-template?comp_id=${comp_id}`, {}, { responseType: 'blob' }),
+  getUnifiedAwardTemplate: () => get('/api/award/import/unified/template', {}, { responseType: 'blob' }),
+  previewUnifiedAwards: (rows) => post('/api/award/import/unified/preview', { rows }, { timeout: 120000, warningOnBadRequest: true }),
+  importUnifiedAwards: (rows) => post('/api/award/import/unified', { rows }, { timeout: 120000, warningOnBadRequest: true }),
   // 指导教师候选（按身份取在职教职工，支持姓名/工号搜索）
   getTeacherList: (params) => get('/api/reg/user/list', { ...params, role: 'teacher' }),
   getAwardAdvisorList: (params) => get('/api/reg/user/list', { ...params, role: 'award_advisor' }),
