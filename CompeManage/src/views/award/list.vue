@@ -226,7 +226,7 @@ onMounted(fetchList)
       </span>
     </div>
     <div class="comp-list" v-loading="loading">
-      <el-empty v-if="compList.length === 0 && !loading" description="暂无负责的赛事" />
+      <el-empty v-if="compList.length === 0 && !loading" description="暂无可填报的赛事" />
 
       <div v-for="item in compList" :key="item.id" class="comp-card" @click="goDetail(item.id)">
         <div class="comp-info">
