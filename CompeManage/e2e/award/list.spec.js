@@ -132,7 +132,7 @@ test.describe('获奖填报列表页面', () => {
     console.log('下载模板按钮点击完成')
   })
 
-  test('导入数据功能', async ({ page }) => {
+  test('导入获奖名单功能', async ({ page }) => {
     await page.goto(LIST_URL)
     await waitForListLoad(page)
 
@@ -140,20 +140,20 @@ test.describe('获奖填报列表页面', () => {
     const cardCount = await cards.count()
 
     if (cardCount === 0) {
-      console.log('无数据，跳过导入数据测试')
+      console.log('无数据，跳过导入获奖名单测试')
       return
     }
 
-    // 验证每个卡片都有"导入数据"按钮
+    // 验证每个卡片都有“导入获奖名单”按钮
     for (let i = 0; i < cardCount; i++) {
       const card = cards.nth(i)
-      const uploadBtn = card.locator('button:has-text("导入数据")')
+      const uploadBtn = card.getByRole('button', { name: '导入获奖名单', exact: true })
       await expect(uploadBtn).toBeVisible()
-      console.log(`第 ${i + 1} 张卡片: "导入数据"按钮可见`)
+      console.log(`第 ${i + 1} 张卡片: “导入获奖名单”按钮可见`)
     }
   })
 
-  test('查看结果功能 - 跳转到详情页', async ({ page }) => {
+  test('查看获奖名单功能 - 跳转到详情页', async ({ page }) => {
     await page.goto(LIST_URL)
     await waitForListLoad(page)
 
@@ -161,21 +161,21 @@ test.describe('获奖填报列表页面', () => {
     const cardCount = await cards.count()
 
     if (cardCount === 0) {
-      console.log('无数据，跳过查看结果测试')
+      console.log('无数据，跳过查看获奖名单测试')
       return
     }
 
-    // 验证第一个卡片有"查看结果"按钮
+    // 验证第一个卡片有“查看获奖名单”按钮
     const firstCard = cards.first()
     const detailBtn = firstCard.locator('.primary-btn')
     const hasBtn = await detailBtn.isVisible().catch(() => false)
 
     if (!hasBtn) {
-      console.log('未找到"查看结果"按钮，跳过')
+      console.log('未找到“查看获奖名单”按钮，跳过')
       return
     }
 
-    // 点击"查看结果"，验证跳转
+    // 点击“查看获奖名单”，验证跳转
     await detailBtn.click()
     await page.waitForURL(/#\/award\/detail\//, { timeout: 10000 })
 

@@ -239,6 +239,17 @@ const routes = [
         },
       },
       {
+        path: 'import-all',
+        name: 'AwardUnifiedImport',
+        component: () => import('@/views/award/import.vue'),
+        meta: {
+          title: '统一导入获奖名单',
+          parent: 'AwardList',
+          activeMenu: '/award/list',
+          roles: ['school_admin', 'college_admin', 'competition_manager'],
+        },
+      },
+      {
         path: 'import/:id',
         name: 'AwardImport',
         component: () => import('@/views/award/import.vue'),
