@@ -214,13 +214,19 @@ const conversionRateText = (row) => {
 const compBarChartRef = ref(null)
 const renderCompBarChart = () => {
   const list = filteredCompetitionStats.value
+  // 2026-10-29：全量赛事下柱多标签挤——名称截断缩短、旋转加大、留白随数量自适应
+  const labelLen = list.length > 30 ? 6 : 10
   initOrUpdateChart('compBar', compBarChartRef, {
-    grid: { left: 56, right: 16, top: 36, bottom: 110 },
-    tooltip: { trigger: 'axis' },
+    grid: { left: 56, right: 16, top: 36, bottom: Math.min(220, 90 + list.length * 2) },
+    tooltip: {
+      trigger: 'axis',
+      // 长名完整显示在 tooltip
+      valueFormatter: (value) => value
+    },
     xAxis: {
       type: 'category',
-      data: list.map((i) => (getCompetitionName(i) || '').slice(0, 10)),
-      axisLabel: { rotate: 42, interval: 0, fontSize: 10 }
+      data: list.map((i) => (getCompetitionName(i) || '').slice(0, labelLen)),
+      axisLabel: { rotate: list.length > 20 ? 55 : 42, interval: 0, fontSize: list.length > 30 ? 9 : 10 }
     },
     yAxis: { type: 'value', name: '获奖人次' },
     series: [
@@ -228,7 +234,7 @@ const renderCompBarChart = () => {
         name: '获奖人数',
         type: 'bar',
         barMaxWidth: 26,
-        data: list.map((i) => safeNumber(i?.award_count)),
+        data: list.map((i) => ({ value: safeNumber(i?.award_count), name: getCompetitionName(i) })),
         itemStyle: { color: '#409EFF' }
       }
     ]
