@@ -152,9 +152,9 @@ describe('api 包装层：获奖', () => {
     await api.getTeacherList({ search: '张', page: 1 })
     expect(get).toHaveBeenCalledWith('/api/reg/user/list', { search: '张', page: 1, role: 'teacher' })
   })
-  it('getAwardAdvisorList 强制 role=award_advisor', async () => {
+  it('getAwardAdvisorList 强制 role=teacher（2026-10-29 全校教职工口径）', async () => {
     await api.getAwardAdvisorList({ search: '李' })
-    expect(get).toHaveBeenCalledWith('/api/reg/user/list', { search: '李', role: 'award_advisor' })
+    expect(get).toHaveBeenCalledWith('/api/reg/user/list', { search: '李', role: 'teacher' })
   })
 })
 

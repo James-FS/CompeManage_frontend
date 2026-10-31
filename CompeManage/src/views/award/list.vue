@@ -18,7 +18,13 @@ const queryParams = ref({
 const total = ref(0)
 // 筛选条件：关键词（名称/编号）、级别、举办年份、进行状态；服务端过滤。
 // 其中年份同时用作附件导出的年份口径
-const filters = ref({ keyword: '', level: '', year: '', status: '' })
+const createDefaultFilters = () => ({
+  keyword: '',
+  level: '',
+  year: new Intl.DateTimeFormat('en', { timeZone: 'Asia/Hong_Kong', year: 'numeric' }).format(new Date()),
+  status: '',
+})
+const filters = ref(createDefaultFilters())
 const levelOptions = ['校级', '省级', '国家级', '国际级']
 const buildListParams = () => {
   const { keyword, level, year, status } = filters.value
@@ -50,52 +56,8 @@ const applyFilters = () => {
   fetchList()
 }
 const resetFilters = () => {
-  filters.value = { keyword: '', level: '', year: '', status: '' }
+  filters.value = createDefaultFilters()
   applyFilters()
-}
-
-// 2. 下载模板 (接入后端)
-async function downloadTemplate(id) {
-  try {
-    loading.value = true
-
-    // 1. 请求时必须声明 responseType: 'blob'
-    // 注意：api.exportTemplate 需要配置 { responseType: 'blob' }
-    const res = await api.getAwardTemplate(id)
-
-    // 2. 🛡️ 智能判断：这是文件流还是 JSON 报错？
-    // 如果返回的 Blob 类型是 application/json，说明后端报错了
-    if (res.type === 'application/json') {
-      const reader = new FileReader()
-      reader.onload = () => {
-        // 把 Blob 转回 JSON 字符串读出来
-        const errorJson = JSON.parse(reader.result)
-        ElMessage.error(errorJson.msg || '下载失败')
-      }
-      reader.readAsText(res)
-      return // 终止下载
-    }
-
-    // 3. 正常下载流程 (如果是 Excel 流)
-    const blob = new Blob([res], {
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    })
-    const link = document.createElement('a')
-    link.href = window.URL.createObjectURL(blob)
-    link.download = `Award_Template_${id}.xlsx`
-    link.style.display = 'none'
-    document.body.appendChild(link)
-    link.click()
-    window.URL.revokeObjectURL(link.href)
-    document.body.removeChild(link)
-
-    ElMessage.success('模板下载成功')
-  } catch (error) {
-    console.error(error)
-    ElMessage.error('网络请求失败')
-  } finally {
-    loading.value = false
-  }
 }
 
 // 4. 跳转详情
@@ -212,11 +174,16 @@ onMounted(fetchList)
       </el-form>
     </div>
     <div v-if="['school_admin', 'college_admin', 'competition_manager'].includes(userStore.role)" class="export-bar">
+      <el-tooltip content="可在一个 Excel 文件中填写多个赛事的获奖信息；上传并完成校验后，可一次性导入多个赛事。" placement="top" :show-after="200">
+        <el-button type="primary" :icon="Upload" @click="router.push({ name: 'AwardUnifiedImport' })">
+          统一导入获奖名单
+        </el-button>
+      </el-tooltip>
       <el-button type="success" :icon="Download" :loading="exporting" @click="downloadExport('projects')">
-        导出附件1（省级以上项目）
+        导出附件1：省级以上获奖项目一览表
       </el-button>
       <el-button type="primary" :icon="Download" :loading="exporting" @click="downloadExport('students')">
-        导出附件2（省级以上学生）
+        导出附件2：省级以上获奖学生一览表
       </el-button>
       <span v-if="userStore.role === 'school_admin'" class="settings-entry">
         <el-divider direction="vertical" />
@@ -226,7 +193,7 @@ onMounted(fetchList)
       </span>
     </div>
     <div class="comp-list" v-loading="loading">
-      <el-empty v-if="compList.length === 0 && !loading" description="暂无负责的赛事" />
+      <el-empty v-if="compList.length === 0 && !loading" description="暂无可填报的赛事" />
 
       <div v-for="item in compList" :key="item.id" class="comp-card" @click="goDetail(item.id)">
         <div class="comp-info">
@@ -268,24 +235,17 @@ onMounted(fetchList)
         <div class="comp-action" @click.stop>
           <div class="action-wrapper">
             <div class="btn-group">
-              <el-tooltip content="下载录入模板" placement="top">
-                <el-button link class="icon-btn" @click="downloadTemplate(item.id)">
-                  <el-icon><Download /></el-icon>
-                  <span class="btn-text">下载模板</span>
-                </el-button>
-              </el-tooltip>
-
               <el-tooltip content="导入获奖名单" placement="top">
                 <el-button link class="icon-btn" @click="goImport(item.id)">
                   <el-icon><Upload /></el-icon>
-                  <span class="btn-text">导入数据</span>
+                  <span class="btn-text">导入获奖名单</span>
                 </el-button>
               </el-tooltip>
 
               <div class="btn-container">
                 <el-button type="primary" class="primary-btn" @click="goDetail(item.id)">
                   <el-icon style="margin-right: 4px"><Trophy /></el-icon>
-                  查看结果
+                  查看获奖名单
                 </el-button>
               </div>
             </div>

@@ -1,7 +1,7 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Download, Upload, Edit } from '@element-plus/icons-vue'
 import ExcelJS from 'exceljs'
 import { saveAs } from 'file-saver'
@@ -12,10 +12,11 @@ const advisorNames = value => {
   try { const data = typeof value === 'string' ? JSON.parse(value || '[]') : value; return Array.isArray(data) ? data.map(a => a.name).join('、') : '' }
   catch { return '' }
 }
-const compID = useRoute().params.id
+const route = useRoute()
+const compID = computed(() => String(route.params.id || ''))
 const router = useRouter()
 const userStore = useUserStore()
-const loading = ref(false)
+const dataLoaded = ref(false)
 const competitionName = ref('')
 const teams = ref([])
 const keyword = ref('')
@@ -28,6 +29,10 @@ const teamEdit = ref(null)
 const memberEdit = ref(null)
 const saving = ref(false)
 const colleges = ref([])
+const competitionOptions = ref([])
+let competitionSearchTimer = null
+let competitionSearchRequest = 0
+let awardDataRequest = 0
 const awardLevelMatches = (awardName, selectedLevel) => {
   if (!selectedLevel) return true
   const value = String(awardName || '').replace(/[\s\u3000（）()]/g, '')
@@ -64,20 +69,72 @@ watch([keyword, categoryFilter, levelFilter], () => { page.value = 1 })
 watch(pageSize, () => { page.value = 1 })
 const studentCount = computed(() => filteredTeams.value.reduce((n, t) => n + t.members.length, 0))
 const errorMessage = e => e.response?.data?.message || e.message || '操作失败'
-const fetchCompetitionName = async () => {
-  try {
-    const res = await api.getCompetitionDetail(compID)
-    competitionName.value = res.data?.comp_name || ''
-  } catch (e) { ElMessage.error(errorMessage(e)) }
+const upsertCompetitionOption = competition => {
+  if (!competition?.id) return
+  const id = String(competition.id)
+  const normalized = { ...competition, id }
+  const existingIndex = competitionOptions.value.findIndex(item => String(item.id) === id)
+  if (existingIndex === -1) competitionOptions.value.unshift(normalized)
+  else competitionOptions.value.splice(existingIndex, 1, { ...competitionOptions.value[existingIndex], ...normalized })
 }
-const fetchData = async () => {
-  loading.value = true
+const loadCompetitionOptions = async keyword => {
+  const requestID = ++competitionSearchRequest
   try {
-    const res = await api.getCompAwards(compID)
+    const res = await api.getAwardCompList({ page: 1, size: 20, keyword: String(keyword || '').trim() })
+    if (requestID !== competitionSearchRequest) return
+    const list = (res.data?.list || []).map(item => ({ ...item, id: String(item.id) }))
+    const current = competitionOptions.value.find(item => String(item.id) === compID.value)
+    if (current && !list.some(item => item.id === compID.value)) list.unshift(current)
+    competitionOptions.value = list
+  } catch (e) {
+    if (requestID === competitionSearchRequest) ElMessage.error(`赛事列表加载失败：${errorMessage(e)}`)
+  }
+}
+const searchCompetitionOptions = keyword => {
+  clearTimeout(competitionSearchTimer)
+  competitionSearchTimer = setTimeout(() => loadCompetitionOptions(keyword), 250)
+}
+const competitionOptionLabel = item => {
+  const year = item.year ? `${item.year}年 · ` : ''
+  const level = item.comp_level ? ` · ${item.comp_level}` : ''
+  return `${year}${item.comp_name}${level}`
+}
+const switchCompetition = async id => {
+  const nextID = String(id || '')
+  if (!nextID || nextID === compID.value) return
+  if (teamEdit.value || memberEdit.value) {
+    try {
+      await ElMessageBox.confirm('切换赛事会丢弃当前未保存的修改，是否继续？', '切换赛事', { type: 'warning' })
+    } catch {
+      return
+    }
+  }
+  router.push({ name: 'AwardDetail', params: { id: nextID } })
+}
+const fetchCompetitionName = async id => {
+  try {
+    const res = await api.getCompetitionDetail(id)
+    if (id !== compID.value) return
+    const competition = res.data || {}
+    competitionName.value = competition.comp_name || ''
+    upsertCompetitionOption({ ...competition, id, comp_name: competitionName.value || `赛事 ${id}` })
+  } catch (e) {
+    if (id === compID.value) ElMessage.error(errorMessage(e))
+  }
+}
+const fetchData = async (id = compID.value) => {
+  const requestID = ++awardDataRequest
+  dataLoaded.value = false
+  try {
+    const res = await api.getCompAwards(id)
+    if (id !== compID.value || requestID !== awardDataRequest) return
     teams.value = res.data.list || []
-    if (memberTeam.value) memberTeam.value = teams.value.find(t => t.id === memberTeam.value.id) || null
-  } catch (e) { ElMessage.error(errorMessage(e)) }
-  finally { loading.value = false }
+    if (memberTeam.value) memberTeam.value = teams.value.find(team => team.id === memberTeam.value.id) || null
+  } catch (e) {
+    if (id === compID.value && requestID === awardDataRequest) ElMessage.error(errorMessage(e))
+  } finally {
+    if (id === compID.value && requestID === awardDataRequest) dataLoaded.value = true
+  }
 }
 const openTeam = t => {
   teamEdit.value = { ...t, advisors: (t.advisors || []).map(a => ({ username: a.username, name: a.name, college: a.college })) }
@@ -172,17 +229,34 @@ const handleExport = async () => {
       cell.alignment = { horizontal: cell.col === 6 && !isHeader ? 'left' : 'center', vertical: 'middle', wrapText: true }
     })
   })
-  const safeCompetitionName = (competitionName.value || `赛事${compID}`).replace(/[\\/:*?"<>|]/g, '_').trim()
+  const safeCompetitionName = (competitionName.value || `赛事${compID.value}`).replace(/[\\/:*?"<>|]/g, '_').trim()
   try { saveAs(new Blob([await workbook.xlsx.writeBuffer()]), `${safeCompetitionName}获奖名单.xlsx`) }
   catch (e) { ElMessage.error(errorMessage(e)) }
 }
+watch(() => route.params.id, id => {
+  const nextID = String(id || '')
+  if (!nextID) return
+  competitionName.value = ''
+  teams.value = []
+  keyword.value = ''
+  categoryFilter.value = ''
+  levelFilter.value = ''
+  page.value = 1
+  pageSize.value = 10
+  memberTeam.value = null
+  teamEdit.value = null
+  memberEdit.value = null
+  upsertCompetitionOption({ id: nextID, comp_name: `赛事 ${nextID}` })
+  Promise.all([fetchData(nextID), fetchCompetitionName(nextID)])
+}, { immediate: true })
 onMounted(async () => {
-  await Promise.all([fetchData(), fetchCompetitionName()])
+  loadCompetitionOptions('')
   if (userStore.role === 'school_admin') {
     try { colleges.value = (await api.getCollegeList()).data || [] }
     catch (e) { ElMessage.error(errorMessage(e)) }
   }
 })
+onUnmounted(() => clearTimeout(competitionSearchTimer))
 </script>
 <template>
   <div class="award-detail">
@@ -190,7 +264,23 @@ onMounted(async () => {
       <template #header>
         <div class="header">
           <div class="title">
-            <strong>{{ competitionName || `赛事 ${compID}` }}</strong>
+            <el-select
+              :model-value="compID"
+              filterable
+              remote
+              :remote-method="searchCompetitionOptions"
+              :disabled="saving"
+              placeholder="搜索并切换赛事"
+              style="width: min(440px, 55vw)"
+              @change="switchCompetition"
+            >
+              <el-option
+                v-for="item in competitionOptions"
+                :key="item.id"
+                :label="competitionOptionLabel(item)"
+                :value="String(item.id)"
+              />
+            </el-select>
             <span>获奖名单</span>
           </div>
           <span>{{ filteredTeams.length }} 个团队项目 · {{ studentCount }} 名获奖学生</span>
@@ -208,10 +298,10 @@ onMounted(async () => {
           <el-option label="二等奖" value="二等奖" />
           <el-option label="三等奖" value="三等奖" />
         </el-select>
-        <el-button type="primary" :icon="Upload" @click="router.push({ name: 'AwardImport', params: { id: compID } })">导入名单</el-button>
+        <el-button type="primary" :icon="Upload" @click="router.push({ name: 'AwardImport', params: { id: compID } })">导入获奖名单</el-button>
         <el-button type="success" :icon="Download" @click="handleExport">导出 Excel</el-button>
       </div>
-      <el-table :data="pagedTeams" v-loading="loading" border :header-cell-style="{ textAlign: 'center' }" :cell-style="{ textAlign: 'center' }" style="margin-top: 18px" max-height="calc(100vh - 260px)">
+      <el-table :data="pagedTeams" border :header-cell-style="{ textAlign: 'center' }" :cell-style="{ textAlign: 'center' }" style="margin-top: 18px" max-height="calc(100vh - 260px)">
         <el-table-column type="index" label="序号" width="65" align="center" />
         <el-table-column prop="project_name" label="参赛项目名称" min-width="240" show-overflow-tooltip align="center" />
         <el-table-column prop="award_category" label="获奖类别" width="120" align="center" />
@@ -221,7 +311,7 @@ onMounted(async () => {
         <el-table-column label="指导老师" min-width="170" show-overflow-tooltip><template #default="{ row }">{{ advisorNames(row.advisor_info) }}</template></el-table-column>
         <el-table-column prop="remark" label="备注" min-width="180" show-overflow-tooltip />
         <el-table-column label="操作" width="140" align="center"><template #default="{ row }"><el-button v-if="row.can_edit_team" link type="primary" :icon="Edit" @click="openTeam(row)">修改获奖信息</el-button></template></el-table-column>
-        <template #empty><el-empty description="暂无数据" /></template>
+        <template #empty><el-empty v-if="dataLoaded" description="暂无数据" /></template>
       </el-table>
       <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="filteredTeams.length" :page-sizes="[10,20,50]" layout="total, sizes, prev, pager, next" style="margin-top: 18px; justify-content: flex-end" />
     </el-card>
