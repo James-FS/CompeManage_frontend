@@ -14,6 +14,10 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './e2e',
+  // 排除项：
+  // - prod-*：外部环境探测脚本，不属于产品回归口径
+  // - multi-college：有专属 globalSetup 播种（test:multi-college 独立运行），主配置下状态文件必过期
+  testIgnore: ['**/prod-*.spec.js', '**/multi-college/**'],
   globalSetup: './e2e/global-setup.js',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,

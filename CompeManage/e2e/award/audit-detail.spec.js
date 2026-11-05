@@ -32,8 +32,10 @@ async function navigateToDetailPage(page) {
     return false
   }
 
-  // 点击第一行的详情按钮
-  const firstRow = rows.first()
+  // 优先选择「待审核」行：详情页的驳回/通过按钮仅对未审核记录展示，
+  // 库里历史数据混杂时第一行可能是已审核记录
+  const pendingRow = rows.filter({ hasText: '待审核' }).first()
+  const firstRow = (await pendingRow.count()) > 0 ? pendingRow : rows.first()
   const detailBtn = firstRow.locator('button:has-text("详情")')
 
   const hasDetail = await detailBtn.isVisible().catch(() => false)

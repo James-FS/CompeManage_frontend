@@ -52,6 +52,16 @@ export const FLOW_COMPS = [
   },
 ]
 
+/**
+ * 赛事负责人（教职工池）账号，globalSetup 幂等播种。
+ * 账号不存在时"按工号选负责人"弹窗查不到行，用例会以超时失败——播种后套件不再依赖库中存在哪个教师账号。
+ */
+export const FLOW_MANAGERS = [
+  { username: 'T2023012', name: '何老师', college: '计算机科学与网络工程学院', major: '计算机科学与技术' },
+  { username: 'T2023003', name: '张伟', college: '计算机科学与网络工程学院', major: '计算机科学' },
+  { username: 'T2023004', name: '李华', college: '计算机科学与网络工程学院', major: '计算机科学' },
+]
+
 /** 历史遗留的 E2E 赛事名前缀（globalSetup 软删清理，避免影响校赛填报列表与附件导出） */
 export const E2E_COMP_PREFIX = 'E2E获奖流程·'
 

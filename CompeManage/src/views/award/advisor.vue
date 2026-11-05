@@ -112,7 +112,7 @@ onMounted(fetchList)
         <h3>获奖信息</h3>
         <el-form ref="formRef" :model="form" :rules="rules" label-width="100px" :disabled="!detail.can_edit || saving">
           <el-form-item label="项目名称" prop="project_name"><el-input v-model="form.project_name" maxlength="255" /></el-form-item>
-          <el-form-item label="获奖类别" prop="award_category"><el-select v-model="form.award_category"><el-option v-for="item in ['国家级', '省级', '校级']" :key="item" :label="item" :value="item" /></el-select></el-form-item>
+          <el-form-item label="获奖类别" prop="award_category"><el-select v-model="form.award_category"><el-option v-for="item in ['校级', '省级', '国家级', '国际级']" :key="item" :label="item" :value="item" /></el-select></el-form-item>
           <el-form-item label="获奖等级" prop="award_name"><el-select v-model="form.award_name"><el-option v-for="item in ['一等奖', '二等奖', '三等奖']" :key="item" :label="item" :value="item" /></el-select></el-form-item>
           <el-form-item label="获奖日期" prop="award_date"><el-date-picker v-model="form.award_date" type="date" value-format="YYYY-MM-DD" /></el-form-item>
           <el-form-item label="证明材料" prop="proof_url"><el-upload v-if="detail.can_edit" :http-request="upload" :show-file-list="false" accept=".jpg,.jpeg,.png,.pdf,.doc,.docx" :disabled="saving || uploading"><el-button :loading="uploading">{{ form.proof_url ? '更换证明' : '上传证明' }}</el-button></el-upload><span v-else>{{ form.proof_url ? '已上传' : '暂无证明' }}</span></el-form-item>

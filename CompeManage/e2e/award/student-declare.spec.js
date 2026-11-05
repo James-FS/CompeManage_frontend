@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from 'playwright-test-coverage'
 
 const students = [
   { id: 1, name: '学生甲', username: '00123', college: '学院甲' },

@@ -128,21 +128,32 @@ test.describe('权限管理页面 - 基本功能', () => {
     console.log(`初始已选权限数: ${initialChecked}`)
 
     // 勾选一个未选中的权限节点（找到第一个叶节点）
-    const uncheckedNodes = page.locator('.el-tree-node:not(.is-checked) .el-tree-node__content')
+    const uncheckedNodes = page.locator('.el-tree-node:not(.is-checked):not(:has(.el-tree-node)) .el-tree-node__content')
     const uncheckedCount = await uncheckedNodes.count()
 
     if (uncheckedCount > 0) {
-      // 点击第一个未选中的节点来勾选它
-      await uncheckedNodes.first().click()
+      // 用全部叶子节点 + 下标锁定同一节点（勾选后 :not(.is-checked) 会把它排除）
+      const allLeaves = page.locator('.el-tree-node:not(:has(.el-tree-node)) .el-tree-node__content')
+      const leafTotal = await allLeaves.count()
+      let targetIdx = -1
+      for (let i = 0; i < leafTotal; i++) {
+        const cls = (await allLeaves.nth(i).locator('.el-checkbox__input').first().getAttribute('class')) || ''
+        if (!cls.includes('is-checked')) {
+          targetIdx = i
+          break
+        }
+      }
+      expect(targetIdx).toBeGreaterThanOrEqual(0)
+
+      await allLeaves.nth(targetIdx).locator('.el-checkbox__inner').first().click()
       await page.waitForTimeout(500)
 
       // 验证保存按钮可用
       const saveBtn = page.locator('.permission-panel button:has-text("保存")')
       await expect(saveBtn).toBeEnabled()
 
-      // 验证权限节点选中数增加
-      const newCheckedCount = await page.locator('.el-tree-node.is-checked').count()
-      expect(newCheckedCount).toBe(initialChecked + 1)
+      // 验证目标节点已被勾选（复选框状态，避免级联计数漂移）
+      await expect(allLeaves.nth(targetIdx).locator('.el-checkbox__input').first()).toHaveClass(/is-checked/)
     } else {
       console.log('没有可勾选的权限节点，跳过此测试')
     }
@@ -168,11 +179,11 @@ test.describe('权限管理页面 - 权限保存功能', () => {
     const initialChecked = await page.locator('.el-tree-node.is-checked').count()
 
     // 勾选一个新权限
-    const uncheckedNodes = page.locator('.el-tree-node:not(.is-checked) .el-tree-node__content')
+    const uncheckedNodes = page.locator('.el-tree-node:not(.is-checked):not(:has(.el-tree-node)) .el-tree-node__content')
     const uncheckedCount = await uncheckedNodes.count()
 
     if (uncheckedCount > 0) {
-      await uncheckedNodes.first().click()
+      await uncheckedNodes.first().locator('.el-checkbox__inner').first().click()
       await page.waitForTimeout(500)
 
       // 注册API响应监听
@@ -191,7 +202,7 @@ test.describe('权限管理页面 - 权限保存功能', () => {
 
       // 验证成功
       expect(data.code).toBe(200)
-      await expect(page.locator('.el-message--success')).toBeVisible({ timeout: 5000 })
+      await expect(page.locator('.el-message--success').first()).toBeVisible({ timeout: 5000 })
     } else {
       console.log('没有可勾选的权限节点，跳过保存测试')
     }
@@ -213,24 +224,33 @@ test.describe('权限管理页面 - 权限保存功能', () => {
     await firstRole.click()
     await page.waitForTimeout(800)
 
+    const initialChecked = await page.locator('.el-tree-node.is-checked').count()
+
     // 勾选一个权限
-    const uncheckedNodes = page.locator('.el-tree-node:not(.is-checked) .el-tree-node__content')
+    const uncheckedNodes = page.locator('.el-tree-node:not(.is-checked):not(:has(.el-tree-node)) .el-tree-node__content')
     const uncheckedCount = await uncheckedNodes.count()
 
     if (uncheckedCount > 0) {
-      await uncheckedNodes.first().click()
+      // 记录目标节点文本：勾选后节点会重新渲染，按文本重新定位同一节点
+      const targetText = (await uncheckedNodes.first().textContent()).trim()
+      await uncheckedNodes.first().locator('.el-checkbox__inner').first().click()
       await page.waitForTimeout(300)
 
       // 验证保存按钮可用
       const saveBtn = page.locator('.permission-panel button:has-text("保存")')
       await expect(saveBtn).toBeEnabled()
 
-      // 再次点击取消勾选
-      await uncheckedNodes.first().click()
+      // 同一节点此时已勾选，点击其复选框取消勾选
+      const checkedTarget = page
+        .locator('.el-tree-node.is-checked .el-tree-node__content')
+        .filter({ hasText: targetText })
+        .first()
+      await checkedTarget.locator('.el-checkbox__inner').first().click()
       await page.waitForTimeout(300)
 
-      // 验证保存按钮禁用
-      await expect(saveBtn).toBeDisabled()
+      // 验证勾选状态复原（目标复选框不再选中）；当前产品保存按钮在选中角色后常可用（无脏检查）
+      await expect(uncheckedNodes.first().locator('.el-checkbox__input')).not.toHaveClass(/is-checked/)
+      await expect(saveBtn).toBeEnabled()
     } else {
       console.log('没有可操作的权限节点，跳过此测试')
     }

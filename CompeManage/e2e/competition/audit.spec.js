@@ -76,7 +76,8 @@ test.describe.serial('赛事申报审核功能测试', () => {
       .filter({ hasText: '所属学院' })
       .locator('.el-select')
     await collegeSelect.click()
-    const firstCollegeOption = page.getByRole('option').first()
+    // 院管理员只能为所管理学院（计算机科学与网络工程学院）创建申报
+    const firstCollegeOption = page.getByRole('option', { name: '计算机科学与网络工程学院' })
     await firstCollegeOption.waitFor({ state: 'visible', timeout: 5000 })
     const collegeName = await firstCollegeOption.textContent()
     console.log(`选择学院: ${collegeName}`)
@@ -298,7 +299,8 @@ test.describe.serial('赛事申报审核功能测试', () => {
       .filter({ hasText: '所属学院' })
       .locator('.el-select')
     await collegeSelect.click()
-    const firstOption = page.getByRole('option').first()
+    // 院管理员只能为所管理学院（计算机科学与网络工程学院）创建申报
+    const firstOption = page.getByRole('option', { name: '计算机科学与网络工程学院' })
     await firstOption.waitFor({ state: 'visible', timeout: 5000 })
     await firstOption.click()
     await page.waitForTimeout(200)

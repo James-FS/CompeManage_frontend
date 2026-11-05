@@ -907,7 +907,7 @@ onMounted(async () => {
                       <el-form-item
                         label="联系电话"
                         :prop="'members.' + i + '.phone'"
-                        :rules="{ required: true, message: '请输入手机号', trigger: 'blur' }"
+                        :rules="[phoneRule]"
                       >
                         <el-input
                           v-model="m.phone"
@@ -921,7 +921,7 @@ onMounted(async () => {
                       <el-form-item
                         label="联系邮箱"
                         :prop="'members.' + i + '.email'"
-                        :rules="{ required: true, message: '请输入邮箱', trigger: 'blur' }"
+                        :rules="[emailRule]"
                       >
                         <el-input
                           v-model="m.email"

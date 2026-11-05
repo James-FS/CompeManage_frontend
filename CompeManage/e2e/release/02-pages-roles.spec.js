@@ -1,6 +1,6 @@
 // @ts-check
 // 02 多角色页面冒烟：每个角色可访问的核心页面，检查渲染/JS异常/API失败
-import { test, expect } from '@playwright/test';
+import { test, expect } from 'playwright-test-coverage';
 import { ACCOUNTS, smokePage } from './helpers.js';
 
 const BASE = process.env.E2E_BASE || 'http://localhost:5219';

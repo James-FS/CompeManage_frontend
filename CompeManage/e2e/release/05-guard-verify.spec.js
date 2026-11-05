@@ -1,6 +1,6 @@
 // @ts-check
 // 验证学生视角的管理页面拦截（补 roles 后）+ 管理员不受影响
-import { test, expect } from '@playwright/test';
+import { test, expect } from 'playwright-test-coverage';
 
 const BASE = 'http://localhost:5219';
 

@@ -1,4 +1,5 @@
 import { test, expect } from 'playwright-test-coverage'
+import { login as sharedLogin } from '../helpers/auth.js'
 
 const TEST_USER = {
   username: 'T2023001',
@@ -6,14 +7,9 @@ const TEST_USER = {
   role: 'school_admin',
 }
 
-// 辅助函数：登录
+// 辅助函数：登录（登录页改版后表单默认折叠，走共享 login）
 async function login(page) {
-  await page.goto('/#/login')
-  await page.waitForLoadState('networkidle')
-  await page.fill('input[placeholder="请输入用户名"]', TEST_USER.username)
-  await page.fill('input[placeholder="请输入密码"]', TEST_USER.password)
-  await page.locator('.el-button:has-text("立即登录")').click()
-  await page.waitForURL((url) => url.hash.includes('home'), { timeout: 10000 })
+  await sharedLogin(page, TEST_USER)
 }
 
 // 辅助函数：打开 Element Plus 下拉并选择

@@ -1,6 +1,6 @@
 // @ts-check
 // 上报导出 UI 验证：看板各赛事详细统计（转化率列 + 柱状图 + 一键三合一导出）
-import { test, expect } from '@playwright/test'
+import { test, expect } from 'playwright-test-coverage'
 import * as XLSX from 'xlsx'
 import fs from 'fs'
 

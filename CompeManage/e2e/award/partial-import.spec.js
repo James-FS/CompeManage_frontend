@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from 'playwright-test-coverage'
 import * as XLSX from 'xlsx'
 import { mockAwardSession } from '../helpers/award-mock.js'
 

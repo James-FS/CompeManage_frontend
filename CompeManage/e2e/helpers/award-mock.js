@@ -22,16 +22,21 @@ export async function mockAwardSession(page, role = 'school_admin') {
       data = { require_registration: setting }
     } else if (path === '/api/award/import') {
       submitted = req.postDataJSON()
-      const rows = submitted.rows.map(row => ({ ...row, error: row.student_id ? '' : '学号不能为空', existing: false }))
-      const errorCount = rows.filter(row => row.error).length
-      if (errorCount) {
-        await route.fulfill({
-          status: 400,
-          json: { code: 400, message: '数据校验未通过，未写入任何数据', data: { rows, error_count: errorCount } },
-        })
-        return
+      // 部分导入：200 返回逐行 import_status，不再整批 400
+      const rows = submitted.rows.map(row => ({
+        ...row,
+        error: row.student_id ? '' : '学号不能为空',
+        existing: false,
+        import_status: row.student_id ? 'imported' : 'failed',
+      }))
+      data = {
+        rows,
+        student_count: submitted.rows.length,
+        team_count: 1,
+        success_count: rows.filter(r => r.import_status === 'imported').length,
+        existing_count: 0,
+        fail_count: rows.filter(r => r.import_status === 'failed').length,
       }
-      data = { student_count: submitted.rows.length, team_count: 1 }
     } else if (path === '/api/award/student/supplement') {
       await route.fulfill({
         status: 400,

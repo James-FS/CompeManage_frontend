@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from 'playwright-test-coverage'
 const students = [{ id: 1, name: '学生甲', username: '00123', college: '学院甲' }, { id: 2, name: '学生乙', username: '00456', college: '学院乙' }]
 async function setup(page, config = {}, status = null) {
   await page.addInitScript(() => {
@@ -19,6 +19,12 @@ async function setup(page, config = {}, status = null) {
   await expect(page.getByRole('heading', { name: '报名赛制测试' })).toBeVisible()
   await expect(page.getByPlaceholder('请输入参赛项目名称')).toBeVisible()
   return () => ({ submitted, method })
+}
+async function settleAfterSubmit(page) {
+  // 产品行为：提交成功后 registerDetail.vue:592 router.back()；
+  // 无历史记录时回退到 about:blank。若在导航完成前结束用例，
+  // playwright-test-coverage 的 teardown evaluate 会因执行上下文销毁而炸（flaky 根因）。
+  await page.waitForURL((u) => u.href === 'about:blank', { timeout: 5000 })
 }
 async function fillContact(page) {
   await page.locator('.info-grid').getByPlaceholder('请输入手机号').fill('13800000001')
@@ -51,6 +57,7 @@ test('个人赛自动带入本人、要求项目名称并加宽页面', async ({
   await page.getByPlaceholder('请输入参赛项目名称').fill('个人项目')
   await page.getByRole('button', { name: '确认报名', exact: true }).click()
   await expect.poll(() => state().submitted).toBeTruthy()
+  await settleAfterSubmit(page)
   expect(state().submitted).toMatchObject({ participation_type: 'individual', team_name: '个人项目', leader: { stuID: '00123' }, members: [] })
 })
 test('1-5人可切换，团队队长不默认本人，申报人作为成员提交', async ({ page }) => {
@@ -68,6 +75,7 @@ test('1-5人可切换，团队队长不默认本人，申报人作为成员提�
   await page.getByPlaceholder('请输入参赛项目名称').fill('团队项目')
   await page.getByRole('button', { name: '确认报名', exact: true }).click()
   await expect.poll(() => state().submitted).toBeTruthy()
+  await settleAfterSubmit(page)
   expect(state().submitted).toMatchObject({ participation_type: 'team', leader: { stuID: '00456' }, members: [{ stuID: '00123' }] })
 })
 test('最少2人固定团队参赛且不足人数阻止提交', async ({ page }) => {
@@ -82,6 +90,7 @@ test('最少2人固定团队参赛且不足人数阻止提交', async ({ page })
   await addApplicant(page)
   await page.getByRole('button', { name: '确认报名', exact: true }).click()
   await expect.poll(() => state().submitted).toBeTruthy()
+  await settleAfterSubmit(page)
 })
 test('普通成员重新提交驳回报名，队长与成员正确回显', async ({ page }) => {
   const state = await setup(page, {}, { id: 77, status: 2, team_name: '原项目', members: [{ name: '学生乙', username: '00456', college: '学院乙', phone: '13800000001', email: 'a@example.com', is_leader: true }, { name: '学生甲', username: '00123', college: '学院甲', phone: '13800000002', email: 'b@example.com', is_leader: false }] })
@@ -90,6 +99,7 @@ test('普通成员重新提交驳回报名，队长与成员正确回显', async
   await page.getByPlaceholder('请输入参赛项目名称').fill('修改后的项目')
   await page.getByRole('button', { name: '确认报名', exact: true }).click()
   await expect.poll(() => state().submitted).toBeTruthy()
+  await settleAfterSubmit(page)
   expect(state().method).toBe('PUT')
   expect(state().submitted).toMatchObject({ reg_id: 77, participation_type: 'team', team_name: '修改后的项目', leader: { stuID: '00456' } })
 })
@@ -104,6 +114,7 @@ test('无需指导老师时隐藏填写区，重新报名不提交历史指导�
   await expect(page.getByRole('button', { name: '选择指导老师', exact: true })).toHaveCount(0)
   await page.getByRole('button', { name: '确认报名', exact: true }).click()
   await expect.poll(() => state().submitted).toBeTruthy()
+  await settleAfterSubmit(page)
   expect(state().submitted.advisor_info).toBeNull()
 })
 
@@ -114,6 +125,7 @@ test('允许填写指导老师时显示选择区，可不选直接报名', async
   await page.getByPlaceholder('请输入参赛项目名称').fill('可选指导老师项目')
   await page.getByRole('button', { name: '确认报名', exact: true }).click()
   await expect.poll(() => state().submitted).toBeTruthy()
+  await settleAfterSubmit(page)
   expect(state().submitted.advisor_info).toBeNull()
 })
 

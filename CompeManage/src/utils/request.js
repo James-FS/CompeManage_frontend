@@ -91,7 +91,8 @@ service.interceptors.response.use(
         else ElMessage.error(message)
       }
     } else if (error.request) {
-      ElMessage.error(error.code === 'ECONNABORTED' && error.config?.url?.startsWith('/api/award/import?')
+      const isAwardImport = error.config?.url?.startsWith('/api/award/import?') || error.config?.url === '/api/award/import/unified'
+      ElMessage.error(error.code === 'ECONNABORTED' && isAwardImport
         ? '导入请求超时，结果尚未确认，请先刷新获奖列表核实后再操作'
         : '网络错误，请检查网络连接')
     } else {

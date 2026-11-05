@@ -257,15 +257,20 @@ test.describe('作品提交详情页', () => {
         await page.waitForURL(/\/register\/work\/detail\/\d+/, { timeout: 10000 })
         await page.waitForLoadState('networkidle')
 
-        const alertBox = page.locator('.el-alert')
-        const hasAlert = await alertBox.isVisible().catch(() => false)
+        const alertBox = page.locator('.el-alert').first()
         const uploadArea = page.locator('.upload-area')
         const hasUpload = await uploadArea.isVisible().catch(() => false)
+
+        // waitFor 内建重试，规避 isVisible 与断言之间的重渲染竞态
+        const hasAlert = await alertBox
+          .waitFor({ state: 'visible', timeout: 5000 })
+          .then(() => true)
+          .catch(() => false)
 
         console.log(`有alert: ${hasAlert}, 有上传区: ${hasUpload}`)
 
         if (hasAlert) {
-          await expect(alertBox).toContainText('当前不在作品提交时间段内')
+          await expect(alertBox).toContainText('当前不在作品提交时间段内', { timeout: 5000 })
           await expect(uploadArea).not.toBeVisible()
         }
       } else {

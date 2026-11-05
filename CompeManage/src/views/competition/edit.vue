@@ -312,7 +312,7 @@ onMounted(async () => {
         </el-card>
     </div>
 
-    <el-dialog v-model="managerDialogVisible" title="选择负责人（教职工）" width="800px" aligin-center append-to-body>
+    <el-dialog v-model="managerDialogVisible" title="选择赛事负责人" width="800px" aligin-center append-to-body>
         <div class="search-bar">
             <el-form :inline="true" :model="searchForm" class="search-form-inline">
                 <el-form-item label="姓名">
@@ -339,9 +339,10 @@ onMounted(async () => {
             <el-table-column prop="college" label="所属部门" min-width="200" align="center" />
             <el-table-column label="当前角色" width="120" align="center">
                 <template #default="{ row }">
-                    <el-tag v-if="row.role_code === 'college_admin'" type="success" size="small">院级管理员</el-tag>
+                    <el-tag v-if="row.role_code === 'school_admin'" type="danger" size="small">校级管理员</el-tag>
+                    <el-tag v-else-if="row.role_code === 'college_admin'" type="success" size="small">院级管理员</el-tag>
                     <el-tag v-else-if="row.role_code === 'competition_manager'" type="warning" size="small">赛事负责人</el-tag>
-                    <el-tag v-else type="info" size="small">老师</el-tag>
+                    <el-tag v-else-if="row.role_code === 'teacher'" type="info" size="small">老师</el-tag>
                 </template>
             </el-table-column>
             <el-table-column label="操作" width="100" align="center" fixed="right">

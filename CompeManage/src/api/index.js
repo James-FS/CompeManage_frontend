@@ -93,17 +93,21 @@ export const api = {
   // ==================== 获奖相关 ====================
   getAwardCompList: (params) => get('/api/award/list', params),
   getCompAwards: (comp_id) => get(`/api/award/comp-awards?comp_id=${comp_id}`),
+  deleteAward: (id) => del(`/api/award/${id}`),
+  batchDeleteAwards: (comp_id, ids) => post('/api/award/batch-delete', { comp_id: Number(comp_id), ids }),
   getAwardTemplate: (comp_id) => get(`/api/award/export-template?comp_id=${comp_id}`, {}, { responseType: 'blob' }),
+  getUnifiedAwardTemplate: () => get('/api/award/import/unified/template', {}, { responseType: 'blob' }),
+  previewUnifiedAwards: (rows) => post('/api/award/import/unified/preview', { rows }, { timeout: 120000, warningOnBadRequest: true }),
+  importUnifiedAwards: (rows) => post('/api/award/import/unified', { rows }, { timeout: 120000, warningOnBadRequest: true }),
   // 指导教师候选（按身份取在职教职工，支持姓名/工号搜索）
   getTeacherList: (params) => get('/api/reg/user/list', { ...params, role: 'teacher' }),
-  getAwardAdvisorList: (params) => get('/api/reg/user/list', { ...params, role: 'award_advisor' }),
+  // 2026-10-29：指导老师候选=全校各部门教职工（身份口径），工号/姓名检索均放行
+  getAwardAdvisorList: (params) => get('/api/reg/user/list', { ...params, role: 'teacher' }),
   lookupAwardAdvisors: (usernames) => post('/api/award/advisors/lookup', { usernames }),
   exportAwardProjects: (year) => get(`/api/award/export/projects${year ? `?year=${year}` : ''}`, {}, { responseType: 'blob' }),
   exportAwardStudents: (year) => get(`/api/award/export/students${year ? `?year=${year}` : ''}`, {}, { responseType: 'blob' }),
   // 一键三合一上报 Excel（附件1+附件2+汇总表）
   exportAwardReport: (year) => get(`/api/award/export/report${year ? `?year=${year}` : ''}`, {}, { responseType: 'blob' }),
-  getAwardCompList:(params) => get('/api/award/list', params),
-  getCompAwards:(comp_id) => get(`/api/award/comp-awards?comp_id=${comp_id}`),
   getMyAwardList:(params) => get('/api/award/student/my-awards', params),
   getAwardAuditList: (params) => get('/api/award/audit/list', params),
   getAwardAuditDetail: (id) => get(`/api/award/audit/detail/${id}`),

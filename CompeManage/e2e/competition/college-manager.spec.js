@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from 'playwright-test-coverage'
 
 const caps = (allowed) => ({
   is_manager: allowed,

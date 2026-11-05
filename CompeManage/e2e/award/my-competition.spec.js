@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from 'playwright-test-coverage'
 const awards = [
   { id: 1, project_name: '待审核项目', status: 'draft', source: 'supplement' },
   { id: 2, project_name: '已通过申报项目', status: 'approved', source: 'supplement' },

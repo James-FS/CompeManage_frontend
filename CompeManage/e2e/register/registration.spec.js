@@ -1,6 +1,8 @@
 import { test, expect } from 'playwright-test-coverage'
 import { login } from '../helpers/auth'
 
+test.describe.configure({ timeout: 90_000 }) // 全量并行+插桩下 30s 不足（断言不放松）
+
 // 测试账号
 const STUDENT_USER = {
   username: 'S2024001',
