@@ -62,7 +62,7 @@ const resetFilters = () => {
 
 // 4. 跳转详情
 const goDetail = (id) => {
-  router.push({ name: 'AwardDetail', params: { id } })
+  router.push({ name: 'AwardDetail', params: { id }, query: { year: filters.value.year || '' } })
 }
 const goImport = (id) => {
   router.push({ name: 'AwardImport', params: { id } })
