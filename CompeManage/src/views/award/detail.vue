@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Download, Upload, Edit } from '@element-plus/icons-vue'
+import { Download, Upload, Edit, Delete } from '@element-plus/icons-vue'
 import ExcelJS from 'exceljs'
 import { saveAs } from 'file-saver'
 import api from '@/api'
@@ -14,6 +14,12 @@ const advisorNames = value => {
 }
 const route = useRoute()
 const compID = computed(() => String(route.params.id || ''))
+const defaultAwardYear = new Intl.DateTimeFormat('en', { timeZone: 'Asia/Hong_Kong', year: 'numeric' }).format(new Date())
+const selectedYear = computed(() => {
+  if (route.query.year === undefined) return defaultAwardYear
+  const year = typeof route.query.year === 'string' ? route.query.year.trim() : ''
+  return /^\d{4}$/.test(year) ? year : ''
+})
 const router = useRouter()
 const userStore = useUserStore()
 const dataLoaded = ref(false)
@@ -24,10 +30,13 @@ const categoryFilter = ref('')
 const levelFilter = ref('')
 const page = ref(1)
 const pageSize = ref(10)
+const awardTable = ref(null)
+const selectedAwards = ref([])
 const memberTeam = ref(null)
 const teamEdit = ref(null)
 const memberEdit = ref(null)
 const saving = ref(false)
+const deletingAwardID = ref('')
 const colleges = ref([])
 const competitionOptions = ref([])
 let competitionSearchTimer = null
@@ -65,8 +74,24 @@ const filteredTeams = computed(() => teams.value.filter(t => {
     && awardLevelMatches(t.award_name, levelFilter.value)
 }))
 const pagedTeams = computed(() => filteredTeams.value.slice((page.value - 1) * pageSize.value, page.value * pageSize.value))
-watch([keyword, categoryFilter, levelFilter], () => { page.value = 1 })
-watch(pageSize, () => { page.value = 1 })
+const handleAwardSelectionChange = selection => { selectedAwards.value = selection }
+const isAwardSelectable = row => !!row.can_delete && !deletingAwardID.value
+const clearAwardSelection = () => {
+  awardTable.value?.clearSelection()
+  selectedAwards.value = []
+}
+const adjustPageAfterDeletion = () => {
+  const lastPage = Math.max(1, Math.ceil(filteredTeams.value.length / pageSize.value))
+  if (page.value > lastPage) page.value = lastPage
+}
+watch([keyword, categoryFilter, levelFilter], () => {
+  page.value = 1
+  clearAwardSelection()
+})
+watch(pageSize, () => {
+  page.value = 1
+  clearAwardSelection()
+})
 const studentCount = computed(() => filteredTeams.value.reduce((n, t) => n + t.members.length, 0))
 const errorMessage = e => e.response?.data?.message || e.message || '操作失败'
 const upsertCompetitionOption = competition => {
@@ -80,7 +105,9 @@ const upsertCompetitionOption = competition => {
 const loadCompetitionOptions = async keyword => {
   const requestID = ++competitionSearchRequest
   try {
-    const res = await api.getAwardCompList({ page: 1, size: 20, keyword: String(keyword || '').trim() })
+    const params = { page: 1, size: 20, keyword: String(keyword || '').trim() }
+    if (selectedYear.value) params.year = selectedYear.value
+    const res = await api.getAwardCompList(params)
     if (requestID !== competitionSearchRequest) return
     const list = (res.data?.list || []).map(item => ({ ...item, id: String(item.id) }))
     const current = competitionOptions.value.find(item => String(item.id) === compID.value)
@@ -109,7 +136,7 @@ const switchCompetition = async id => {
       return
     }
   }
-  router.push({ name: 'AwardDetail', params: { id: nextID } })
+  router.push({ name: 'AwardDetail', params: { id: nextID }, query: { ...route.query, year: selectedYear.value } })
 }
 const fetchCompetitionName = async id => {
   try {
@@ -199,6 +226,65 @@ const saveMember = async () => {
   } catch (e) { ElMessage.error(errorMessage(e)) }
   finally { saving.value = false }
 }
+const deleteAward = async row => {
+  try {
+    await ElMessageBox.confirm(
+      `删除“${row.project_name || '该项目'}”后，此获奖项目及其全部成员、指导老师将从名单中移除。确定继续吗？`,
+      '删除获奖信息',
+      { confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning' }
+    )
+  } catch {
+    return
+  }
+
+  deletingAwardID.value = String(row.id)
+  try {
+    await api.deleteAward(row.id)
+    if (memberTeam.value?.id === row.id) memberTeam.value = null
+    if (teamEdit.value?.id === row.id) teamEdit.value = null
+    clearAwardSelection()
+    await fetchData()
+    adjustPageAfterDeletion()
+    ElMessage.success('获奖信息已删除')
+  } catch (e) {
+    if (!e.messageShown) ElMessage.error(errorMessage(e))
+  } finally {
+    deletingAwardID.value = ''
+  }
+}
+const deleteSelectedAwards = async () => {
+  const rows = selectedAwards.value.filter(row => row.can_delete)
+  if (!rows.length) {
+    ElMessage.warning('请先勾选要删除的导入获奖项目')
+    return
+  }
+  if (rows.length > 100) {
+    ElMessage.warning('每次最多删除100个获奖项目，请减少勾选数量')
+    return
+  }
+  try {
+    await ElMessageBox.confirm(
+      `确定删除选中的 ${rows.length} 个获奖项目吗？每个项目的全部成员和指导老师也会从名单中移除。`,
+      '批量删除获奖信息',
+      { confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning' }
+    )
+  } catch {
+    return
+  }
+
+  deletingAwardID.value = 'batch'
+  try {
+    await api.batchDeleteAwards(compID.value, rows.map(row => row.id))
+    clearAwardSelection()
+    await fetchData()
+    adjustPageAfterDeletion()
+    ElMessage.success(`已删除 ${rows.length} 个获奖项目`)
+  } catch (e) {
+    if (!e.messageShown) ElMessage.error(errorMessage(e))
+  } finally {
+    deletingAwardID.value = ''
+  }
+}
 const handleExport = async () => {
   if (!studentCount.value) { ElMessage.warning('暂无可导出的成员数据'); return }
   const workbook = new ExcelJS.Workbook()
@@ -244,11 +330,14 @@ watch(() => route.params.id, id => {
   page.value = 1
   pageSize.value = 10
   memberTeam.value = null
+  selectedAwards.value = []
+  awardTable.value?.clearSelection()
   teamEdit.value = null
   memberEdit.value = null
   upsertCompetitionOption({ id: nextID, comp_name: `赛事 ${nextID}` })
   Promise.all([fetchData(nextID), fetchCompetitionName(nextID)])
 }, { immediate: true })
+watch(() => route.query.year, () => loadCompetitionOptions(''))
 onMounted(async () => {
   loadCompetitionOptions('')
   if (userStore.role === 'school_admin') {
@@ -269,7 +358,7 @@ onUnmounted(() => clearTimeout(competitionSearchTimer))
               filterable
               remote
               :remote-method="searchCompetitionOptions"
-              :disabled="saving"
+              :disabled="saving || !!deletingAwardID"
               placeholder="搜索并切换赛事"
               style="width: min(440px, 55vw)"
               @change="switchCompetition"
@@ -300,17 +389,18 @@ onUnmounted(() => clearTimeout(competitionSearchTimer))
         </el-select>
         <el-button type="primary" :icon="Upload" @click="router.push({ name: 'AwardImport', params: { id: compID } })">导入获奖名单</el-button>
         <el-button type="success" :icon="Download" @click="handleExport">导出 Excel</el-button>
+        <el-button v-if="selectedAwards.length" type="danger" plain :icon="Delete" :loading="deletingAwardID === 'batch'" @click="deleteSelectedAwards">删除选中（{{ selectedAwards.length }}）</el-button>
       </div>
-      <el-table :data="pagedTeams" border :header-cell-style="{ textAlign: 'center' }" :cell-style="{ textAlign: 'center' }" style="margin-top: 18px" max-height="calc(100vh - 260px)">
-        <el-table-column type="index" label="序号" width="65" align="center" />
-        <el-table-column prop="project_name" label="参赛项目名称" min-width="240" show-overflow-tooltip align="center" />
-        <el-table-column prop="award_category" label="获奖类别" width="120" align="center" />
-        <el-table-column prop="award_name" label="获奖等级" width="140" align="center" />
-        <el-table-column prop="award_month" label="获奖时间" width="140" align="center" />
-        <el-table-column label="获奖成员" min-width="240" align="center"><template #default="{ row }"><el-button link type="primary" @click="memberTeam = row">{{ row.members.map(m => m.name).join('、') || '历史成员待核对' }}（{{ row.members.length }}人）</el-button></template></el-table-column>
-        <el-table-column label="指导老师" min-width="170" show-overflow-tooltip><template #default="{ row }">{{ advisorNames(row.advisor_info) }}</template></el-table-column>
-        <el-table-column prop="remark" label="备注" min-width="180" show-overflow-tooltip />
-        <el-table-column label="操作" width="140" align="center"><template #default="{ row }"><el-button v-if="row.can_edit_team" link type="primary" :icon="Edit" @click="openTeam(row)">修改获奖信息</el-button></template></el-table-column>
+      <el-table ref="awardTable" :data="pagedTeams" row-key="id" border :header-cell-style="{ textAlign: 'center' }" :cell-style="{ textAlign: 'center' }" style="margin-top: 18px" max-height="calc(100vh - 260px)" @selection-change="handleAwardSelectionChange">
+        <el-table-column type="selection" width="46" align="center" reserve-selection :selectable="isAwardSelectable" />
+        <el-table-column prop="project_name" label="参赛项目名称" min-width="200" show-overflow-tooltip align="center" />
+        <el-table-column prop="award_category" label="获奖类别" width="100" align="center" />
+        <el-table-column prop="award_name" label="获奖等级" width="115" align="center" />
+        <el-table-column prop="award_month" label="获奖时间" width="105" align="center" />
+        <el-table-column label="获奖成员（可点击查看）" min-width="230" align="center"><template #default="{ row }"><el-button link type="primary" @click="memberTeam = row">{{ row.members.map(m => m.name).join('、') || '历史成员待核对' }}</el-button></template></el-table-column>
+        <el-table-column label="指导老师" min-width="140" show-overflow-tooltip><template #default="{ row }">{{ advisorNames(row.advisor_info) }}</template></el-table-column>
+        <el-table-column prop="remark" label="备注" min-width="145" show-overflow-tooltip />
+        <el-table-column label="操作" width="190" align="center"><template #default="{ row }"><el-button v-if="row.can_edit_team" link type="primary" :icon="Edit" @click="openTeam(row)">修改</el-button><el-button v-if="row.can_delete" link type="danger" :icon="Delete" :loading="deletingAwardID === String(row.id)" :disabled="!!deletingAwardID && deletingAwardID !== String(row.id)" @click="deleteAward(row)">删除</el-button></template></el-table-column>
         <template #empty><el-empty v-if="dataLoaded" description="暂无数据" /></template>
       </el-table>
       <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="filteredTeams.length" :page-sizes="[10,20,50]" layout="total, sizes, prev, pager, next" style="margin-top: 18px; justify-content: flex-end" />

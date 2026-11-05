@@ -93,6 +93,8 @@ export const api = {
   // ==================== 获奖相关 ====================
   getAwardCompList: (params) => get('/api/award/list', params),
   getCompAwards: (comp_id) => get(`/api/award/comp-awards?comp_id=${comp_id}`),
+  deleteAward: (id) => del(`/api/award/${id}`),
+  batchDeleteAwards: (comp_id, ids) => post('/api/award/batch-delete', { comp_id: Number(comp_id), ids }),
   getAwardTemplate: (comp_id) => get(`/api/award/export-template?comp_id=${comp_id}`, {}, { responseType: 'blob' }),
   getUnifiedAwardTemplate: () => get('/api/award/import/unified/template', {}, { responseType: 'blob' }),
   previewUnifiedAwards: (rows) => post('/api/award/import/unified/preview', { rows }, { timeout: 120000, warningOnBadRequest: true }),
