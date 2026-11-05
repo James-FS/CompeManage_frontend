@@ -12,6 +12,22 @@ const userStore = useUserStore()
 const router = useRouter()
 const role = computed(() => userStore.role || 'student')
 
+const getTimeGreeting = () => {
+  const hour = Number(new Intl.DateTimeFormat('en', {
+    timeZone: 'Asia/Shanghai',
+    hour: '2-digit',
+    hourCycle: 'h23'
+  }).format(new Date()))
+
+  if (hour < 5 || hour >= 18) return '晚上好'
+  if (hour < 11) return '早上好'
+  if (hour < 13) return '中午好'
+  return '下午好'
+}
+
+const greeting = ref(getTimeGreeting())
+let greetingTimer = null
+
 const notices = ref([])
 
 const upcomingEvents = ref([])
@@ -202,6 +218,10 @@ watch(upcomingEvents, () => {
 }, { deep: true })
 
 onMounted(async () => {
+  greetingTimer = window.setInterval(() => {
+    greeting.value = getTimeGreeting()
+  }, 60 * 1000)
+
   await initHomeData()
   await nextTick()
   if (eventStackRef.value) {
@@ -214,6 +234,10 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  if (greetingTimer !== null) {
+    window.clearInterval(greetingTimer)
+    greetingTimer = null
+  }
   if (eventResizeObserver && eventStackRef.value) {
     eventResizeObserver.unobserve(eventStackRef.value)
     eventResizeObserver.disconnect()
@@ -227,7 +251,7 @@ onBeforeUnmount(() => {
 
     <div class="welcome-banner">
       <div class="banner-left">
-        <h1 class="greeting">下午好，{{ userStore.userInfo?.name }}</h1>
+        <h1 class="greeting">{{ greeting }}，{{ userStore.userInfo?.name }}</h1>
         <p class="sub-greeting">欢迎使用学科竞赛管理系统</p>
       </div>
       <div class="banner-right">
