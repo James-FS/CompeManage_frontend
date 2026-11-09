@@ -17,16 +17,19 @@ const allMembers = computed(() => {
   return [...leader, ...teammates]
 })
 
-const advisorInfo = computed(() => {
-  if (!detail.value.advisor_info) return null
+const advisorInfos = computed(() => {
+  if (!detail.value.advisor_info) return []
   try {
-    return typeof detail.value.advisor_info === 'string'
+    const parsed = typeof detail.value.advisor_info === 'string'
       ? JSON.parse(detail.value.advisor_info)
       : detail.value.advisor_info
+    const advisors = Array.isArray(parsed) ? parsed : parsed ? [parsed] : []
+    return advisors.filter((advisor) => advisor && (advisor.id || advisor.username || advisor.name))
   } catch (error) {
-    return null
+    return []
   }
 })
+const advisorNames = computed(() => advisorInfos.value.map((advisor) => advisor.name).filter(Boolean).join('、'))
 
 const parseFileList = (urlStr) => {
   if (!urlStr) return []
@@ -95,7 +98,7 @@ onMounted(() => {
           <el-descriptions-item label="负责人学号">{{ detail.stu_id || '-' }}</el-descriptions-item>
           <el-descriptions-item label="联系电话">{{ detail.phone || '-' }}</el-descriptions-item>
           <el-descriptions-item label="联系邮箱">{{ detail.email || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="指导老师">{{ advisorInfo?.name || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="指导老师">{{ advisorNames || '-' }}</el-descriptions-item>
           <el-descriptions-item label="提交时间">{{ detail.update_time || '-' }}</el-descriptions-item>
           <el-descriptions-item label="参赛赛道">{{ detail.track || '-' }}</el-descriptions-item>
         </el-descriptions>
