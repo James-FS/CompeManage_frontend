@@ -112,8 +112,8 @@ test.describe('数据看板页面', () => {
     const chartBoxes = page.locator('.chart-box')
     const chartCount = await chartBoxes.count()
 
-    // 页面应有 4 个图表容器：饼图、柱状图、漏斗图、折线图
-    expect(chartCount).toBeGreaterThanOrEqual(4)
+    // 页面至少有 3 个图表容器：环形图、横向柱状图、月度趋势；有获奖赛事时另有排名图
+    expect(chartCount).toBeGreaterThanOrEqual(3)
     console.log(`图表容器数量: ${chartCount}`)
 
     // 验证每个 chart-box 容器都已挂载到 DOM
@@ -122,7 +122,7 @@ test.describe('数据看板页面', () => {
     }
 
     // 验证图表对应的卡片标题可见
-    const chartHeaders = ['竞赛级别分布', '学院参与度分析', '流程转化漏斗', '月度趋势']
+    const chartHeaders = ['竞赛级别分布', '学院报名记录 Top 8', '流程节点统计', '月度趋势']
     for (const header of chartHeaders) {
       const card = page.locator('.el-card__header').filter({ hasText: header })
       await expect(card).toBeVisible()

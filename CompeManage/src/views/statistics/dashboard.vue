@@ -18,6 +18,10 @@ import api from '@/api/index'
 
 const router = useRouter()
 const loading = ref(false)
+const trendLoading = ref(false)
+const trendMonthsRange = ref(6)
+const trendRangeError = ref('')
+const statisticsRequestSequence = ref(0)
 
 const stats = reactive({
   totalCompetitions: 0,
@@ -39,17 +43,22 @@ const detailFilters = reactive({
   level: '',
   college: ''
 })
+const chartLimit = ref(10)
+const detailCurrentPage = ref(1)
+const detailPageSize = ref(10)
+const tableSort = reactive({ prop: 'award_count', order: 'descending' })
 
 const pieChartRef = ref(null)
 const barChartRef = ref(null)
 const trendChartRef = ref(null)
-const funnelChartRef = ref(null)
+const levelChartHasData = ref(false)
+const collegeChartHasData = ref(false)
+const trendChartHasData = ref(false)
 
 const chartInstances = reactive({
   pie: null,
   bar: null,
   trend: null,
-  funnel: null,
   compBar: null
 })
 
@@ -125,10 +134,117 @@ const buildCollegeBarData = (registerList) => {
   }
 }
 
-const buildLastSixMonths = () => {
+const buildLevelPieOption = (data) => {
+  const total = data.reduce((sum, item) => sum + safeNumber(item?.value), 0)
+  return {
+    tooltip: { trigger: 'item', formatter: '{b}<br/>赛事数量：{c}（{d}%）' },
+    legend: {
+      type: 'scroll',
+      bottom: 0,
+      left: 'center',
+      itemGap: 10,
+      formatter: (name) => {
+        const item = data.find((entry) => entry.name === name)
+        const percent = total ? (safeNumber(item?.value) / total * 100).toFixed(1) : '0.0'
+        return `${name}  ${safeNumber(item?.value)} 项 · ${percent}%`
+      }
+    },
+    graphic: [
+      {
+        type: 'text',
+        left: 'center',
+        top: '38%',
+        style: { text: '赛事总数', fill: '#667085', fontSize: 12, textAlign: 'center' }
+      },
+      {
+        type: 'text',
+        left: 'center',
+        top: '46%',
+        style: { text: String(total), fill: '#303133', fontSize: 22, fontWeight: 600, textAlign: 'center' }
+      }
+    ],
+    color: ['#2C6E9B', '#0F766E', '#B7791F', '#667A99'],
+    series: [{
+      type: 'pie',
+      radius: ['48%', '68%'],
+      center: ['50%', '44%'],
+      avoidLabelOverlap: true,
+      data,
+      label: { formatter: '{b} {d}%', fontSize: 11 },
+      labelLine: { length: 10, length2: 8 }
+    }]
+  }
+}
+
+const buildCollegeBarOption = (barData) => ({
+  tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+  grid: { left: 126, right: 34, top: 16, bottom: 34 },
+  xAxis: {
+    type: 'value',
+    min: 0,
+    name: '报名记录数',
+    nameLocation: 'end',
+    nameTextStyle: { color: '#667085', padding: [0, 0, 0, 8] },
+    axisLabel: { color: '#667085' },
+    splitLine: { lineStyle: { color: '#E5EAF0', type: 'dashed' } }
+  },
+  yAxis: {
+    type: 'category',
+    inverse: true,
+    data: barData.labels,
+    axisTick: { show: false },
+    axisLine: { show: false },
+    axisLabel: { color: '#475467', width: 108, overflow: 'truncate' }
+  },
+  series: [{
+    name: '报名记录数',
+    data: barData.values,
+    type: 'bar',
+    barMaxWidth: 20,
+    itemStyle: { color: '#2580BD', borderRadius: [0, 3, 3, 0] },
+    label: { show: true, position: 'right', color: '#344054', fontWeight: 600, distance: 8 }
+  }]
+})
+
+const renderLevelPieChart = (data) => {
+  levelChartHasData.value = data.some((item) => safeNumber(item?.value) > 0)
+  if (!levelChartHasData.value) {
+    chartInstances.pie?.dispose()
+    chartInstances.pie = null
+    return
+  }
+  nextTick(() => initOrUpdateChart('pie', pieChartRef, buildLevelPieOption(data)))
+}
+
+const renderCollegeBarChart = (barData) => {
+  collegeChartHasData.value = barData.values.some((value) => safeNumber(value) > 0)
+  if (!collegeChartHasData.value) {
+    chartInstances.bar?.dispose()
+    chartInstances.bar = null
+    return
+  }
+  nextTick(() => initOrUpdateChart('bar', barChartRef, buildCollegeBarOption(barData)))
+}
+
+const processStageDefinitions = [
+  { name: '已申报', unit: '申报记录' },
+  { name: '已报名', unit: '报名记录' },
+  { name: '已获奖', unit: '团队奖项' },
+  { name: '已归档总结', unit: '总结记录' }
+]
+const processStageStats = ref(processStageDefinitions.map((stage) => ({ ...stage, value: 0 })))
+const setProcessStageStats = (items) => {
+  const valueByName = new Map(safeArray(items).map((item) => [item?.name, safeNumber(item?.value)]))
+  processStageStats.value = processStageDefinitions.map((stage) => ({
+    ...stage,
+    value: valueByName.get(stage.name) || 0
+  }))
+}
+
+const buildRecentMonths = (monthCount = trendMonthsRange.value) => {
   const months = []
   const now = new Date()
-  for (let i = 5; i >= 0; i -= 1) {
+  for (let i = monthCount - 1; i >= 0; i -= 1) {
     const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
     months.push(`${date.getFullYear()}-${`${date.getMonth() + 1}`.padStart(2, '0')}`)
   }
@@ -143,6 +259,13 @@ const normalizeMonth = (timeString) => {
 }
 
 const normalizeText = (value) => String(value || '').trim()
+const escapeChartText = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;'
+}[character]))
 const normalizeCollegeText = (value) => {
   const text = normalizeText(value)
   if (!text || text === '未知学院') return '-'
@@ -197,53 +320,111 @@ const filteredCompetitionStats = computed(() => {
   })
 })
 
-const resetDetailFilters = () => {
-  detailFilters.name = ''
-  detailFilters.level = ''
-  detailFilters.college = ''
+const awardCompetitionCount = computed(() => filteredCompetitionStats.value
+  .filter((item) => safeNumber(item?.award_count) > 0).length)
+
+const chartCompetitionStats = computed(() => filteredCompetitionStats.value
+  .filter((item) => safeNumber(item?.award_count) > 0)
+  .slice()
+  .sort((a, b) => safeNumber(b?.award_count) - safeNumber(a?.award_count))
+  .slice(0, chartLimit.value))
+
+const sortedCompetitionStats = computed(() => {
+  const direction = tableSort.order === 'ascending' ? 1 : -1
+  return filteredCompetitionStats.value
+    .map((item, index) => ({ item, index }))
+    .sort((a, b) => {
+      const getValue = (row) => safeNumber(row?.[tableSort.prop])
+      const difference = (getValue(a.item) - getValue(b.item)) * direction
+      return difference || a.index - b.index
+    })
+    .map(({ item }) => item)
+})
+
+const paginatedCompetitionStats = computed(() => {
+  const start = (detailCurrentPage.value - 1) * detailPageSize.value
+  return sortedCompetitionStats.value.slice(start, start + detailPageSize.value)
+})
+
+const handleCompetitionSortChange = ({ prop, order }) => {
+  tableSort.prop = order && prop ? prop : 'award_count'
+  tableSort.order = order || 'descending'
+  detailCurrentPage.value = 1
 }
 
-// —— 各赛事详细统计：转化率列 ——
-const conversionRateText = (row) => {
-  const reg = safeNumber(row?.reg_count)
-  if (!reg) return '—'
-  return `${ratioToPercent(safeNumber(row?.award_count), reg)}%`
+const handleDetailPageSizeChange = () => {
+  detailCurrentPage.value = 1
 }
+
+watch(filteredCompetitionStats, () => {
+  detailCurrentPage.value = 1
+})
 
 // —— 各赛事详细统计：获奖人数柱状图（跟随筛选联动） ——
 const compBarChartRef = ref(null)
+const compBarChartHeight = computed(() => Math.max(220, chartCompetitionStats.value.length * 34 + 80))
+
 const renderCompBarChart = () => {
-  const list = filteredCompetitionStats.value
-  // 2026-10-29：全量赛事下柱多标签挤——名称截断缩短、旋转加大、留白随数量自适应
-  const labelLen = list.length > 30 ? 6 : 10
-  initOrUpdateChart('compBar', compBarChartRef, {
-    grid: { left: 56, right: 16, top: 36, bottom: Math.min(220, 90 + list.length * 2) },
+  const list = chartCompetitionStats.value
+  if (!compBarChartRef.value || !list.length) {
+    chartInstances.compBar?.dispose()
+    chartInstances.compBar = null
+    return
+  }
+
+  const chartWidth = compBarChartRef.value.clientWidth
+  const isNarrow = chartWidth < 560
+  const labelWidth = isNarrow ? 118 : 220
+  const maxNameLength = isNarrow ? 12 : 25
+
+  if (!chartInstances.compBar) {
+    chartInstances.compBar = echarts.init(compBarChartRef.value)
+  }
+  chartInstances.compBar.setOption({
+    grid: { left: labelWidth + 14, right: isNarrow ? 42 : 52, top: 20, bottom: 34 },
     tooltip: {
-      trigger: 'axis',
-      // 长名完整显示在 tooltip
-      valueFormatter: (value) => value
+      trigger: 'item',
+      formatter: (params) => `${escapeChartText(params.data.name)}<br/>获奖学生人次：${safeNumber(params.value)}`
     },
     xAxis: {
-      type: 'category',
-      data: list.map((i) => (getCompetitionName(i) || '').slice(0, labelLen)),
-      axisLabel: { rotate: list.length > 20 ? 55 : 42, interval: 0, fontSize: list.length > 30 ? 9 : 10 }
+      type: 'value',
+      min: 0,
+      name: '获奖人次',
+      nameLocation: 'end',
+      nameTextStyle: { color: '#667085', padding: [0, 0, 0, 8] },
+      axisLabel: { color: '#667085', hideOverlap: true },
+      splitLine: { lineStyle: { color: '#E5EAF0', type: 'dashed' } }
     },
-    yAxis: { type: 'value', name: '获奖人次' },
+    yAxis: {
+      type: 'category',
+      inverse: true,
+      data: list.map((item) => getCompetitionName(item)),
+      axisTick: { show: false },
+      axisLine: { show: false },
+      axisLabel: {
+        color: '#475467',
+        fontSize: 12,
+        width: labelWidth,
+        overflow: 'truncate',
+        formatter: (name) => name.length > maxNameLength ? `${name.slice(0, maxNameLength - 1)}…` : name
+      }
+    },
     series: [
       {
-        name: '获奖人数',
+        name: '获奖学生人次',
         type: 'bar',
-        barMaxWidth: 26,
-        data: list.map((i) => ({ value: safeNumber(i?.award_count), name: getCompetitionName(i) })),
-        itemStyle: { color: '#409EFF' }
+        barMaxWidth: 18,
+        data: list.map((item) => ({ value: safeNumber(item?.award_count), name: getCompetitionName(item) })),
+        itemStyle: { color: '#2580BD', borderRadius: [0, 3, 3, 0] },
+        label: { show: true, position: 'right', color: '#344054', fontWeight: 600, distance: 8 }
       }
     ]
-  })
+  }, true)
 }
-watch(filteredCompetitionStats, () => nextTick(renderCompBarChart))
+watch(chartCompetitionStats, () => nextTick(renderCompBarChart))
 
 // —— 一键导出上报 Excel（附件1+附件2+汇总表） ——
-const reportYear = ref('')
+const reportYear = ref(String(new Date().getFullYear()))
 const exportingReport = ref(false)
 const exportReport = async () => {
   exportingReport.value = true
@@ -267,8 +448,8 @@ const exportReport = async () => {
   }
 }
 
-const buildTrendData = (registerList, awardList) => {
-  const months = buildLastSixMonths()
+const buildTrendData = (registerList, awardList, monthCount = trendMonthsRange.value) => {
+  const months = buildRecentMonths(monthCount)
   const regMap = Object.fromEntries(months.map((m) => [m, 0]))
   const awardMap = Object.fromEntries(months.map((m) => [m, 0]))
 
@@ -289,50 +470,56 @@ const buildTrendData = (registerList, awardList) => {
   }
 }
 
-// 月度趋势：无数据（无月份或两列全为 0）时与学院参与度一致，用「暂无数据」占位
 const buildTrendOption = (months, regSeries, awardSeries) => {
   const hasData = months.length > 0 && (hasPositiveValue(regSeries) || hasPositiveValue(awardSeries))
   return {
-    title: { text: '近6个月趋势', textStyle: { fontSize: 14 } },
+    title: { text: `近${months.length}个月`, textStyle: { fontSize: 13, color: '#667085' } },
     tooltip: { trigger: 'axis' },
-    legend: { data: ['报名数', '团队奖项数'], right: 10, top: 8 },
-    grid: { left: 40, right: 20, bottom: 35, top: 45 },
-    xAxis: { type: 'category', data: hasData ? months : ['暂无数据'] },
-    yAxis: { type: 'value' },
+    legend: { data: ['报名记录', '团队奖项记录'], right: 10, top: 8 },
+    grid: { left: 48, right: 20, bottom: 35, top: 44 },
+    xAxis: {
+      type: 'category',
+      data: hasData ? months : ['暂无数据'],
+      axisLabel: { interval: 0, hideOverlap: true, color: '#667085' },
+      axisLine: { lineStyle: { color: '#D0D5DD' } }
+    },
+    yAxis: {
+      type: 'value',
+      minInterval: 1,
+      axisLabel: { color: '#667085' },
+      splitLine: { lineStyle: { color: '#E5EAF0', type: 'dashed' } }
+    },
     series: [
-      { name: '报名数', type: 'line', smooth: true, data: hasData ? regSeries : [0] },
-      { name: '团队奖项数', type: 'line', smooth: true, data: hasData ? awardSeries : [0] }
+      {
+        name: '报名记录',
+        type: 'line',
+        symbol: 'circle',
+        symbolSize: 6,
+        data: hasData ? regSeries : [0],
+        itemStyle: { color: '#2580BD' },
+        lineStyle: { color: '#2580BD', width: 2 }
+      },
+      {
+        name: '团队奖项记录',
+        type: 'line',
+        symbol: 'diamond',
+        symbolSize: 7,
+        data: hasData ? awardSeries : [0],
+        itemStyle: { color: '#0F766E' },
+        lineStyle: { color: '#0F766E', width: 2, type: 'dashed' }
+      }
     ]
   }
 }
 
-// 流程漏斗：后端固定返回四个阶段，全为 0 视为无数据；无数据时卡片内展示 el-empty
-// 注：不用 ECharts graphic 画空状态文字，ECharts 6 下 left/top 关键字定位不生效
-const funnelHasData = ref(true)
-
-const buildFunnelOption = (funnelItems) => ({
-  title: { text: '流程漏斗（申报→报名→获奖→总结）', textStyle: { fontSize: 14 } },
-  tooltip: { trigger: 'item' },
-  series: [{
-    type: 'funnel',
-    left: '10%',
-    top: 45,
-    bottom: 10,
-    width: '80%',
-    min: 0,
-    max: Math.max(...funnelItems.map((item) => item.value), 1),
-    sort: 'descending',
-    label: { show: true, position: 'inside' },
-    data: funnelItems
-  }]
-})
-
-const setFunnelData = (funnelItems) => {
-  funnelHasData.value = funnelItems.length > 0 && hasPositiveValue(funnelItems.map((item) => item.value))
-  if (!funnelHasData.value) return
-  nextTick(() => {
-    initOrUpdateChart('funnel', funnelChartRef, buildFunnelOption(funnelItems))
-  })
+const renderTrendChart = (months, regSeries, awardSeries) => {
+  trendChartHasData.value = months.length > 0 && (hasPositiveValue(regSeries) || hasPositiveValue(awardSeries))
+  if (!trendChartHasData.value) {
+    chartInstances.trend?.dispose()
+    chartInstances.trend = null
+    return
+  }
+  nextTick(() => initOrUpdateChart('trend', trendChartRef, buildTrendOption(months, regSeries, awardSeries)))
 }
 
 const normalizeDashboardPayload = (payload) => {
@@ -367,42 +554,15 @@ const normalizeDashboardPayload = (payload) => {
   const trendRegs = safeArray(trend.registrations).map((item) => safeNumber(item))
   const trendAwards = safeArray(trend.awards).map((item) => safeNumber(item))
 
-  initOrUpdateChart('pie', pieChartRef, {
-    title: { text: '赛事级别占比', left: 'center', textStyle: { fontSize: 14 } },
-    tooltip: { trigger: 'item' },
-    legend: { bottom: 0 },
-    series: [{
-      type: 'pie',
-      radius: ['40%', '65%'],
-      data: pieData,
-      label: { formatter: '{b}: {d}%' }
-    }]
-  })
-
-  initOrUpdateChart('bar', barChartRef, {
-    title: { text: '学院参与度（报名 Top8）', textStyle: { fontSize: 14 } },
-    tooltip: { trigger: 'axis' },
-    grid: { left: 40, right: 20, bottom: 50, top: 45 },
-    xAxis: {
-      type: 'category',
-      data: barLabels,
-      axisLabel: { interval: 0, rotate: 20 }
-    },
-    yAxis: { type: 'value' },
-    series: [{
-      data: barValues,
-      type: 'bar',
-      barWidth: 22
-    }]
-  })
-
-  initOrUpdateChart('trend', trendChartRef, buildTrendOption(trendMonths, trendRegs, trendAwards))
+  renderLevelPieChart(pieData)
+  renderCollegeBarChart({ labels: barLabels, values: barValues })
+  renderTrendChart(trendMonths, trendRegs, trendAwards)
 
   const funnelData = safeArray(payload?.funnel).map((item) => ({
     name: item.name,
     value: safeNumber(item.value)
   }))
-  setFunnelData(funnelData)
+  setProcessStageStats(funnelData)
 }
 
 const renderCharts = ({ competitionList, registerList, awardList, funnelData }) => {
@@ -410,46 +570,33 @@ const renderCharts = ({ competitionList, registerList, awardList, funnelData }) 
   const barData = buildCollegeBarData(registerList)
   const trendData = buildTrendData(registerList, awardList)
 
-  initOrUpdateChart('pie', pieChartRef, {
-    title: { text: '赛事级别占比', left: 'center', textStyle: { fontSize: 14 } },
-    tooltip: { trigger: 'item' },
-    legend: { bottom: 0 },
-    series: [{
-      type: 'pie',
-      radius: ['40%', '65%'],
-      data: pieData,
-      label: { formatter: '{b}: {d}%' }
-    }]
-  })
+  renderLevelPieChart(pieData)
+  renderCollegeBarChart(barData)
+  renderTrendChart(trendData.months, trendData.regSeries, trendData.awardSeries)
 
-  initOrUpdateChart('bar', barChartRef, {
-    title: { text: '学院参与度（报名 Top8）', textStyle: { fontSize: 14 } },
-    tooltip: { trigger: 'axis' },
-    grid: { left: 40, right: 20, bottom: 50, top: 45 },
-    xAxis: {
-      type: 'category',
-      data: barData.labels,
-      axisLabel: { interval: 0, rotate: 20 }
-    },
-    yAxis: { type: 'value' },
-    series: [{
-      data: barData.values,
-      type: 'bar',
-      barWidth: 22
-    }]
-  })
-
-  initOrUpdateChart('trend', trendChartRef, buildTrendOption(trendData.months, trendData.regSeries, trendData.awardSeries))
-
-  setFunnelData(funnelData)
+  setProcessStageStats(funnelData)
 }
 
-const fetchStatistics = async () => {
-  loading.value = true
+const fetchStatistics = async ({ showLoading = true, showTrendLoading = false } = {}) => {
+  const requestSequence = ++statisticsRequestSequence.value
+  if (showLoading) loading.value = true
+  if (showTrendLoading) {
+    trendLoading.value = true
+    trendRangeError.value = ''
+  }
   try {
-    const dashboardRes = await api.getStatisticsDashboard({ months: 6 })
+    const dashboardRes = await api.getStatisticsDashboard({ months: trendMonthsRange.value })
+    if (requestSequence !== statisticsRequestSequence.value) return
     if (dashboardRes?.code === 200 && dashboardRes?.data) {
+      const returnedMonths = safeArray(dashboardRes.data?.trend?.months).length
+      if (returnedMonths !== trendMonthsRange.value) {
+        trendRangeError.value = `所选近 ${trendMonthsRange.value} 个月，但接口返回 ${returnedMonths} 个月数据；请重启后端后重试。`
+        renderTrendChart([], [], [])
+        ElMessage.warning(trendRangeError.value)
+        return
+      }
       await nextTick()
+      if (requestSequence !== statisticsRequestSequence.value) return
       normalizeDashboardPayload(dashboardRes.data)
       return
     }
@@ -469,6 +616,7 @@ const fetchStatistics = async () => {
       api.getAwardAuditList({ page: 1, page_size: 500 }),
       api.getSummaryList({ page: 1, page_size: 500 })
     ])
+    if (requestSequence !== statisticsRequestSequence.value) return
 
     const competitionResp = compRes.status === 'fulfilled' ? compRes.value : null
     const registerResp = regRes.status === 'fulfilled' ? regRes.value : null
@@ -540,13 +688,32 @@ const fetchStatistics = async () => {
     ]
 
     await nextTick()
+    if (requestSequence !== statisticsRequestSequence.value) return
     renderCharts({ competitionList, registerList, awardList, funnelData })
   } catch (error) {
-    console.error('获取统计数据失败', error)
+    if (requestSequence === statisticsRequestSequence.value) {
+      console.error('获取统计数据失败', error)
+      if (showTrendLoading || !trendChartHasData.value) {
+        trendRangeError.value = '趋势数据加载失败，请检查网络后重试。'
+        renderTrendChart([], [], [])
+      }
+    }
   } finally {
-    loading.value = false
+    if (requestSequence === statisticsRequestSequence.value) {
+      loading.value = false
+      trendLoading.value = false
+    }
   }
 }
+
+const handleTrendRangeChange = (value) => {
+  const monthCount = Number(value)
+  if (![6, 12].includes(monthCount) || monthCount === trendMonthsRange.value) return
+  trendMonthsRange.value = monthCount
+  reloadTrendRange()
+}
+
+const reloadTrendRange = () => fetchStatistics({ showLoading: false, showTrendLoading: true })
 
 const loadCollegeList = async () => {
   try {
@@ -561,6 +728,7 @@ const loadCollegeList = async () => {
 
 const handleResize = () => {
   Object.values(chartInstances).forEach((chart) => chart?.resize())
+  if (chartInstances.compBar) nextTick(renderCompBarChart)
 }
 
 const goPage = (path) => {
@@ -612,31 +780,89 @@ onBeforeUnmount(() => {
 
     <p style="color: #606266; margin: 12px 0">已通过获奖学生人次：{{ stats.totalAwardStudents }}；团队奖项与学生人数分别统计，未报名获奖也计入。</p>
     <el-row :gutter="16" class="chart-row">
-      <el-col :span="8">
+      <el-col :xs="24" :sm="12" :md="8">
         <el-card header="竞赛级别分布" shadow="never">
-          <div ref="pieChartRef" class="chart-box"></div>
+          <div
+            v-if="levelChartHasData"
+            ref="pieChartRef"
+            class="chart-box"
+            role="img"
+            aria-label="赛事级别分布，环形图展示各级别赛事数量和占比，中心显示赛事总数。"
+          ></div>
+          <div v-else class="chart-box chart-empty">
+            <el-empty description="暂无赛事级别数据" :image-size="80" />
+          </div>
         </el-card>
       </el-col>
-      <el-col :span="8">
-        <el-card header="学院参与度分析" shadow="never">
-          <div ref="barChartRef" class="chart-box"></div>
+      <el-col :xs="24" :sm="12" :md="8">
+        <el-card header="学院报名记录 Top 8" shadow="never">
+          <div
+            v-if="collegeChartHasData"
+            ref="barChartRef"
+            class="chart-box"
+            role="img"
+            aria-label="学院报名记录排名，横向条形图按报名记录数从高到低显示前八个学院。"
+          ></div>
+          <div v-else class="chart-box chart-empty">
+            <el-empty description="暂无报名记录" :image-size="80" />
+          </div>
         </el-card>
       </el-col>
-      <el-col :span="8">
-        <el-card header="流程转化漏斗" shadow="never">
-          <div v-if="funnelHasData" ref="funnelChartRef" class="chart-box"></div>
-          <el-empty v-else description="暂无数据" :image-size="80" />
+      <el-col :xs="24" :sm="12" :md="8">
+        <el-card header="流程节点统计" shadow="never" class="process-card">
+          <p class="process-note">按记录类型分别统计，不代表同一批赛事的转化率。</p>
+          <div class="process-stages" role="list" aria-label="流程节点统计">
+            <div v-for="(stage, index) in processStageStats" :key="stage.name" class="process-stage" role="listitem">
+              <span class="process-index" aria-hidden="true">{{ index + 1 }}</span>
+              <div class="process-copy">
+                <span class="process-name">{{ stage.name }}</span>
+                <span class="process-unit">{{ stage.unit }}</span>
+              </div>
+              <strong class="process-value">{{ stage.value }}</strong>
+            </div>
+          </div>
         </el-card>
       </el-col>
     </el-row>
 
     <el-row :gutter="16" class="chart-row secondary-row">
-      <el-col :span="16">
-        <el-card header="月度趋势" shadow="never">
-          <div ref="trendChartRef" class="chart-box trend"></div>
+      <el-col :xs="24" :sm="24" :md="16">
+        <el-card shadow="never">
+          <template #header>
+            <div class="trend-card-header">
+              <span>月度趋势</span>
+              <el-radio-group
+                :model-value="trendMonthsRange"
+                size="small"
+                aria-label="选择趋势月份范围"
+                :disabled="loading || trendLoading"
+                @change="handleTrendRangeChange"
+              >
+                <el-radio-button :value="6">近 6 个月</el-radio-button>
+                <el-radio-button :value="12">近 12 个月</el-radio-button>
+              </el-radio-group>
+            </div>
+          </template>
+          <div class="trend-panel" v-loading="trendLoading">
+            <div v-if="trendRangeError" class="chart-box trend chart-empty">
+              <el-empty :description="trendRangeError" :image-size="80">
+                <el-button size="small" type="primary" plain :disabled="trendLoading" @click="reloadTrendRange">重试</el-button>
+              </el-empty>
+            </div>
+            <div
+              v-else-if="trendChartHasData"
+              ref="trendChartRef"
+              class="chart-box trend"
+              role="img"
+              :aria-label="`近 ${trendMonthsRange} 个月报名记录和团队奖项记录数量趋势。`"
+            ></div>
+            <div v-else class="chart-box trend chart-empty">
+              <el-empty :description="`近 ${trendMonthsRange} 个月暂无趋势数据`" :image-size="80" />
+            </div>
+          </div>
         </el-card>
       </el-col>
-      <el-col :span="8">
+      <el-col :xs="24" :sm="24" :md="8">
         <el-card header="关键待办" shadow="never" class="todo-card">
           <div class="todo-list" v-if="hasTodoItems">
             <div class="todo-item" v-for="item in todoList" :key="item.title">
@@ -659,12 +885,14 @@ onBeforeUnmount(() => {
             <el-input
               v-model="detailFilters.name"
               placeholder="按赛事名称筛选"
+              aria-label="按赛事名称筛选"
               clearable
               class="filter-item name"
             />
             <el-select
               v-model="detailFilters.level"
               placeholder="按级别筛选"
+              aria-label="按赛事级别筛选"
               clearable
               class="filter-item"
             >
@@ -678,6 +906,7 @@ onBeforeUnmount(() => {
             <el-select
               v-model="detailFilters.college"
               placeholder="按所属学院筛选"
+              aria-label="按所属学院筛选"
               clearable
               class="filter-item"
             >
@@ -688,7 +917,6 @@ onBeforeUnmount(() => {
                 :value="item"
               />
             </el-select>
-            <el-button @click="resetDetailFilters">重置</el-button>
             <el-date-picker
               v-model="reportYear"
               type="year"
@@ -702,8 +930,46 @@ onBeforeUnmount(() => {
               导出上报Excel（附件1+附件2+汇总表）
             </el-button>
           </div>
-          <div ref="compBarChartRef" class="chart-box comp-bar"></div>
-          <el-table :data="filteredCompetitionStats" border stripe style="width: 100%">
+          <div class="ranking-heading">
+            <div class="ranking-copy">
+              <h3>获奖赛事人次排名</h3>
+            </div>
+            <div class="ranking-controls">
+              <el-radio-group v-model="chartLimit" size="small" aria-label="选择排名显示数量">
+                <el-radio-button :value="10">前 10</el-radio-button>
+                <el-radio-button :value="20">前 20</el-radio-button>
+                <el-radio-button :value="50">前 50</el-radio-button>
+              </el-radio-group>
+            </div>
+          </div>
+          <div
+            v-if="chartCompetitionStats.length"
+            ref="compBarChartRef"
+            class="chart-box comp-bar"
+            role="img"
+            :aria-label="`获奖赛事人次排名，当前筛选中有 ${awardCompetitionCount} 项赛事获奖，按获奖学生人次从高到低排列。`"
+            :style="{ height: `${compBarChartHeight}px` }"
+          ></div>
+          <div
+            v-else
+            class="chart-box comp-bar chart-empty"
+            :style="{ height: `${compBarChartHeight}px` }"
+          >
+            <el-empty description="当前筛选下暂无获奖赛事，全部赛事仍可在下方明细中查看。" :image-size="72" />
+          </div>
+
+          <div class="detail-table-heading">
+            <h3>赛事明细</h3>
+            <span>共 {{ sortedCompetitionStats.length }} 项</span>
+          </div>
+          <el-table
+            :data="paginatedCompetitionStats"
+            :default-sort="{ prop: 'award_count', order: 'descending' }"
+            @sort-change="handleCompetitionSortChange"
+            border
+            stripe
+            style="width: 100%"
+          >
             <el-table-column prop="comp_name" label="赛事名称" min-width="200" align="center" show-overflow-tooltip />
             <el-table-column prop="comp_level" label="级别" width="100" align="center">
               <template #default="scope">
@@ -715,12 +981,9 @@ onBeforeUnmount(() => {
                 {{ getCompetitionCollege(scope.row) }}
               </template>
             </el-table-column>
-            <el-table-column prop="reg_count" label="报名数" width="120" align="center" sortable />
-            <el-table-column prop="award_count" label="获奖学生人次" width="140" align="center" sortable />
-            <el-table-column label="获奖转化率" width="110" align="center" sortable :sort-method="(a, b) => ratioToPercent(safeNumber(a?.award_count), safeNumber(a?.reg_count)) - ratioToPercent(safeNumber(b?.award_count), safeNumber(b?.reg_count))">
-              <template #default="scope">{{ conversionRateText(scope.row) }}</template>
-            </el-table-column>
-            <el-table-column prop="award_team_count" label="团队奖项数" width="120" align="center" sortable />
+            <el-table-column prop="reg_count" label="报名数" width="120" align="center" sortable="custom" />
+            <el-table-column prop="award_count" label="获奖学生人次" width="140" align="center" sortable="custom" />
+            <el-table-column prop="award_team_count" label="团队奖项数" width="120" align="center" sortable="custom" />
             <el-table-column label="总结归档" width="120" align="center">
               <template #default="scope">
                 <el-tag :type="scope.row.summary_status === 1 ? 'success' : 'info'">
@@ -738,6 +1001,17 @@ onBeforeUnmount(() => {
               <el-empty description="暂无数据" />
             </template>
           </el-table>
+          <div v-if="sortedCompetitionStats.length" class="detail-pagination">
+            <el-pagination
+              v-model:current-page="detailCurrentPage"
+              v-model:page-size="detailPageSize"
+              :page-sizes="[10, 20, 50]"
+              :total="sortedCompetitionStats.length"
+              layout="total, sizes, prev, pager, next, jumper"
+              background
+              @size-change="handleDetailPageSizeChange"
+            />
+          </div>
         </el-card>
       </el-col>
     </el-row>
@@ -792,6 +1066,14 @@ onBeforeUnmount(() => {
 
   .chart-row {
     margin-top: 16px;
+
+    :deep(.el-col) {
+      display: flex;
+    }
+
+    :deep(.el-card) {
+      width: 100%;
+    }
   }
 
   .detail-filter-bar {
@@ -810,14 +1092,161 @@ onBeforeUnmount(() => {
     }
   }
 
-  .chart-box.comp-bar { height: 280px; }
+  .ranking-heading {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    margin-top: 8px;
+    padding: 14px 0 8px;
+    border-top: 1px solid #edf0f4;
+  }
+
+  .ranking-copy h3,
+  .detail-table-heading h3 {
+    margin: 0;
+    color: #303133;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+
+  .ranking-controls {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 8px;
+    color: #667085;
+    font-size: 13px;
+  }
+
+  .chart-box.comp-bar {
+    width: 100%;
+    margin-top: 8px;
+  }
+
+  .detail-table-heading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 18px 0 10px;
+
+    span {
+      color: #667085;
+      font-size: 13px;
+    }
+  }
+
+  .detail-pagination {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 16px;
+  }
+
+  .process-note {
+    margin: 0 0 10px;
+    color: #667085;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .process-card {
+    display: flex;
+    flex-direction: column;
+
+    :deep(.el-card__body) {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+    }
+  }
+
+  .process-stages {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    justify-content: space-around;
+  }
+
+  .process-stage {
+    position: relative;
+    display: grid;
+    grid-template-columns: 24px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    min-height: 52px;
+    border-bottom: 1px solid #f0f2f5;
+
+    &:last-child { border-bottom: 0; }
+  }
+
+  .process-index {
+    z-index: 1;
+    display: grid;
+    width: 24px;
+    height: 24px;
+    place-items: center;
+    border-radius: 50%;
+    background: #edf5fb;
+    color: #286f9e;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .process-copy {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .process-name {
+    color: #344054;
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .process-unit {
+    color: #667085;
+    font-size: 12px;
+  }
+
+  .process-value {
+    color: #303133;
+    font-size: 18px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .trend-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+
+    > span {
+      color: #303133;
+      font-size: 16px;
+      font-weight: 600;
+    }
+  }
+
   .chart-box {
     height: 320px;
     width: 100%;
 
+    &.chart-empty {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
     &.trend {
       height: 360px;
     }
+  }
+
+  .trend-panel {
+    width: 100%;
   }
 
   .secondary-row {
@@ -863,6 +1292,52 @@ onBeforeUnmount(() => {
             color: #f56c6c;
           }
         }
+      }
+    }
+  }
+
+  @media (max-width: 768px) {
+    padding: 12px;
+
+    .detail-filter-bar {
+      gap: 8px;
+
+      .filter-item,
+      .filter-item.name {
+        width: 100% !important;
+      }
+
+      :deep(.el-button) {
+        max-width: 100%;
+        height: auto;
+        min-height: 32px;
+        white-space: normal;
+      }
+    }
+
+    .ranking-heading {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+
+    .ranking-controls {
+      width: 100%;
+      justify-content: space-between;
+    }
+
+    .trend-card-header {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+
+    .detail-pagination {
+      justify-content: center;
+
+      :deep(.el-pagination) {
+        height: auto;
+        flex-wrap: wrap;
+        justify-content: center;
+        row-gap: 8px;
       }
     }
   }
