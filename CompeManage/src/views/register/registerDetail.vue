@@ -60,14 +60,7 @@ const formData = reactive({
   // 队员列表 - 默认为空
   members: [],
   fileList: [],
-  advisorInfo: {
-    id: null,
-    username: '',
-    name: '',
-    phone: '',
-    email: '',
-    college: '',
-  },
+  advisorInfo: [],
   trackName: '', // 选择的赛道
   subTrackTitle: '', // 选择的赛题（子赛道）
   track: '', // 提交给后端的赛道字符串
@@ -217,6 +210,7 @@ const studentDialogVisible = ref(false)
 const studentLoading = ref(false)
 const studentList = ref([])
 const currentMemberEditIndex = ref(-1) // -1表示新增，>=0表示编辑第几个成员
+const currentAdvisorEditIndex = ref(-1) // -1表示新增，>=0表示替换已选指导老师
 const searchForm = reactive({
   name: '',
   username: '',
@@ -229,20 +223,23 @@ const studentTotal = ref(0)
 // ==================== 学生选择相关方法 ====================
 
 // 打开学生选择弹窗
-const openStudentSelect = (target = -1) => {
+const openStudentSelect = (target = -1, advisorIndex = -1) => {
   searchForm.name = ''; searchForm.username = ''; searchForm.college = ''; studentCurrentPage.value = 1
   if (target === 'advisor') {
-    //  选择指导老师
+    // 添加或替换指导老师
     isSelectingAdvisor.value = true
     isSelectingLeader.value = false
     currentMemberEditIndex.value = -1
+    currentAdvisorEditIndex.value = advisorIndex
   } else if (target === 'leader') {
     isSelectingLeader.value = true
     isSelectingAdvisor.value = false
     currentMemberEditIndex.value = -1
+    currentAdvisorEditIndex.value = -1
   } else {
     isSelectingLeader.value = false
     isSelectingAdvisor.value = false
+    currentAdvisorEditIndex.value = -1
     currentMemberEditIndex.value = target // -1 表示新增成员，>=0 表示编辑成员
   }
   studentDialogVisible.value = true
@@ -279,20 +276,30 @@ const handleDialogClose = () => {
   isSelectingLeader.value = false
   isSelectingAdvisor.value = false
   currentMemberEditIndex.value = -1
+  currentAdvisorEditIndex.value = -1
 }
 
 //  确认选择学生
 const selectStudent = (row) => {
   if (isSelectingAdvisor.value) {
-    formData.advisorInfo = {
+    const isDuplicate = formData.advisorInfo.some((advisor, index) =>
+      advisor.username === row.username && index !== currentAdvisorEditIndex.value
+    )
+    if (isDuplicate) return ElMessage.warning('该老师已添加，请勿重复选择')
+
+    const advisor = {
       id: row.id,
       username: row.username,
       name: row.name,
-      phone: '', // 前端手动填写
-      email: '', // 前端手动填写
       college: row.college || '',
     }
-    ElMessage.success(`已选择指导老师：${row.name}`)
+    if (currentAdvisorEditIndex.value >= 0) {
+      formData.advisorInfo.splice(currentAdvisorEditIndex.value, 1, advisor)
+      ElMessage.success(`已更新指导老师：${row.name}`)
+    } else {
+      formData.advisorInfo.push(advisor)
+      ElMessage.success(`已添加指导老师：${row.name}`)
+    }
   } else if (isSelectingLeader.value) {
     if (formData.members.some(m => m.stuID === row.username)) return ElMessage.warning('该学生已在团队中，请勿重复选择')
     // 选择队长
@@ -332,6 +339,7 @@ const selectStudent = (row) => {
   studentDialogVisible.value = false
   isSelectingLeader.value = false
   isSelectingAdvisor.value = false
+  currentAdvisorEditIndex.value = -1
 }
 
 // ==================== 原有方法 ====================
@@ -377,6 +385,10 @@ function removeMember(index) {
   formData.members.splice(index, 1)
 }
 
+function removeAdvisor(index) {
+  formData.advisorInfo.splice(index, 1)
+}
+
 async function checkRegStatus() {
   const compID = Number(route.params.id)
   try {
@@ -411,18 +423,20 @@ async function checkRegStatus() {
       if (data.advisor_info) {
         try {
           // 如果是 JSON 字符串，先解析
-          const advisorData = typeof data.advisor_info === 'string' 
-            ? JSON.parse(data.advisor_info) 
+          const parsedAdvisorData = typeof data.advisor_info === 'string'
+            ? JSON.parse(data.advisor_info)
             : data.advisor_info
-          
-          formData.advisorInfo = {
-            id: advisorData.id || null,
-            username: advisorData.username || '',
-            name: advisorData.name || '',
-            phone: advisorData.phone || '',
-            email: advisorData.email || '',
-            college: advisorData.college || '',
-          }
+          const advisorList = Array.isArray(parsedAdvisorData)
+            ? parsedAdvisorData
+            : parsedAdvisorData ? [parsedAdvisorData] : []
+          formData.advisorInfo = advisorList.filter(advisor => advisor && (advisor.id || advisor.username || advisor.name)).map(advisor => ({
+            id: advisor.id || null,
+            username: advisor.username || '',
+            name: advisor.name || '',
+            phone: advisor.phone || '',
+            email: advisor.email || '',
+            college: advisor.college || '',
+          }))
         } catch (e) {
           console.error('解析指导老师信息失败:', e)
         }
@@ -546,7 +560,7 @@ async function submitVerify() {
     return
   }
   
-  if (need_advisor.value === 2 && !formData.advisorInfo.name) {
+  if (need_advisor.value === 2 && formData.advisorInfo.length === 0) {
     ElMessage.error('该赛事要求必须选择指导老师')
     return
   }
@@ -576,7 +590,9 @@ async function submitForm(attachmentURL) {
     leader: formData.leader,
     members: participationType.value === 'team' ? formData.members : [],
     attachment_url: attachmentURL,
-    advisor_info: need_advisor.value > 0 && formData.advisorInfo.name ? { id: formData.advisorInfo.id, username: formData.advisorInfo.username, name: formData.advisorInfo.name, college: formData.advisorInfo.college } : null,
+    advisor_info: need_advisor.value > 0
+      ? formData.advisorInfo.map(({ id, username, name, college }) => ({ id, username, name, college }))
+      : null,
     track: formData.track, // 新增：提交赛道
   }
   try {
@@ -956,53 +972,50 @@ onMounted(async () => {
                 指导老师信息
                 <span v-if="need_advisor === 2" class="required-mark">*</span>
               </h3>
-              <el-button
-                v-if="!isReadOnly && !formData.advisorInfo.name"
-                link
-                type="primary"
-                @click="openStudentSelect('advisor')"
-                :icon="Plus"
-              >
-                选择指导老师
-              </el-button>
-              <el-button
-                v-if="!isReadOnly && formData.advisorInfo.name"
-                link
-                type="primary"
-                @click="openStudentSelect('advisor')"
-              >
-                重新选择
+              <el-button v-if="!isReadOnly" link type="primary" @click="openStudentSelect('advisor')" :icon="Plus">
+                添加指导老师
               </el-button>
             </div>
 
-            <div class="info-grid">
+            <div class="member-grid-container">
               <el-empty
-                v-if="!formData.advisorInfo.name"
-                description="请先选择指导老师"
-                :image-size="80"
+                v-if="formData.advisorInfo.length === 0"
+                description="请点击上方按钮添加指导老师"
+                :image-size="60"
               />
 
-              <el-row v-else :gutter="20">
-                <el-col :span="8" :xs="24">
-                  <el-form-item label="姓名">
-                    <el-input v-model="formData.advisorInfo.name" :disabled="true" />
-                  </el-form-item>
-                </el-col>
-                <el-col :span="8" :xs="24">
-                  <el-form-item label="工号">
-                    <el-input v-model="formData.advisorInfo.username" :disabled="true" />
-                  </el-form-item>
-                </el-col>
-                <el-col :span="8" :xs="24">
-                  <el-form-item label="所属部门">
-                    <el-input
-                      v-model="formData.advisorInfo.college"
-                      placeholder="所属部门"
-                      :disabled="true"
-                    />
-                  </el-form-item>
-                </el-col>
-              </el-row>
+              <div v-for="(advisor, i) in formData.advisorInfo" :key="advisor.username || advisor.id || i" class="member-card">
+                <div class="card-header">
+                  <span class="member-index">指导老师 {{ i + 1 }}</span>
+                  <div v-if="!isReadOnly">
+                    <el-button type="primary" link size="small" @click="openStudentSelect('advisor', i)">
+                      重新选择
+                    </el-button>
+                    <el-button type="danger" link :icon="Delete" @click="removeAdvisor(i)">
+                      删除
+                    </el-button>
+                  </div>
+                </div>
+                <div class="card-body">
+                  <el-row :gutter="20">
+                    <el-col :span="8" :xs="24">
+                      <el-form-item label="姓名">
+                        <el-input :model-value="advisor.name" disabled />
+                      </el-form-item>
+                    </el-col>
+                    <el-col :span="8" :xs="24">
+                      <el-form-item label="工号">
+                        <el-input :model-value="advisor.username" disabled />
+                      </el-form-item>
+                    </el-col>
+                    <el-col :span="8" :xs="24">
+                      <el-form-item label="所属部门">
+                        <el-input :model-value="advisor.college" disabled />
+                      </el-form-item>
+                    </el-col>
+                  </el-row>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -1061,10 +1074,10 @@ onMounted(async () => {
             style="width: 120px"
           />
         </el-form-item>
-        <el-form-item label="学号">
+        <el-form-item :label="isSelectingAdvisor ? '工号' : '学号'">
           <el-input
             v-model="searchForm.username"
-            placeholder="输入学号"
+            :placeholder="isSelectingAdvisor ? '输入工号' : '输入学号'"
             clearable
             @input="debouncedSearch"
             @clear="fetchStudentList"
@@ -1101,7 +1114,7 @@ onMounted(async () => {
       height="350"
       style="width: 100%"
     >
-      <el-table-column prop="username" label="学号" width="120" align="center" />
+      <el-table-column prop="username" :label="isSelectingAdvisor ? '工号' : '学号'" width="120" align="center" />
       <el-table-column prop="name" label="姓名" width="120" align="center" />
       <el-table-column prop="college" :label="isSelectingAdvisor ? '所属部门' : '所属学院'" min-width="200" align="center" />
       <el-table-column label="操作" width="100" align="center" fixed="right">

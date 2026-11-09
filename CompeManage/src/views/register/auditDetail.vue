@@ -37,18 +37,18 @@ const allMembers = computed(() => {
 })
 
 // 获取指导老师信息
-const advisorInfo = computed(() => {
-  if (!detail.value.advisor_info) return null
+const advisorInfos = computed(() => {
+  if (!detail.value.advisor_info) return []
   
   try {
-    // 如果是字符串，解析为对象
-    if (typeof detail.value.advisor_info === 'string') {
-      return JSON.parse(detail.value.advisor_info)
-    }
-    return detail.value.advisor_info
+    const parsed = typeof detail.value.advisor_info === 'string'
+      ? JSON.parse(detail.value.advisor_info)
+      : detail.value.advisor_info
+    const advisors = Array.isArray(parsed) ? parsed : parsed ? [parsed] : []
+    return advisors.filter(advisor => advisor && (advisor.id || advisor.username || advisor.name))
   } catch (e) {
     console.warn('指导老师信息解析失败:', e)
-    return null
+    return []
   }
 })
 
@@ -297,31 +297,31 @@ onMounted(() => {
       
       <div  class="info-section">
         <h3 class="section-title">指导老师信息</h3>
-        <div  class="advisor-grid">
-          <div class="grid-item">
-            <span class="label"><el-icon><User /></el-icon> 姓名</span>
-            <span class="value">{{ advisorInfo?.name || '' }}</span>
+        <template v-if="advisorInfos.length > 0">
+          <div v-for="(advisor, index) in advisorInfos" :key="advisor.username || advisor.id || index" class="advisor-grid">
+            <div class="grid-item">
+              <span class="label"><el-icon><User /></el-icon> 姓名</span>
+              <span class="value">{{ advisor.name || '-' }}</span>
+            </div>
+            <div class="grid-item">
+              <span class="label"><el-icon><Postcard /></el-icon> 工号</span>
+              <span class="value">{{ advisor.username || '-' }}</span>
+            </div>
+            <div class="grid-item">
+              <span class="label"><el-icon><Postcard /></el-icon> 所属学院</span>
+              <span class="value">{{ advisor.college || '-' }}</span>
+            </div>
+            <div class="grid-item">
+              <span class="label"><el-icon><Iphone /></el-icon> 联系电话</span>
+              <span class="value">{{ advisor.phone || '-' }}</span>
+            </div>
+            <div class="grid-item">
+              <span class="label"><el-icon><Message /></el-icon> 邮箱</span>
+              <span class="value">{{ advisor.email || '-' }}</span>
+            </div>
           </div>
-          <div class="grid-item">
-            <span class="label"><el-icon><Postcard /></el-icon> 工号</span>
-            <span class="value">{{ advisorInfo?.username }}</span>
-          </div>
-          <div class="grid-item">
-            <span class="label"><el-icon><Postcard /></el-icon> 所属学院</span>
-            <span class="value">{{ advisorInfo?.college || '' }}</span>
-          </div>
-          <div class="grid-item">
-            <span class="label"><el-icon><Iphone /></el-icon> 联系电话</span>
-            <span class="value">{{ advisorInfo?.phone || '' }}</span>
-          </div>
-          <div class="grid-item">
-            <span class="label"><el-icon><Message /></el-icon> 邮箱</span>
-            <span class="value">{{ advisorInfo?.email || '' }}</span>
-          </div>
-        </div>
-        <!-- <div v-else class="empty-advisor">
-          <span>未填写指导老师信息</span>
-        </div> -->
+        </template>
+        <el-empty v-else description="未填写指导老师信息" :image-size="60" />
       </div>
 
       <div class="info-section">

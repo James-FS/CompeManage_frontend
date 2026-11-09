@@ -147,8 +147,9 @@ function getAdvisorName(row) {
   if (!row?.advisor_info) return '-'
 
   try {
-    const advisor = typeof row.advisor_info === 'string' ? JSON.parse(row.advisor_info) : row.advisor_info
-    return advisor?.name?.trim() || '-'
+    const parsed = typeof row.advisor_info === 'string' ? JSON.parse(row.advisor_info) : row.advisor_info
+    const advisors = Array.isArray(parsed) ? parsed : parsed ? [parsed] : []
+    return advisors.map(advisor => advisor?.name?.trim()).filter(Boolean).join('、') || '-'
   } catch (e) {
     return '-'
   }

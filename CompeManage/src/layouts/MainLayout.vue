@@ -1,7 +1,7 @@
 <script setup>
 import Sidebar from '@/components/Sidebar.vue'
 import Header from '@/components/Header.vue'
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { House, Trophy, ArrowRight, EditPen, Key, Document, Medal, DataAnalysis, DocumentChecked } from '@element-plus/icons-vue'
@@ -9,6 +9,12 @@ import { House, Trophy, ArrowRight, EditPen, Key, Document, Medal, DataAnalysis,
 const userStore = useUserStore()
 const route = useRoute()
 const router = useRouter()
+
+watch(() => route.fullPath, () => {
+  if (['school_admin', 'college_admin', 'competition_manager', 'teacher'].includes(userStore.role)) {
+    userStore.refreshReviewerAccess()
+  }
+}, { immediate: true })
 
 //定义完整的菜单结构(包含权限)
 const allMenus = [
@@ -109,7 +115,8 @@ const allMenus = [
   {
     path: '/review/expert',
     title: '专家评审',
-    roles: ['expert'],
+    roles: ['school_admin', 'college_admin', 'competition_manager', 'teacher', 'expert'],
+    reviewerTaskRequired: true,
     icon: DocumentChecked,
   },
   {
@@ -167,15 +174,18 @@ const deepCloneMenus = (menus) => {
 }
 
 // 计算过滤后的菜单项
-const filterMenus = (menus, userRoles) => {
+const filterMenus = (menus, userRoles, reviewerAccess) => {
   return menus.filter((item) => {
+    if (item.reviewerTaskRequired && userRoles !== 'expert' && !reviewerAccess) {
+      return false
+    }
     // 检查是否有权限字段,没有则默认显示
     if (item.roles && !item.roles.includes(userRoles)) {
       return false
     }
     // 如果有子菜单，递归过滤子菜单
     if (item.children) {
-      item.children = filterMenus(item.children, userRoles)
+      item.children = filterMenus(item.children, userRoles, reviewerAccess)
       // 如果子菜单全部被过滤掉，则不显示父菜单
       return item.children.length > 0
     }
@@ -187,7 +197,7 @@ const filterMenus = (menus, userRoles) => {
 const dynamicMenuItems = computed(() => {
   // 深拷贝菜单数据（保留icon组件引用），避免直接修改原数组
   const menusCopy = deepCloneMenus(allMenus)
-  return filterMenus(menusCopy, userStore.role)
+  return filterMenus(menusCopy, userStore.role, userStore.reviewerAccess)
 })
 
 // 面包屑计算
