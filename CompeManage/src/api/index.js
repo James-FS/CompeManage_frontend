@@ -133,6 +133,7 @@ export const api = {
   // 管理员
   getReviewCompList: (params) => get('/api/review/comp/list', params),
   getExpertList: (params) => get('/api/review/expert/list', params),
+  getMyReviewAccess: () => get('/api/review/my/access'),
   getReviewTaskList: (params) => get('/api/review/task/list', params),
   assignReviewTask: (data) => post('/api/review/task/assign', data),
   initReviewTasks: (data) => post('/api/review/task/init', data),

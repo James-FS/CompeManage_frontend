@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { api } from '@/api'
 
 export const useUserStore = defineStore('user', () => {
@@ -7,6 +7,7 @@ export const useUserStore = defineStore('user', () => {
     const role = ref('')
     const token = ref('')
     const userInfo = ref(JSON.parse(localStorage.getItem('userInfo') || '{}'))
+    const reviewerAccess = ref(false)
 
     // 模拟后端数据库中的用户表（用于开发测试）
     const mockUsers = [
@@ -33,6 +34,7 @@ export const useUserStore = defineStore('user', () => {
                 // 设置用户信息
                 token.value = resToken
                 role.value = resUserInfo.role
+                reviewerAccess.value = false
                 userInfo.value = {
                     id: resUserInfo.id,
                     name: resUserInfo.realname || resUserInfo.username,
@@ -58,6 +60,7 @@ export const useUserStore = defineStore('user', () => {
     function logout() {
         role.value = ''
         token.value = ''
+        reviewerAccess.value = false
         userInfo.value = {}
         localStorage.removeItem('token')
         localStorage.removeItem('role')
@@ -75,6 +78,20 @@ export const useUserStore = defineStore('user', () => {
         if (savedUserInfo) userInfo.value = JSON.parse(savedUserInfo)
     }
 
+    async function refreshReviewerAccess() {
+        if (!token.value) {
+            reviewerAccess.value = false
+            return false
+        }
+        try {
+            const response = await api.getMyReviewAccess()
+            reviewerAccess.value = response.code === 200 && !!response.data?.can_review
+        } catch {
+            reviewerAccess.value = false
+        }
+        return reviewerAccess.value
+    }
+
     // 检查是否有权限
     function hasPermission(allowedRoles) {
         if (!allowedRoles || allowedRoles.length === 0) {
@@ -87,10 +104,12 @@ export const useUserStore = defineStore('user', () => {
         role,
         token,
         userInfo,
+        reviewerAccess,
         mockUsers,
         login,
         logout,
         restoreState,
+        refreshReviewerAccess,
         hasPermission
     }
 })

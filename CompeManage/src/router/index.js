@@ -401,7 +401,8 @@ const routes = [
         component: () => import('@/views/review/expert.vue'),
         meta: {
           title: '专家评审',
-          roles: ['expert'],
+          roles: ['school_admin', 'college_admin', 'competition_manager', 'teacher', 'expert'],
+          reviewerTaskRequired: true,
         },
       },
       {
@@ -411,7 +412,8 @@ const routes = [
         props: true,
         meta: {
           title: '作品列表',
-          roles: ['expert'],
+          roles: ['school_admin', 'college_admin', 'competition_manager', 'teacher', 'expert'],
+          reviewerTaskRequired: true,
           parent: 'ExpertReview',
           activeMenu: '/review/expert',
           hidden: true,
@@ -424,7 +426,8 @@ const routes = [
         props: true,
         meta: {
           title: '评审打分',
-          roles: ['expert'],
+          roles: ['school_admin', 'college_admin', 'competition_manager', 'teacher', 'expert'],
+          reviewerTaskRequired: true,
           parent: 'ExpertWorks',
           activeMenu: '/review/expert',
           hidden: true,
@@ -521,7 +524,7 @@ const router = createRouter({
 })
 
 // 路由守卫
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   const userStore = useUserStore()
 
   // 首先恢复store状态(页面刷新时从localStorage恢复)
@@ -582,7 +585,8 @@ router.beforeEach((to, from, next) => {
   // 检查角色权限
   const allowedRoles = to.meta.roles
   if (allowedRoles) {
-    if (allowedRoles.includes(userStore.role)) {
+    const reviewerAccessAllowed = !to.meta.reviewerTaskRequired || await userStore.refreshReviewerAccess()
+    if (allowedRoles.includes(userStore.role) && reviewerAccessAllowed) {
       next()
     } else {
       // 无权限：轻提示并留在当前页，避免误以为平台故障

@@ -1,14 +1,15 @@
 <script setup>
-import { onMounted, reactive, ref, nextTick } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
   Setting, Select, User, UserFilled,
-  Top, Bottom, Delete, Plus, Search, Warning
+  Top, Bottom, Delete, Plus, Warning
 } from '@element-plus/icons-vue'
 import { api } from '@/api'
 import { formatToGoTime } from '@/utils/format'
 import { ElMessageBox } from 'element-plus'
+import { debounce } from '@/utils/debounce'
 
 const route = useRoute()
 const router = useRouter()
@@ -55,42 +56,42 @@ const form = reactive({
 
 // ========== 专家选择弹窗逻辑 ==========
 const expertDialogVisible = ref(false)
-const expertTableRef = ref(null)
 const expertTableData = ref([])
 const expertLoading = ref(false)
-const selectedExperts = ref([])
-const expertSearch = ref('')
+const selectedExpertRows = ref([])
+const expertFilters = reactive({ name: '', work_id: '', college: '' })
+const expertDepartments = ref([])
 const expertPage = ref(1)
 const expertTotal = ref(0)
 const expertPageSize = ref(10)
 
 const openExpertSelect = () => {
-  selectedExperts.value = form.experts.map(e => e.id)
-  loadExpertTable()
+  selectedExpertRows.value = form.experts.map(expert => ({ ...expert }))
+  expertFilters.name = ''
+  expertFilters.work_id = ''
+  expertFilters.college = ''
+  expertPage.value = 1
+  expertTableData.value = []
+  expertTotal.value = 0
   expertDialogVisible.value = true
 }
 
 const loadExpertTable = async () => {
   expertLoading.value = true
   try {
-    const res = await api.getExpertList({ page: expertPage.value, size: expertPageSize.value, keyword: expertSearch.value || undefined })
+    const res = await api.getExpertList({
+      page: expertPage.value,
+      size: expertPageSize.value,
+      name: expertFilters.name || undefined,
+      work_id: expertFilters.work_id || undefined,
+      college: expertFilters.college || undefined,
+    })
     const data = res.data || res
     expertTableData.value = (data.list || []).map(item => ({
       ...item,
       disabled: form.experts.some(e => e.id === item.id),
     }))
     expertTotal.value = data.total || 0
-
-    // 回显已选专家勾选状态
-    await nextTick()
-    if (expertTableRef.value) {
-      expertTableRef.value.clearSelection()
-      expertTableData.value.forEach(row => {
-        if (selectedExperts.value.includes(row.id)) {
-          expertTableRef.value.toggleRowSelection(row, true)
-        }
-      })
-    }
   } catch {
     expertTableData.value = []
   } finally {
@@ -103,29 +104,28 @@ const handleExpertSearch = () => {
   loadExpertTable()
 }
 
-const handleExpertSelect = (selection) => {
-  selectedExperts.value = selection.map(row => row.id)
+const debouncedExpertSearch = debounce(() => {
+  expertPage.value = 1
+  loadExpertTable()
+}, 500)
+
+const isExpertSelected = (row) => selectedExpertRows.value.some(expert => expert.id === row.id)
+
+const toggleExpertSelection = (row) => {
+  if (row.disabled) return
+  if (isExpertSelected(row)) {
+    selectedExpertRows.value = selectedExpertRows.value.filter(expert => expert.id !== row.id)
+  } else {
+    selectedExpertRows.value = [...selectedExpertRows.value, row]
+  }
 }
 
-const confirmExpertSelect = async () => {
-  if (selectedExperts.value.length === 0) {
-    form.experts = []
-    expertDialogVisible.value = false
-    return
-  }
-  expertLoading.value = true
-  try {
-    const res = await api.getExpertList({ page: 1, size: 100 })
-    const data = res.data || res
-    const allExperts = data.list || []
-    form.experts = allExperts.filter(e => selectedExperts.value.includes(e.id)).map(e => ({
-      id: e.id,
-      name: e.name,
-      username: e.username,
-    }))
-  } finally {
-    expertLoading.value = false
-  }
+const confirmExpertSelect = () => {
+  form.experts = selectedExpertRows.value.map(expert => ({
+    id: expert.id,
+    name: expert.name,
+    username: expert.username,
+  }))
   expertDialogVisible.value = false
 }
 
@@ -133,8 +133,39 @@ const removeExpert = (id) => {
   form.experts = form.experts.filter(e => e.id !== id)
 }
 
+const expertRoleLabels = {
+  school_admin: '校级管理员',
+  college_admin: '院级管理员',
+  competition_manager: '赛事负责人',
+  teacher: '老师',
+  expert: '专家',
+}
+
+const expertRoleType = (roleCode) => ({
+  school_admin: 'danger',
+  college_admin: 'success',
+  competition_manager: 'warning',
+  expert: 'primary',
+}[roleCode] || 'info')
+
 const handleExpertPageChange = () => {
   loadExpertTable()
+}
+
+const handleExpertPageSizeChange = () => {
+  expertPage.value = 1
+  loadExpertTable()
+}
+
+const loadExpertDepartments = async () => {
+  try {
+    const res = await api.getDepartmentList()
+    if (res.code === 200 || res.code === 0) {
+      expertDepartments.value = res.data || []
+    }
+  } catch {
+    expertDepartments.value = []
+  }
 }
 
 const rules = {
@@ -351,6 +382,7 @@ async function fetchConfig() {
 
 onMounted(() => {
   fetchConfig()
+  loadExpertDepartments()
 })
 </script>
 
@@ -625,37 +657,97 @@ onMounted(() => {
         </transition>
 
         <!-- 专家选择弹窗 -->
-        <el-dialog v-model="expertDialogVisible" title="选择评审专家" width="600px" :close-on-click-modal="false">
+        <el-dialog
+          v-model="expertDialogVisible"
+          title="选择评审专家"
+          width="800px"
+          align-center
+          append-to-body
+          :close-on-click-modal="false"
+        >
           <div class="expert-search-bar">
-            <el-input v-model="expertSearch" placeholder="搜索姓名或工号" clearable style="width: 240px" @keyup.enter="handleExpertSearch" />
-            <el-button type="primary" :icon="Search" @click="handleExpertSearch" style="margin-left: 8px">搜索</el-button>
+            <el-form :inline="true" :model="expertFilters" class="expert-search-form">
+              <el-form-item label="姓名">
+                <el-input
+                  v-model="expertFilters.name"
+                  placeholder="输入姓名"
+                  clearable
+                  @input="debouncedExpertSearch"
+                  @clear="handleExpertSearch"
+                  @keyup.enter="handleExpertSearch"
+                  style="width: 120px"
+                />
+              </el-form-item>
+              <el-form-item label="工号">
+                <el-input
+                  v-model="expertFilters.work_id"
+                  placeholder="输入工号"
+                  clearable
+                  @input="debouncedExpertSearch"
+                  @clear="handleExpertSearch"
+                  @keyup.enter="handleExpertSearch"
+                  style="width: 120px"
+                />
+              </el-form-item>
+              <el-form-item label="所属部门">
+                <el-select
+                  v-model="expertFilters.college"
+                  placeholder="选择部门"
+                  clearable
+                  filterable
+                  @change="handleExpertSearch"
+                  @clear="handleExpertSearch"
+                  popper-class="dept-select-popper"
+                  style="width: 330px"
+                >
+                  <el-option v-for="department in expertDepartments" :key="department.id" :label="department.name" :value="department.name" />
+                </el-select>
+              </el-form-item>
+            </el-form>
           </div>
           <el-table
-            ref="expertTableRef"
             v-loading="expertLoading"
             :data="expertTableData"
+            border
             stripe
-            style="margin-top: 12px"
-            max-height="400"
-            @selection-change="handleExpertSelect"
+            height="350"
+            style="width: 100%"
           >
-            <el-table-column type="selection" width="50" :selectable="(row) => !row.disabled" />
             <el-table-column prop="username" label="工号" width="120" align="center" />
             <el-table-column prop="name" label="姓名" width="120" align="center" />
-            <el-table-column prop="college" label="所属学院" min-width="160" align="center" show-overflow-tooltip />
+            <el-table-column prop="college" label="所属部门" min-width="200" align="center" show-overflow-tooltip />
+            <el-table-column label="当前角色" width="120" align="center">
+              <template #default="{ row }">
+                <el-tag :type="expertRoleType(row.role_code)" size="small">
+                  {{ row.role_name || expertRoleLabels[row.role_code] || row.role_code }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="100" align="center" fixed="right">
+              <template #default="{ row }">
+                <el-button
+                  :type="isExpertSelected(row) ? 'success' : 'primary'"
+                  link
+                  :disabled="row.disabled"
+                  @click="toggleExpertSelection(row)"
+                >
+                  {{ row.disabled ? '已添加' : isExpertSelected(row) ? '取消选择' : '选择' }}
+                </el-button>
+              </template>
+            </el-table-column>
             <template #empty>
-              <el-empty description="请输入姓名或工号查询专家" :image-size="80" />
+              <el-empty description="请输入姓名或工号查询评审专家" :image-size="80" />
             </template>
           </el-table>
           <div class="expert-pagination">
             <el-pagination
               v-model:current-page="expertPage"
               v-model:page-size="expertPageSize"
-              :page-sizes="[10, 20, 50]"
-              layout="total, prev, pager, next"
+              :page-sizes="[10, 20, 30]"
+              layout="total, sizes, prev, pager, next, jumper"
               :total="expertTotal"
+              @size-change="handleExpertPageSizeChange"
               @current-change="handleExpertPageChange"
-              small
             />
           </div>
           <template #footer>
@@ -815,6 +907,30 @@ onMounted(() => {
 
 .ml-2 { margin-left: 8px; }
 .mr-1 { margin-right: 4px; }
+
+.expert-search-bar {
+  margin-bottom: 15px;
+
+  :deep(.expert-search-form) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  :deep(.el-form-item) {
+    margin-right: 15px;
+    margin-bottom: 8px;
+  }
+
+}
+
+.expert-pagination {
+  display: flex;
+  justify-content: flex-end;
+  padding: 15px 0;
+  margin-top: 15px;
+  border-top: 1px solid #eee;
+}
 
 /* === 赛道配置样式 === */
 .track-list-container {
