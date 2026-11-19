@@ -3,10 +3,11 @@ import { ref, reactive, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import api from '@/api';
+import FileUploadField from '@/components/FileUploadField.vue';
+import { fileAttachmentsToReferences, normalizeFileAttachments } from '@/utils/fileAttachments';
 import { 
   Plus, 
   Delete, 
-  UploadFilled, 
 } from '@element-plus/icons-vue';
 
 const route = useRoute();
@@ -14,6 +15,7 @@ const router = useRouter();
 const loading = ref(false);
 const canEdit = ref(false);
 const formRef = ref(null);
+const fileUploadRef = ref(null);
 
 const compId = route.params.id;
 const compName = route.query.name; 
@@ -58,53 +60,6 @@ const unawardedCount = computed(() => {
   return Math.max(Number(form.participant_count || 0) - Number(totalAwards.value || 0), 0);
 });
 
-const buildDisplayFileName = (url, fallbackName) => {
-  if (!url) return fallbackName || '';
-  const fileName = url.split('/').pop() || '';
-  if (fileName.includes('_')) {
-    return fileName.substring(fileName.indexOf('_') + 1) || fileName;
-  }
-  return fileName || fallbackName || '';
-};
-
-const normalizeAttachmentList = (list) => {
-  if (!Array.isArray(list)) return [];
-  return list.map((item) => {
-    if (typeof item === 'string') {
-      return { name: buildDisplayFileName(item), url: item };
-    }
-    if (item?.url) {
-      return { name: item.name || buildDisplayFileName(item.url), url: item.url };
-    }
-    return item;
-  }).filter(Boolean);
-};
-
-const uploadAttachments = async () => {
-  const uploaded = [];
-  for (const item of form.attachments) {
-    if (typeof item === 'string') {
-      uploaded.push({ name: buildDisplayFileName(item), url: item });
-      continue;
-    }
-    if (item?.url && !item?.raw) {
-      uploaded.push({ name: item.name || buildDisplayFileName(item.url), url: item.url });
-      continue;
-    }
-    if (item?.raw) {
-      const formData = new FormData();
-      formData.append('file', item.raw);
-      formData.append('type', 'temp');
-      const res = await api.uploadFile(formData);
-      const data = res?.data || {};
-      if (data.url) {
-        uploaded.push({ name: data.name || item.name, url: data.url });
-      }
-    }
-  }
-  return uploaded;
-};
-
 // 初始化加载数据
 const loadData = async () => {
   loading.value = true;
@@ -129,7 +84,7 @@ const loadData = async () => {
       ? data.expenses
       : [{ usage: '', amount: 0, remark: '' }];
     form.summary_content = data.summary_content || '';
-    form.attachments = normalizeAttachmentList(data.attachments || []);
+    form.attachments = normalizeFileAttachments(data.attachments || []);
   } catch (error) {
     console.error(error);
     ElMessage.error('加载总结信息失败');
@@ -170,7 +125,8 @@ const handleSubmit = async (isArchive = false) => {
         );
 
         loading.value = true;
-        const attachments = await uploadAttachments();
+        const uploadedFiles = await fileUploadRef.value?.uploadPending();
+        const attachments = fileAttachmentsToReferences(uploadedFiles || form.attachments);
         const payload = {
           summary_content: form.summary_content,
           expenses: form.expenses,
@@ -296,22 +252,12 @@ onMounted(() => {
             </el-form-item>
             <el-form-item label="附件上传">
                 <div class="file-upload-container">
-                    <el-upload class="upload-demo" drag action="#" multiple :auto-upload="false" v-model:file-list="form.attachments">
-                        <el-icon class="el-icon--upload"><upload-filled /></el-icon>
-                        <div class="el-upload__text">将文件拖到此处，或 <em>点击上传</em></div>
-                        <template #tip>
-                            <div class="el-upload__tip">
-                                支持 PDF, Word, Excel, ZIP 格式，大小不超过 10MB
-                            </div>
-                        </template>
-                    </el-upload>
-                    <div v-if="form.attachments.length > 0" class="file-list-info">
-                        <div class="file-list-title">已选择附件：</div>
-                        <div v-for="(file, index) in form.attachments" :key="index" class="file-item-info">
-                            <span class="file-name">{{ file.name || file }}</span>
-                            <el-button link type="danger" size="small" @click="form.attachments.splice(index, 1)">移除</el-button>
-                        </div>
-                    </div>
+                    <FileUploadField
+                      ref="fileUploadRef"
+                      v-model="form.attachments"
+                      business-type="summary_attachment"
+                      @preview="api.downloadFile($event.url, true, $event.name)"
+                    />
                 </div>
             </el-form-item>
         </el-card>

@@ -253,6 +253,7 @@ onMounted(async () => {
                             <el-select v-model="form.comp_level" placeholder="请选择级别" style="width: 100%">
                                 <el-option label="校级" value="校级" />
                                 <el-option label="省级" value="省级" />
+                                <el-option label="省部级" value="省部级" />
                                 <el-option label="国家级" value="国家级" />
                             </el-select>
                         </el-form-item>
@@ -263,7 +264,10 @@ onMounted(async () => {
                         <el-form-item label="赛事类型" prop="comp_type">
                             <el-select v-model="form.comp_type" placeholder="请选择类型" style="width: 100%">
                                 <el-option label="学科竞赛" value="学科竞赛" />
-                                <el-option label="创新创业竞赛" value="创新创业竞赛" />
+                                <el-option label="创新大赛（原互联网+创新创业大赛）" value="创新创业竞赛" />
+                                <el-option label="创青春中国青年创新创业大赛" value="创青春中国青年创新创业大赛" />
+                                <el-option label="挑战杯" value="挑战杯" />
+                                <el-option label="其他" value="其他" />
                             </el-select>
                         </el-form-item>
                     </el-col>

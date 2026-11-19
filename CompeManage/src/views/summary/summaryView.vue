@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { User, Trophy, Money, Document, ArrowLeft } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import api from '@/api';
+import { normalizeFileAttachments } from '@/utils/fileAttachments';
 
 const route = useRoute();
 const router = useRouter();
@@ -34,28 +35,6 @@ const detailData = reactive({
     files: []            // 附件列表
 });
 
-const buildDisplayFileName = (url, fallbackName) => {
-    if (!url) return fallbackName || '';
-    const fileName = url.split('/').pop() || '';
-    if (fileName.includes('_')) {
-        return fileName.substring(fileName.indexOf('_') + 1) || fileName;
-    }
-    return fileName || fallbackName || '';
-};
-
-const normalizeAttachmentList = (list) => {
-    if (!Array.isArray(list)) return [];
-    return list.map((item) => {
-        if (typeof item === 'string') {
-            return { name: buildDisplayFileName(item), url: item };
-        }
-        if (item?.url) {
-            return { name: item.name || buildDisplayFileName(item.url), url: item.url };
-        }
-        return item;
-    }).filter(Boolean);
-};
-
 // 数据加载
 const loadData = async () => {
     loading.value = true;
@@ -72,7 +51,7 @@ const loadData = async () => {
         detailData.summary_content = data.summary_content || '';
         detailData.award_list = data.award_stats || [];
         detailData.expense_list = data.expenses || [];
-        detailData.files = normalizeAttachmentList(data.attachments || []);
+        detailData.files = normalizeFileAttachments(data.attachments || []);
 
         stats.participantCount = data.participant_count || 0;
 // 优化后的赋值（可选）

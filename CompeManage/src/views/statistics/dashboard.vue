@@ -379,6 +379,10 @@ const renderCompBarChart = () => {
 
   if (!chartInstances.compBar) {
     chartInstances.compBar = echarts.init(compBarChartRef.value)
+  } else {
+    // The container height follows the selected ranking limit. Resize the
+    // existing ECharts instance after Vue has updated that height.
+    chartInstances.compBar.resize()
   }
   chartInstances.compBar.setOption({
     grid: { left: labelWidth + 14, right: isNarrow ? 42 : 52, top: 20, bottom: 34 },
@@ -938,7 +942,6 @@ onBeforeUnmount(() => {
               <el-radio-group v-model="chartLimit" size="small" aria-label="选择排名显示数量">
                 <el-radio-button :value="10">前 10</el-radio-button>
                 <el-radio-button :value="20">前 20</el-radio-button>
-                <el-radio-button :value="50">前 50</el-radio-button>
               </el-radio-group>
             </div>
           </div>

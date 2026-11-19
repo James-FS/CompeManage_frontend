@@ -25,7 +25,7 @@ const createDefaultFilters = () => ({
   status: '',
 })
 const filters = ref(createDefaultFilters())
-const levelOptions = ['校级', '省级', '国家级', '国际级']
+const levelOptions = ['校级', '省部级', '省级', '国家级', '国际级']
 const buildListParams = () => {
   const { keyword, level, year, status } = filters.value
   const params = { page: queryParams.value.page, size: queryParams.value.size }

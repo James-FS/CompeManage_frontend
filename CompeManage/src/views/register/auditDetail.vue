@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '@/api/index.js'
+import { normalizeFileAttachments } from '@/utils/fileAttachments'
 import {
   User,
   Iphone,
@@ -111,59 +112,8 @@ const handleReject = async () => {
   rejectDialogVisible.value = false
 }
 
-const attachmentList = computed(() => {
-  const urlStr = detail.value.attachment_url
-  if (!urlStr) return []
-  //  多个附件用逗号分隔
-  const urls = urlStr.split(',')
-  return urls
-    .map((url) => {
-      url = url.trim()
-      if (!url) return null
-
-      //  获取文件名 (去掉路径)
-      // 例如: /static/202601/123456_需求.docx -> 123456_需求.docx
-      let fileName = url.substring(url.lastIndexOf('/') + 1)
-      //  去掉时间戳/ID前缀 (去掉第一个下划线前的内容)
-      // 例如: 123456_需求.docx -> 需求.docx
-      if (fileName.indexOf('_') > -1) {
-        fileName = fileName.substring(fileName.indexOf('_') + 1)
-      }
-
-      return {
-        name: fileName,
-        url: url,
-      }
-    })
-    .filter((item) => item !== null)
-})
-
-const workList = computed(() => {
-  const urlStr = detail.value.work_url
-  if (!urlStr) return []
-  //  多个附件用逗号分隔
-  const urls = urlStr.split(',')
-  return urls
-    .map((url) => {
-      url = url.trim()
-      if (!url) return null
-
-      //  获取文件名 (去掉路径)
-      // 例如: /static/202601/123456_需求.docx -> 123456_需求.docx
-      let fileName = url.substring(url.lastIndexOf('/') + 1)
-      //  去掉时间戳/ID前缀 (去掉第一个下划线前的内容)
-      // 例如: 123456_需求.docx -> 需求.docx
-      if (fileName.indexOf('_') > -1) {
-        fileName = fileName.substring(fileName.indexOf('_') + 1)
-      }
-
-      return {
-        name: fileName,
-        url: url,
-      }
-    })
-    .filter((item) => item !== null)
-})
+const attachmentList = computed(() => normalizeFileAttachments(detail.value.attachment_url))
+const workList = computed(() => normalizeFileAttachments(detail.value.work_url))
 
 // 修改打开附件的方法，支持传入具体的 URL
 const openAttachment = async (url) => {

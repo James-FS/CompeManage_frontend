@@ -3,16 +3,18 @@ import { ref, reactive, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import {
-    Check, ArrowLeft, Close,
-    UploadFilled
+    Check, ArrowLeft, Close
 } from '@element-plus/icons-vue';
 import { debounce } from '@/utils/debounce';
+import FileUploadField from '@/components/FileUploadField.vue';
+import { fileAttachmentsToJSON, normalizeFileAttachments } from '@/utils/fileAttachments';
 import api from '@/api';
 
 const router = useRouter();
 const route = useRoute();
 const loading = ref(false);
 const formRef = ref(null);
+const fileUploadRef = ref(null);
 const isEditMode = ref(false); // 是否为编辑模式
 const isReadOnly = ref(false); // 是否为只读模式（已通过的申报）
 
@@ -47,13 +49,16 @@ const rules = {
 const levelOptions = [
     { label: '校级', value: '校级' },
     { label: '省级', value: '省级' },
+    { label: '省部级', value: '省部级' },
     { label: '国家级', value: '国家级' },
     { label: '国际级', value: '国际级' }
 ];
 
 const typeOptions = [
     { label: '学科竞赛', value: '学科竞赛' },
-    { label: '创新创业竞赛', value: '创新创业竞赛' },
+    { label: '创新大赛（原互联网+创新创业大赛）', value: '创新创业竞赛' },
+    { label: '创青春中国青年创新创业大赛', value: '创青春中国青年创新创业大赛' },
+    { label: '挑战杯', value: '挑战杯' },
     { label: '体育竞赛', value: '体育竞赛' },
     { label: '其他', value: '其他' }
 ];
@@ -130,7 +135,7 @@ const loadDeclareDetail = async (id) => {
             // 将年份转换为 Date 对象给日期选择器使用
             form.comp_date = new Date(data.year, 0, 1);
             form.description = data.desc;
-            form.attachments = parseAttachmentUrls(data.attachment_path);
+            form.attachments = normalizeFileAttachments(data.attachment_path);
             
             // 只有草稿(0)和被驳回(3)的申报才允许编辑，其他状态禁用
             // 状态：0-草稿, 1-已提交, 2-已通过, 3-已驳回
@@ -177,11 +182,7 @@ const handleSave = async (formEl) => {
         if (valid) {
             loading.value = true;
             try {
-                const attachmentUrls = await uploadAttachmentsIfNeeded();
-                if (!attachmentUrls) {
-                    loading.value = false;
-                    return;
-                }
+                const uploadedFiles = await fileUploadRef.value?.uploadPending();
                 // 从 Date 对象中提取年份
                 let year = new Date().getFullYear();
                 if (form.comp_date instanceof Date) {
@@ -200,7 +201,7 @@ const handleSave = async (formEl) => {
                     manager_id: form.manager_id,
                     year: year,
                     desc: form.description,
-                    attachment_path: attachmentUrls.join(',')
+                    attachment_path: fileAttachmentsToJSON(uploadedFiles || form.attachments)
                 };
 
                 let res;
@@ -232,15 +233,6 @@ const handleSave = async (formEl) => {
     });
 };
 
-const getDisplayFileName = (url) => {
-    if (!url) return '';
-    const fileName = url.split('/').pop() || '';
-    if (fileName.includes('_')) {
-        return fileName.substring(fileName.indexOf('_') + 1) || fileName;
-    }
-    return fileName;
-};
-
 const downloadDeclareFile = async (url) => {
     try {
         // api.downloadFile 内部已封装 window.open(blobUrl, '_blank')，不要接收返回值
@@ -249,59 +241,6 @@ const downloadDeclareFile = async (url) => {
         ElMessage.error('文件打开失败：' + (error.message || '未知错误'));
         console.error(error);
     }
-};
-
-const parseAttachmentUrls = (urlStr) => {
-    if (!urlStr) return [];
-    return urlStr.split(',').filter(Boolean).map((url) => ({
-        name: getDisplayFileName(url),
-        url
-    }));
-};
-
-const uploadAttachmentsIfNeeded = async () => {
-    const urls = [];
-    for (const item of form.attachments) {
-        if (item.url) {
-            urls.push(item.url);
-            continue;
-        }
-        if (item.file) {
-            const formData = new FormData();
-            formData.append('file', item.file);
-            formData.append('type', 'temp');
-            try {
-                const uploadRes = await api.uploadFile(formData);
-                const uploadData = uploadRes?.data || {};
-                if (uploadData.url) {
-                    urls.push(uploadData.url);
-                    item.url = uploadData.url;
-                    item.name = uploadData.name || item.name || getDisplayFileName(uploadData.url);
-                } else {
-                    ElMessage.error('附件上传失败');
-                    return null;
-                }
-            } catch (error) {
-                ElMessage.error('附件上传失败，请重试');
-                return null;
-            }
-        }
-    }
-    return urls;
-};
-
-const handleUpload = (uploadFile) => {
-    const file = uploadFile?.raw || uploadFile;
-    if (!file) {
-        ElMessage.error('文件选择失败');
-        return;
-    }
-    form.attachments.push({ name: file.name, file });
-    ElMessage.success(`附件已选择：${file.name}`);
-};
-
-const handleRemoveFile = (index) => {
-    form.attachments.splice(index, 1);
 };
 
 // 打开负责人选择弹窗
@@ -456,31 +395,13 @@ const selectTeacher = (row) => {
                     <el-row :gutter="20">
                         <el-col :span="20">
                             <el-form-item label="附件材料" prop="attachment">
-                                <div class="upload-wrapper">
-                                    <el-upload v-if="!isReadOnly" class="upload-area" drag action="#" multiple :auto-upload="false"
-                                        @change="handleUpload" :show-file-list="false" :disabled="isReadOnly">
-                                        <el-icon class="el-icon--upload"><upload-filled /></el-icon>
-                                        <div class="el-upload__text">
-                                            将文件拖到此处，或 <em>点击上传</em>
-                                        </div>
-                                        <template #tip>
-                                            <div class="el-upload__tip">
-                                                支持 PDF, Word, Excel 格式，大小不超过 10MB
-                                            </div>
-                                        </template>
-                                    </el-upload>
-                                    <div v-if="form.attachments.length" class="file-info">
-                                        <div v-for="(fileItem, index) in form.attachments" :key="index" class="file-item">
-                                            <span>已选择: {{ fileItem.name || getDisplayFileName(fileItem.url) }}</span>
-                                            <div class="file-actions">
-                                                <el-link v-if="fileItem.url" @click="downloadDeclareFile(fileItem.url)">
-                                                    下载
-                                                </el-link>
-                                                <el-button v-if="!isReadOnly" link type="danger" @click="handleRemoveFile(index)">移除</el-button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                <FileUploadField
+                                    ref="fileUploadRef"
+                                    v-model="form.attachments"
+                                    business-type="declare_attachment"
+                                    :disabled="isReadOnly"
+                                    @preview="downloadDeclareFile($event.url)"
+                                />
                             </el-form-item>
                         </el-col>
                     </el-row>

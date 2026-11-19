@@ -47,3 +47,19 @@
 .filter-card .el-form-item {
     margin-bottom: 0;
 }
+
+/* ================== 键盘可达性：统一焦点环 ==================
+   仅键盘聚焦（:focus-visible）时显示，鼠标点击不触发。
+   颜色用 currentColor 自适应背景（Element Plus 组件自带更高优先级的
+   焦点样式，会自动覆盖本规则，因此这里只兜底自定义可交互元素）；
+   输入类组件已有边框/阴影聚焦态，排除以避免双重焦点框。 */
+:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
+
+.el-input__inner:focus-visible,
+.el-select__input:focus-visible,
+.el-textarea__inner:focus-visible {
+    outline: none;
+}

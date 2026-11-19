@@ -3,17 +3,21 @@ import { reactive, ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
-  ArrowLeft, Trophy, UploadFilled, InfoFilled, Plus, Delete, User, Postcard, Iphone, Message, Document
+  ArrowLeft, Trophy, InfoFilled, Plus, Delete, User, Postcard, Iphone, Message
 } from '@element-plus/icons-vue'
 import api from '@/api'
 import { phoneRule, emailRule } from '@/utils/validators'
 import { debounce } from '@/utils/debounce'
+import FileUploadField from '@/components/FileUploadField.vue'
+import { normalizeFileAttachments } from '@/utils/fileAttachments'
 
 const router = useRouter()
 const route = useRoute()
 const formRef = ref(null)
 const isSubmitting = ref(false)
 const resubmitVersion = ref(null)
+const certFiles = ref([])
+const certificateUploading = computed(() => certFiles.value.some(file => file.status === 'uploading'))
 
 // 搜索相关
 const searchLoading = ref(false)
@@ -26,18 +30,6 @@ const compTotal = ref(0)
 const currentStudent = ref(null)
 const categoryNote = '获奖类别：指国家级、省部级，国际级竞赛等同于国家级。'
 const levelNote = '获奖等级：指一等奖、二等奖、三等奖，冠军（金奖）、特等奖等同于一等奖，亚军（银奖）等同于二等奖，季军（铜奖）等同于三等奖。如冠亚季军、金银铜奖从一等奖获得者中决出，则按一等奖计算。'
-
-// 判断是否为 PDF 文件
-const isPdfFile = computed(() => {
-  return form.certImage && form.certImage.toLowerCase().endsWith('.pdf')
-})
-
-// 从 URL 中提取文件名
-function getFileName(url) {
-  if (!url) return ''
-  const parts = url.split('/')
-  return parts[parts.length - 1] || '证明材料.pdf'
-}
 
 // ==================== 学生选择相关变量 ====================
 const studentDialogVisible = ref(false)
@@ -80,9 +72,6 @@ const form = reactive({
   },
   members: [], // 团队成员列表（不包括队长）
 })
-
-const token = localStorage.getItem('token')
-const uploadHeaders = { Authorization: `Bearer ${token}` }
 
 // 校验规则
 const rules = {
@@ -275,17 +264,17 @@ function removeMember(index) {
 
 // ==================== 上传和提交相关方法 ====================
 
-const handleUploadSuccess = (response) => {
-  if (response.code === 200) {
-    form.certImage = response.data.url
-    ElMessage.success('证书上传成功')
-  } else {
-    ElMessage.error('上传失败，请重试')
-  }
+const handleCertificateUploaded = (file) => {
+  form.certImage = file.url
+  formRef.value?.clearValidate('certImage')
+  ElMessage.success('证书上传成功')
 }
+
+const downloadCertificate = (file) => api.downloadFile(file.url, false, file.name || '获奖证明')
 
 const handleSubmit = async () => {
   if (!formRef.value) return
+  if (certificateUploading.value) return ElMessage.warning('请等待证明文件上传完成')
   await formRef.value.validate(async (valid) => {
     if (valid) {
       if (form.participationType === 'team' && form.members.length === 0) return ElMessage.error('团队赛请至少添加一名团队成员')
@@ -408,7 +397,7 @@ onMounted(async () => {
       if (data.comp_id === form.compID) {
         resubmitVersion.value = data.update_time || null
         form.participationType = data.participation_type || ((data.members || []).length > 1 ? 'team' : 'individual')
-        form.awardCategory = data.award_category || (data.award_level || '').match(/国家级|省级|校级|国际级/)?.[0] || ''
+        form.awardCategory = data.award_category || (data.award_level || '').match(/国家级|省部级|省级|校级|国际级/)?.[0] || ''
         const lvMatch = (data.award_level || '').match(/一等奖|二等奖|三等奖/)
         if (lvMatch) form.awardLevel = lvMatch[0]
         else if (data.award_level) { form.awardLevel = '其他'; form.awardLevelOther = data.award_name || data.award_level }
@@ -418,6 +407,7 @@ onMounted(async () => {
         form.advisors = Array.isArray(advisors) ? advisors : []
         form.teamName = data.team_name || ''
         form.certImage = data.proof_url || ''
+        certFiles.value = normalizeFileAttachments(form.certImage)
 
         const members = data.members || []
         const leader = members.find(m => m.is_leader)
@@ -683,13 +673,13 @@ onMounted(async () => {
               <el-form-item prop="awardCategory">
                 <template #label>获奖类别 <el-tooltip :content="categoryNote" placement="top" :show-after="150"><el-icon tabindex="0" :aria-label="categoryNote"><InfoFilled /></el-icon></el-tooltip></template>
                 <el-select v-model="form.awardCategory" placeholder="请选择获奖类别" style="width: 100%">
-                  <el-option v-for="category in ['校级', '省级', '国家级', '国际级']" :key="category" :label="category" :value="category" />
+                  <el-option v-for="category in ['校级', '省部级', '省级', '国家级', '国际级']" :key="category" :label="category" :value="category" />
                 </el-select>
               </el-form-item>
               <el-form-item prop="awardLevel">
                 <template #label>获奖等级 <el-tooltip :content="levelNote" placement="top" :show-after="150"><el-icon tabindex="0" :aria-label="levelNote"><InfoFilled /></el-icon></el-tooltip></template>
                 <el-select v-model="form.awardLevel" placeholder="请选择获奖等级" style="width: 100%">
-                  <el-option v-for="level in ['一等奖', '二等奖', '三等奖', '其他']" :key="level" :label="level" :value="level" />
+                  <el-option v-for="level in ['一等奖', '二等奖', '三等奖', '金奖', '银奖', '铜奖', '冠军', '亚军', '季军', '其他']" :key="level" :label="level" :value="level" />
                 <el-input v-if="form.awardLevel === '其他'" v-model="form.awardLevelOther" placeholder="请填写具体获奖等级（如：优胜奖）" style="margin-top: 8px" />
                 </el-select>
               </el-form-item>
@@ -703,32 +693,23 @@ onMounted(async () => {
             <div class="section-title">04 证明件上传</div>
             
             <el-form-item prop="certImage">
-              <el-upload
-                class="cert-uploader"
-                action="/api/upload"
-                :headers="uploadHeaders"
-                :data="{type:'award_cert'}"
-                :show-file-list="false"
-                :on-success="handleUploadSuccess"
-                accept=".jpg,.png,.jpeg,.pdf"
-              >
-                <img v-if="form.certImage && !isPdfFile" :src="form.certImage" class="cert-img" />
-                <div v-else-if="form.certImage && isPdfFile" class="pdf-info">
-                  <el-icon class="pdf-icon"><Document /></el-icon>
-                  <span class="pdf-name">{{ getFileName(form.certImage) }}</span>
-                </div>
-                <div v-else class="upload-area">
-                  <el-icon class="upload-icon"><UploadFilled /></el-icon>
-                  <div class="upload-text">点击上传证明材料</div>
-                </div>
-              </el-upload>
+              <FileUploadField
+                v-model="certFiles"
+                business-type="award_cert"
+                :auto-upload="true"
+                variant="button"
+                :button-text="form.certImage ? '更换证明材料' : '上传证明材料'"
+                :disabled="isSubmitting || certificateUploading"
+                @success="handleCertificateUploaded"
+                @preview="downloadCertificate"
+              />
             </el-form-item>
           </div>
 
           <!-- 提交按钮 -->
           <div class="form-footer">
             <el-button @click="goBack" class="btn-cancel">取消申报</el-button>
-            <el-button type="primary" :loading="isSubmitting" @click="handleSubmit" class="btn-submit">
+            <el-button type="primary" :loading="isSubmitting" :disabled="certificateUploading" @click="handleSubmit" class="btn-submit">
               确认提交
             </el-button>
           </div>

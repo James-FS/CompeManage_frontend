@@ -1,13 +1,16 @@
 <script setup>
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
-import { Download, UploadFilled, Delete, Plus, CircleCheck } from '@element-plus/icons-vue'
+import { Download, Delete, Plus, CircleCheck } from '@element-plus/icons-vue'
 import { ElMessage, ElDialog } from 'element-plus'
 import * as XLSX from 'xlsx'
 import { saveAs } from 'file-saver'
 import api from '@/api'
 import { post } from '@/utils/request'
+import FileUploadField from '@/components/FileUploadField.vue'
+import { importFilePolicies } from '@/config/fileUploadPolicies'
 const route = useRoute()
+const importPolicy = importFilePolicies.awardImport
 const isUnified = computed(() => route.name === 'AwardUnifiedImport')
 const compID = computed(() => route.params.id)
 const previewValidated = ref(false)
@@ -226,8 +229,8 @@ const columns = computed(() => isUnified.value ? [
   { key: 'comp_name', label: '赛事名称', width: 260 },
   ...baseColumns,
 ] : baseColumns)
-const categories = ['校赛', '国家级', '省级', '国际级']
-const awardLevels = ['一等奖', '二等奖', '三等奖']
+const categories = ['校赛', '国家级', '省部级', '省级', '国际级']
+const awardLevels = ['一等奖', '二等奖', '三等奖', '金奖', '银奖', '铜奖', '冠军', '亚军', '季军']
 const advisorRoleLabels = {
   teacher: '教师',
   competition_manager: '赛事负责人',
@@ -424,17 +427,17 @@ const downloadTemplate = async () => {
   }
   catch (error) { ElMessage.error(errorMessage(error)) }
 }
-const handleFileChange = async uploadFile => {
-  if (!uploadFile?.raw || loading.value) return
+const handleFileChange = async file => {
+  if (!file || loading.value) return
   loadingText.value = '正在读取 Excel…'
   loading.value = true
   await nextTick()
   const started = performance.now()
   let parsed = false
   try {
-    if (uploadFile.raw.size > 20 * 1024 * 1024) throw new Error('Excel 文件不能超过20MB')
+    if (file.size > 20 * 1024 * 1024) throw new Error('Excel 文件不能超过20MB')
     const readStarted = performance.now()
-    const buffer = await uploadFile.raw.arrayBuffer()
+    const buffer = await file.arrayBuffer()
     const readDuration = performance.now() - readStarted
     const parseStarted = performance.now()
     const workbook = XLSX.read(buffer, { type: 'array', sheets: [0] })
@@ -460,7 +463,7 @@ const handleFileChange = async uploadFile => {
       if (item.award_name) {
         const awardLevel = normalizeAwardLevel(item.award_name)
         if (awardLevel) item.award_name = awardLevel
-        else item.error = `获奖等级“${item.award_name}”无法识别，请选择一等奖、二等奖或三等奖`
+        else item.error = `获奖等级“${item.award_name}”无法识别，请选择一等奖、二等奖、三等奖、金银铜奖或冠亚季军`
       }
       if (!Object.values(item).some(Boolean)) continue
       item.row_number = i + 1
@@ -480,7 +483,7 @@ const handleFileChange = async uploadFile => {
     previewValidated.value = false
     onlyErrors.value = false
     currentPage.value = 1
-    fileName.value = uploadFile.name
+    fileName.value = file.name
     validationDialogVisible.value = false
     if (validationErrorCount.value) saveValidationReport('local')
     else validationReport.value = []
@@ -586,9 +589,20 @@ watch(() => route.fullPath, () => {
       </template>
       <div class="actions">
         <el-button type="primary" :icon="Download" @click="downloadTemplate">下载模板</el-button>
-        <el-upload :auto-upload="false" :show-file-list="false" accept=".xlsx" :on-change="handleFileChange" :disabled="loading">
-          <el-button type="success" :icon="UploadFilled" :disabled="loading">上传导入文件</el-button>
-        </el-upload>
+        <FileUploadField
+          class="import-file-picker"
+          variant="button"
+          selection-only
+          :multiple="false"
+          :show-file-list="false"
+          :accept="importPolicy.accept"
+          :max-size-mb="importPolicy.maxSizeMb"
+          :max-files="1"
+          :disabled="loading"
+          button-text="导入excel文件"
+          helper-text=""
+          @select="handleFileChange"
+        />
         <span>{{ fileName }}</span>
         <span v-if="isUnified">导入年份：{{ importYear }}年</span>
       </div>
@@ -649,7 +663,7 @@ watch(() => route.fullPath, () => {
           </div>
         </div>
       </template>
-      <el-alert title="同一赛事内项目名称相同视为同一团队，获奖类别、等级和时间必须一致。国际级统一保存为国家级。" type="info" :closable="false" />
+      <el-alert title="获奖类别支持校赛、国家级、省部级、省级和国际级；国际级统一保存为国家级。同一赛事内项目名称相同视为同一团队，获奖类别、等级和时间必须一致。" type="info" :closable="false" />
       <div v-if="isUnified" class="preview-controls">
         <el-checkbox v-model="onlyErrors" :disabled="loading" @change="currentPage = 1">只看失败行</el-checkbox>
         <el-button :disabled="loading || !filteredRows.some(row => row.error)" @click="exportValidationReport">导出失败名单（{{ filteredRows.filter(row => row.error).length }} 条）</el-button>
@@ -854,6 +868,24 @@ watch(() => route.fullPath, () => {
 .preview-controls { display: flex; flex: 0 0 auto; align-items: center; gap: 16px; margin-top: 8px; }
 .preview-controls { color: #606266; font-size: 14px; }
 .actions, .footer { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.actions { align-items: flex-start; }
+.actions :deep(.file-upload-field.import-file-picker) { width: auto; flex: 0 0 auto; }
+.actions :deep(.import-file-picker .file-upload-field__button) {
+  box-sizing: border-box;
+  height: 32px;
+  min-height: 32px;
+  padding: 8px 15px;
+  border: 1px solid var(--el-color-primary);
+  border-radius: var(--el-border-radius-base);
+  background: var(--el-color-primary);
+  color: var(--el-color-white);
+  font-size: 14px;
+  line-height: 1;
+}
+.actions :deep(.import-file-picker .file-upload-field__button:hover) {
+  border-color: var(--el-color-primary-light-3);
+  background: var(--el-color-primary-light-3);
+}
 .footer { flex: 0 0 auto; justify-content: flex-end; margin-top: 12px; }
 .validation-result-table { margin-top: 16px; }
 .advisor-selection { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 6px; }

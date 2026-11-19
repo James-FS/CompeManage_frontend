@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '@/api'
+import { normalizeFileAttachments } from '@/utils/fileAttachments'
 
 const route = useRoute()
 const router = useRouter()
@@ -47,6 +48,8 @@ const handleBack = () => {
   router.push('/review/expert')
 }
 
+const filesForWork = (row) => normalizeFileAttachments(row.work_attachment_url)
+
 const handleSizeChange = () => loadData()
 const handleCurrentChange = () => loadData()
 
@@ -71,10 +74,16 @@ onMounted(loadData)
         <el-table-column prop="leader_name" :label="isIndividualComp ? '参赛者' : '队长'" min-width="140" align="center" />
         <el-table-column label="作品链接" min-width="140" align="center">
           <template #default="{ row }">
-            <el-button v-if="row.work_attachment_url" type="primary" link size="small"
-              @click="api.downloadFile(row.work_attachment_url, true)">
-              查看作品
-            </el-button>
+            <div v-if="filesForWork(row).length" class="file-link-list">
+              <el-button
+                v-for="file in filesForWork(row)"
+                :key="file.url"
+                type="primary"
+                link
+                size="small"
+                @click="api.downloadFile(file.url, true, file.name)"
+              >{{ file.name }}</el-button>
+            </div>
             <span v-else>-</span>
           </template>
         </el-table-column>
