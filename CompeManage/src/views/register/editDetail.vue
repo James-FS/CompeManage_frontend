@@ -473,13 +473,13 @@ onMounted(() => {
         </el-form-item>
 
         
-        <el-form-item label="报名审核">
+        <el-form-item label="需要审核" class="need-audit-switch">
           <el-switch
             v-model="form.needRegAudit"
-            active-text="需要审核"
-            inactive-text="免审核"
+            active-text="开"
+            inactive-text="关"
           />
-          <el-tooltip content="开启后，报名信息需要审核通过；关闭后，学生提交报名即自动通过审核。" placement="top" :show-after="200">
+          <el-tooltip content="开：学生报名需要审核通过；关：学生提交报名即自动通过审核。" placement="top" :show-after="200">
             <el-icon class="help-icon" tabindex="0" aria-label="报名审核说明"><Warning /></el-icon>
           </el-tooltip>
         </el-form-item>
