@@ -2,8 +2,10 @@
 import { reactive, ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { ArrowLeft, Promotion, Paperclip, Document } from '@element-plus/icons-vue'
+import { ArrowLeft, Promotion, Document } from '@element-plus/icons-vue'
 import { formatTime } from '@/utils/format'
+import FileUploadField from '@/components/FileUploadField.vue'
+import { fileAttachmentsToJSON, normalizeFileAttachments } from '@/utils/fileAttachments'
 import api from '@/api'
 const route = useRoute()
 const router = useRouter()
@@ -11,8 +13,6 @@ const formRef = ref(null)
 const isSubmitting = ref(false)
 const uploadRef = ref(null) // 上传组件引用
 const noticeID = ref(null)
-const token = localStorage.getItem('token')
-const uploadHeaders = { Authorization: `Bearer ${token}` }
 
 // 1. 判断模式
 const isEditMode = computed(() => {
@@ -58,48 +58,19 @@ const getRespMessage = (resp, fallback) => resp?.message || resp?.msg || fallbac
 //   })
 // }
 
-const handleFileChange = (uploadFile, uploadFiles) => {
-  form.fileList = uploadFiles
-}
-
 const handleSubmit = async () => {
   if (!formRef.value) return
-  await formRef.value.validate((valid) => {
-    if (valid) {
-      isSubmitting.value = true
-      // 判断是否有“待上传”的文件 (status === 'ready')
-      const hasNewFile = form.fileList.some((f) => f.status === 'ready')
-      if (hasNewFile) {
-        // 有新文件：手动触发上传，等待 onSuccess 回调
-        uploadRef.value.submit()
-      } else {
-        // 无新文件：直接提交表单
-        finalSubmit()
-      }
-    }
-  })
-}
+  const valid = await formRef.value.validate().catch(() => false)
+  if (!valid) return
 
-const handleUploadSuccess = (response, uploadFile, uploadFiles) => {
-  if (response.code !== 200) {
-    ElMessage.error(response.msg || '上传失败')
+  isSubmitting.value = true
+  try {
+    await uploadRef.value?.uploadPending()
+    await finalSubmit()
+  } catch (error) {
+    if (!error?.messageShown) ElMessage.error(error?.message || '文件上传失败，请重试')
     isSubmitting.value = false
-    return
   }
-
-  // 必须手动把后端返回的 URL 赋给文件对象
-  uploadFile.url = response.data.url
-
-  // 检查是否所有文件都处理完毕 (全部变成 success)
-  const isAllSuccess = uploadFiles.every((item) => item.status === 'success')
-  if (isAllSuccess) {
-    finalSubmit() // 所有文件上传完毕，执行最终提交
-  }
-}
-
-const handleUploadError = () => {
-  ElMessage.error('网络错误，文件上传失败')
-  isSubmitting.value = false
 }
 
 // 7. 最终提交 (构造 FormData)
@@ -112,10 +83,7 @@ const finalSubmit = async () => {
     }
 
     // 提取所有文件的 URL，拼成字符串
-    const attachmentStr = form.fileList
-      .map((f) => f.url || (f.response && f.response.data.url))
-      .filter((url) => url)
-      .join(',')
+    const attachmentStr = fileAttachmentsToJSON(form.fileList)
 
     const params = new FormData()
     params.append('title', form.title)
@@ -187,12 +155,7 @@ const loadNoticeDetail = async () => {
         form.compID = notice.compID || notice.competition_detail_id || ''
         // 如果有附件，回显文件列表
         if (notice.attachment) {
-          const urls = notice.attachment.split(',')
-          form.fileList = urls.map((url, index) => ({
-            name: `附件${index + 1}`,
-            url: url.trim(),
-            status: 'success'
-          }))
+          form.fileList = normalizeFileAttachments(notice.attachment)
         }
       }
     }
@@ -252,24 +215,11 @@ const loadNoticeDetail = async () => {
             <div class="section-label">
               <span class="text">附件材料</span>
             </div>
-            <el-upload
+            <FileUploadField
               ref="uploadRef"
-              v-model:file-list="form.fileList"
-              drag
-              action="/api/upload"
-              multiple
-              :headers="uploadHeaders"
-              :data="{ type: 'notice_attachment' }"
-              :auto-upload="false"
-              :on-success="handleUploadSuccess"
-              :on-error="handleUploadError"
-              class="paper-uploader"
-            >
-              <div class="upload-placeholder">
-                <el-icon class="upload-icon"><Paperclip /></el-icon>
-                <span>点击或拖拽文件上传</span>
-              </div>
-            </el-upload>
+              v-model="form.fileList"
+              business-type="notice"
+            />
           </div>
 
           <div class="form-footer">
@@ -468,29 +418,6 @@ const loadNoticeDetail = async () => {
     background: #fff;
     border-color: #2b4c7e;
   }
-}
-
-/* 3. 附件上传 */
-:deep(.paper-uploader .el-upload-dragger) {
-  background: #fff;
-  border: 1px dashed #dcdfe6;
-  padding: 20px;
-  height: auto;
-  border-radius: 4px;
-
-  &:hover {
-    border-color: #2b4c7e;
-    background: #f2f4f7;
-  }
-}
-
-.upload-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  color: #909399;
-  font-size: 13px;
 }
 
 /* 底部按钮 */

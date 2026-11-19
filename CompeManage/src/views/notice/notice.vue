@@ -6,6 +6,7 @@ import { Document, Download } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import 'element-plus/dist/index.css'
 import { api } from '@/api'
+import { normalizeFileAttachments } from '@/utils/fileAttachments'
 const route = useRoute()
 const loading = ref(false)
 
@@ -14,7 +15,7 @@ const notice = ref({
   title: '',
   content: '',
   publish_time: '',
-  attachment: '',
+  attachments: [],
 })
 
 // 获取通知详情
@@ -37,7 +38,7 @@ async function fetchNoticeDetail() {
         title: noticeData.title || '',
         content: noticeData.content || '',
         publish_time: noticeData.publish_time || '',
-        attachment: noticeData.attachment || '',
+        attachments: normalizeFileAttachments(noticeData.attachment),
       }
     } else {
       ElMessage.error(response.msg || '获取通知失败')
@@ -51,14 +52,10 @@ async function fetchNoticeDetail() {
 }
 
 // 下载附件
-const downloadAttachment = async () => {
-  if (!notice.value.attachment) {
-    ElMessage.warning('该通知没有附件')
-    return
-  }
+const downloadAttachment = async (file) => {
   try {
     // 强制走下载分支（保留后端返回的原始文件名）
-    await api.downloadFile(notice.value.attachment, false)
+    await api.downloadFile(file.url, false, file.name)
   } catch (error) {
     ElMessage.error('附件打开失败：' + (error.message || '未知错误'))
     console.error(error)
@@ -93,17 +90,27 @@ onMounted(async() => {
         </div>
 
         <!-- 附件下载 -->
-        <div class="attachment-box" v-if="notice.attachment" @click="downloadAttachment">
-          <div class="file-icon">
-            <el-icon :size="24"><Document /></el-icon>
-          </div>
-          <div class="file-info">
-            <span class="file-label">附件下载</span>
-            <span class="file-name">{{ notice.attachment.substring(notice.attachment.lastIndexOf('/') + 1) }}</span>
-          </div>
-          <div class="download-hint">
-            <el-icon :size="16"><Download /></el-icon>
-            点击下载
+        <div v-if="notice.attachments.length" class="attachment-list">
+          <div
+            v-for="file in notice.attachments"
+            :key="file.url"
+            class="attachment-box"
+            role="button"
+            tabindex="0"
+            @click="downloadAttachment(file)"
+            @keyup.enter="downloadAttachment(file)"
+          >
+            <div class="file-icon">
+              <el-icon :size="24"><Document /></el-icon>
+            </div>
+            <div class="file-info">
+              <span class="file-label">通知附件</span>
+              <span class="file-name">{{ file.name }}</span>
+            </div>
+            <div class="download-hint">
+              <el-icon :size="16"><Download /></el-icon>
+              点击下载
+            </div>
           </div>
         </div>
 
@@ -193,7 +200,7 @@ onMounted(async() => {
     }
 
     .attachment-box {
-      margin-top: 30px;
+      margin-top: 10px;
       display: flex;
       align-items: center;
       padding: 15px;
@@ -251,6 +258,12 @@ onMounted(async() => {
           transform: translateX(0);
         }
       }
+    }
+
+    .attachment-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 20px;
     }
 
     .no-attachment {

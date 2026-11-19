@@ -4,7 +4,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { 
   ArrowLeft, 
   Document, 
-  UploadFilled, 
   Delete, 
   Timer, 
   CircleCheck,
@@ -12,6 +11,8 @@ import {
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import api from '@/api'
+import FileUploadField from '@/components/FileUploadField.vue'
+import { fileAttachmentsToJSON, normalizeFileAttachments } from '@/utils/fileAttachments'
 
 const route = useRoute()
 const router = useRouter()
@@ -26,11 +27,6 @@ const timeRangeText = ref('')
 // 文件列表
 const regFileList = ref([])  // 报名附件(只读)
 const workFileList = ref([]) // 作品附件(可编辑)
-
-// 上传组件引用
-const uploadRef = ref(null)
-const token = localStorage.getItem('token')
-const uploadHeaders = { Authorization: `Bearer ${token}` }
 
 // --- 1. 初始化数据 ---
 async function initData() {
@@ -77,18 +73,16 @@ async function initData() {
 
 // 辅助：解析逗号分隔的 URL
 function parseFileString(urlStr) {
-  if (!urlStr) return []
-  return urlStr.split(',').filter(item => item).map(url => {
-    let name = url.substring(url.lastIndexOf('/') + 1)
-    if (name.indexOf('_') > -1) name = name.substring(name.indexOf('_') + 1)
-    return { name, url }
-  })
+  return normalizeFileAttachments(urlStr)
 }
 
 // 打开文件
-function openFile(url) {
-  const fullUrl = url.startsWith('http') ? url : `/api${url}`
-  window.open(fullUrl, '_blank')
+async function openFile(url, name = '') {
+  try {
+    await api.downloadFile(url, true, name)
+  } catch (error) {
+    ElMessage.error(error?.message || '文件打开失败')
+  }
 }
 
 // 移除作品文件
@@ -96,31 +90,14 @@ function removeWorkFile(index) {
   workFileList.value.splice(index, 1)
 }
 
-// --- 2. 上传逻辑 ---
-const handleUploadSuccess = (response, uploadFile) => {
-  if (response.code === 200) {
-    const newFileUrl = response.data.url
-    const newFileName = response.data.filename || uploadFile.name
-    
-    // 追加到作品列表
-    workFileList.value.push({
-      name: newFileName,
-      url: newFileUrl
-    })
-    
-    uploadRef.value.clearFiles()
-    ElMessage.success('文件上传成功')
-  } else {
-    ElMessage.error(response.msg || '上传失败')
-  }
-}
-
-const handleUploadError = () => {
-  ElMessage.error('网络错误，上传失败')
-}
-
 // --- 3. 提交逻辑 ---
 async function submitWork() {
+  if (workFileList.value.some(file => file.status === 'uploading')) {
+    return ElMessage.warning('请等待所有作品文件上传完成')
+  }
+  if (workFileList.value.some(file => file.status === 'error' || (!file.url && (file.raw || file.file)))) {
+    return ElMessage.warning('请重新上传失败的作品文件')
+  }
   if (workFileList.value.length === 0) {
     return ElMessage.warning('请至少上传一份作品文件')
   }
@@ -128,7 +105,7 @@ async function submitWork() {
   submitting.value = true
   try {
     // 拼接 URL
-    const finalUrl = workFileList.value.map(f => f.url).join(',')
+    const finalUrl = fileAttachmentsToJSON(workFileList.value)
     
     await api.submitWork({
       reg_id: regID,
@@ -230,22 +207,14 @@ onMounted(() => {
         </div>
 
         <div class="upload-area" v-if="canSubmit">
-          <el-upload
-            ref="uploadRef"
-            drag
-            action="/api/upload"
-            :headers="uploadHeaders"
-            :data="{ type: 'competition_work' }"
-            multiple
-            :on-success="handleUploadSuccess"
-            :on-error="handleUploadError"
-            :show-file-list="false" 
-          >
-            <el-icon class="el-icon--upload"><upload-filled /></el-icon>
-            <div class="el-upload__text">
-              拖拽文件到此处，或 <em>点击上传新文件</em>
-            </div>
-          </el-upload>
+          <FileUploadField
+            v-model="workFileList"
+            business-type="competition_work"
+            :auto-upload="true"
+            :disabled="submitting"
+            button-text="拖拽文件到此处，或点击上传新文件"
+            @success="ElMessage.success('文件上传成功')"
+          />
         </div>
       </div>
 

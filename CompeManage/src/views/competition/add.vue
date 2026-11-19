@@ -2,14 +2,17 @@
 import { ref, reactive, computed, renderList, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { ElMessage, ElMessageBox, ElTableColumn } from 'element-plus';
-import { Plus, DocumentCopy, ArrowRight, Check, Delete, ArrowLeft, UploadFilled, Download, FolderOpened, Warning, CircleCheck } from '@element-plus/icons-vue';
+import { Plus, DocumentCopy, ArrowRight, Check, Delete, ArrowLeft, UploadFilled, Download, Warning, CircleCheck } from '@element-plus/icons-vue';
 import { debounce } from '@/utils/debounce';
 import api from '@/api/index';
+import FileUploadField from '@/components/FileUploadField.vue';
+import { importFilePolicies } from '@/config/fileUploadPolicies';
 import * as XLSX from 'xlsx';
 
 const router = useRouter();
 const route = useRoute();
 const activeTab = ref('manual');
+const importPolicy = importFilePolicies.competitionDirectory;
 
 // Tab 1 手动录入新赛事
 const formRef = ref(null);
@@ -414,9 +417,9 @@ const autoMatchManagersByWorkIds = async (items) => {
 };
 
 // 处理文件上传与解析
-const handleUploadChange = (uploadFile) => {
-    // 简单的格式校验
-    const isExcel = uploadFile.raw.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || uploadFile.raw.type === 'application/vnd.ms-excel';
+const handleUploadChange = (file) => {
+    if (!file) return;
+    const isExcel = /\.xlsx?$/i.test(file.name);
     if (!isExcel) {
         ElMessage.error('只能上传 xlsx / xls 文件');
         return;
@@ -468,7 +471,7 @@ const handleUploadChange = (uploadFile) => {
             excelLoading.value = false;
         }
     };
-    reader.readAsArrayBuffer(uploadFile.raw);
+    reader.readAsArrayBuffer(file);
 };
 
 // 移除某一行
@@ -586,6 +589,7 @@ const queryManagerByWorkId = async (row) => {
                                         <el-select v-model="form.comp_level" placeholder="请选择级别" style="width: 100%">
                                             <el-option label="校级" value="校级" />
                                             <el-option label="省级" value="省级" />
+                                            <el-option label="省部级" value="省部级" />
                                             <el-option label="国家级" value="国家级" />
                                         </el-select>
                                     </el-form-item>
@@ -596,16 +600,23 @@ const queryManagerByWorkId = async (row) => {
                                     <el-form-item label="赛事类型" prop="comp_type">
                                         <el-select v-model="form.comp_type" placeholder="请选择类型" style="width: 100%">
                                             <el-option label="学科竞赛" value="学科竞赛" />
-                                            <el-option label="创新创业竞赛" value="创新创业竞赛" />
+                                            <el-option label="创新大赛（原互联网+创新创业大赛）" value="创新创业竞赛" />
+                                            <el-option label="创青春中国青年创新创业大赛" value="创青春中国青年创新创业大赛" />
+                                            <el-option label="挑战杯" value="挑战杯" />
+                                            <el-option label="其他" value="其他" />
                                         </el-select>
                                     </el-form-item>
                                 </el-col>
                                 <el-col :span="12">
                                     <el-form-item label="所属学院" prop="college">
                                         <el-select v-model="form.college" placeholder="请选择学院" style="width: 100%"
-                                            clearable>
+                                            clearable :fit-input-width="true">
                                             <el-option v-for="college in collegeList" :key="college.id"
-                                                :label="college.name" :value="college.name" />
+                                                :label="college.name" :value="college.name">
+                                                <span class="college-option-label" :title="college.name">
+                                                    {{ college.name }}
+                                                </span>
+                                            </el-option>
                                         </el-select>
                                     </el-form-item>
                                 </el-col>
@@ -631,12 +642,17 @@ const queryManagerByWorkId = async (row) => {
                                 </el-col>
                                 <el-col :span="12">
                                     <el-form-item label="所属年份" prop="year">
-                                        <el-input v-model="form.year" placeholder="请选择所属年份" />
+                                        <el-select v-model="form.year" placeholder="请选择所属年份" style="width: 100%"
+                                            :loading="yearsLoading">
+                                            <el-option v-for="year in yearOptions" :key="year.value"
+                                                :label="year.label" :value="year.value" />
+                                        </el-select>
                                     </el-form-item>
                                 </el-col>
                             </el-row>
                             <el-form-item label="备注说明" prop="desc">
-                                <el-input v-model="form.desc" type="textarea" :rows="3" placeholder="填写赛事的其他补充说明..." />
+                                <el-input v-model="form.desc" type="textarea" :rows="3"
+                                    placeholder="请按参赛通知规范填写赛事名称、主办单位等相关信息" />
                             </el-form-item>
                             <el-form-item>
                                 <el-button type="primary" @click="handleSubmit(formRef)">创建</el-button>
@@ -770,14 +786,18 @@ const queryManagerByWorkId = async (row) => {
                                         <Download />
                                     </el-icon>下载导入模板
                                 </el-button>
-                                <el-upload class="upload-demo" action="#" :auto-upload="false" :show-file-list="false"
-                                    :on-change="handleUploadChange" accept=".xlsx, .xls">
-                                    <el-button type="primary">
-                                        <el-icon class="el-icon--left">
-                                            <FolderOpened />
-                                        </el-icon>选择文件上传
-                                    </el-button>
-                                </el-upload>
+                                <FileUploadField
+                                    variant="button"
+                                    selection-only
+                                    :multiple="false"
+                                    :show-file-list="false"
+                                    :accept="importPolicy.accept"
+                                    :max-size-mb="importPolicy.maxSizeMb"
+                                    :max-files="1"
+                                    button-text="选择 Excel 文件"
+                                    :helper-text="importPolicy.helperText"
+                                    @select="handleUploadChange"
+                                />
                                 <el-button type="success" @click="handleExcelImportSubmit"
                                     :disabled="excelList.length === 0 || excelImportSubmitting"
                                     :loading="excelImportSubmitting">
@@ -802,6 +822,7 @@ const queryManagerByWorkId = async (row) => {
                                     <el-select v-model="row.comp_level" placeholder="级别">
                                         <el-option label="校级" value="校级" />
                                         <el-option label="省级" value="省级" />
+                                        <el-option label="省部级" value="省部级" />
                                         <el-option label="国家级" value="国家级" />
                                     </el-select>
                                 </template>
@@ -811,7 +832,10 @@ const queryManagerByWorkId = async (row) => {
                                 <template #default="{ row }">
                                     <el-select v-model="row.comp_type" placeholder="类型">
                                         <el-option label="学科竞赛" value="学科竞赛" />
-                                        <el-option label="创新创业竞赛" value="创新创业竞赛" />
+                                        <el-option label="创新大赛（原互联网+创新创业大赛）" value="创新创业竞赛" />
+                                        <el-option label="创青春中国青年创新创业大赛" value="创青春中国青年创新创业大赛" />
+                                        <el-option label="挑战杯" value="挑战杯" />
+                                        <el-option label="其他" value="其他" />
                                     </el-select>
                                 </template>
                             </el-table-column>
@@ -853,9 +877,14 @@ const queryManagerByWorkId = async (row) => {
 
                             <el-table-column label="所属学院" width="160" align="center">
                                 <template #default="{ row }">
-                                    <el-select v-model="row.college" placeholder="选择学院" clearable>
+                                    <el-select v-model="row.college" placeholder="选择学院" clearable
+                                        :fit-input-width="true">
                                         <el-option v-for="c in collegeList" :key="c.id" :label="c.name"
-                                            :value="c.name" />
+                                            :value="c.name">
+                                            <span class="college-option-label" :title="c.name">
+                                                {{ c.name }}
+                                            </span>
+                                        </el-option>
                                     </el-select>
                                 </template>
                             </el-table-column>
@@ -1003,6 +1032,13 @@ const queryManagerByWorkId = async (row) => {
     :deep(.el-input__wrapper:hover) {
         border-bottom-color: var(--el-color-primary);
     }
+}
+
+.college-option-label {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 // 搜索栏样式

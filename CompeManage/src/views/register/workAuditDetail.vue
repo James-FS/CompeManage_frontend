@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '@/api/index.js'
+import { normalizeFileAttachments } from '@/utils/fileAttachments'
 import { ArrowLeft, Document, Download } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 
@@ -31,22 +32,7 @@ const advisorInfos = computed(() => {
 })
 const advisorNames = computed(() => advisorInfos.value.map((advisor) => advisor.name).filter(Boolean).join('、'))
 
-const parseFileList = (urlStr) => {
-  if (!urlStr) return []
-  return urlStr
-    .split(',')
-    .map((url) => url.trim())
-    .filter(Boolean)
-    .map((url) => {
-      let fileName = url.substring(url.lastIndexOf('/') + 1)
-      if (fileName.indexOf('_') > -1) {
-        fileName = fileName.substring(fileName.indexOf('_') + 1)
-      }
-      return { name: fileName, url }
-    })
-}
-
-const workList = computed(() => parseFileList(detail.value.work_url))
+const workList = computed(() => normalizeFileAttachments(detail.value.work_url))
 
 const openAttachment = async (url) => {
   if (!url) return

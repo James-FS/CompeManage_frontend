@@ -47,10 +47,16 @@ const awardLevelMatches = (awardName, selectedLevel) => {
   const value = String(awardName || '').replace(/[\s\u3000（）()]/g, '')
   const aliases = {
     一等奖: ['一等奖', '一等', '冠军', '金奖', '特等奖'],
+    金奖: ['一等奖', '一等', '冠军', '金奖', '特等奖'],
+    冠军: ['一等奖', '一等', '冠军', '金奖', '特等奖'],
     二等奖: ['二等奖', '二等', '亚军', '银奖'],
+    银奖: ['二等奖', '二等', '亚军', '银奖'],
+    亚军: ['二等奖', '二等', '亚军', '银奖'],
     三等奖: ['三等奖', '三等', '季军', '铜奖'],
+    铜奖: ['三等奖', '三等', '季军', '铜奖'],
+    季军: ['三等奖', '三等', '季军', '铜奖'],
   }
-  return aliases[selectedLevel].some(alias => value.includes(alias))
+  return (aliases[selectedLevel] || [selectedLevel]).some(alias => value.includes(alias))
 }
 const awardCategoryMatches = (category, selectedCategory) => {
   if (!selectedCategory) return true
@@ -379,13 +385,20 @@ onUnmounted(() => clearTimeout(competitionSearchTimer))
         <el-input v-model="keyword" placeholder="搜索项目、姓名、学号、学院或指导老师" clearable style="width: 360px" />
         <el-select v-model="categoryFilter" placeholder="获奖类别" clearable style="width: 150px">
           <el-option label="校级" value="校级" />
+          <el-option label="省部级" value="省部级" />
           <el-option label="省级" value="省级" />
           <el-option label="国家级" value="国家级" />
         </el-select>
         <el-select v-model="levelFilter" placeholder="获奖等级" clearable style="width: 150px">
           <el-option label="一等奖" value="一等奖" />
+          <el-option label="金奖" value="金奖" />
+          <el-option label="冠军" value="冠军" />
           <el-option label="二等奖" value="二等奖" />
+          <el-option label="银奖" value="银奖" />
+          <el-option label="亚军" value="亚军" />
           <el-option label="三等奖" value="三等奖" />
+          <el-option label="铜奖" value="铜奖" />
+          <el-option label="季军" value="季军" />
         </el-select>
         <el-button type="primary" :icon="Upload" @click="router.push({ name: 'AwardImport', params: { id: compID } })">导入获奖名单</el-button>
         <el-button type="success" :icon="Download" @click="handleExport">导出 Excel</el-button>
@@ -425,7 +438,7 @@ onUnmounted(() => clearTimeout(competitionSearchTimer))
         <el-alert title="修改将影响该团队所有获奖成员。不同学院提交的信息不会被删除。" type="info" :closable="false" />
         <el-form label-width="110px" style="margin-top: 18px">
           <el-form-item label="项目名称"><el-input v-model="teamEdit.project_name" maxlength="255" /></el-form-item>
-          <el-form-item label="获奖类别"><el-select v-model="teamEdit.award_category"><el-option v-for="c in ['校级', '省级', '国家级', '国际级']" :key="c" :label="c" :value="c" /></el-select></el-form-item>
+          <el-form-item label="获奖类别"><el-select v-model="teamEdit.award_category"><el-option v-for="c in ['校级', '省部级', '省级', '国家级', '国际级']" :key="c" :label="c" :value="c" /></el-select></el-form-item>
           <el-form-item label="获奖等级"><el-input v-model="teamEdit.award_name" maxlength="100" /></el-form-item>
           <el-form-item label="获奖时间"><el-date-picker v-model="teamEdit.award_month" type="month" format="YYYY-MM" value-format="YYYY-MM" /></el-form-item>
           <el-form-item label="指导老师">

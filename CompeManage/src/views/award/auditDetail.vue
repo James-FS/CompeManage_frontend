@@ -55,7 +55,7 @@ const levelColorMap = {
 
 const awardLevelGroup = computed(() => {
   const level = detail.value.award_level || ''
-  return detail.value.award_category || levelLabelMap[level] || (level.match(/国家级|省级|校级/)?.[0]) || '未知'
+  return detail.value.award_category || levelLabelMap[level] || (level.match(/国家级|省部级|省级|校级/)?.[0]) || '未知'
 })
 
 const awardLevelColor = computed(() => {
