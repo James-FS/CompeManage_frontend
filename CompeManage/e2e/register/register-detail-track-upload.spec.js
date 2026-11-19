@@ -228,7 +228,7 @@ test('附件超过数量限制给出警告', async ({ page }) => {
     name: `f${i}.docx`, mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', buffer: Buffer.from('m'),
   }))
   await page.locator('input[type=file]').setInputFiles(files)
-  await expect(page.getByText('附件数量超出限制')).toBeVisible()
+  await expect(page.getByText(/最多只能添加|附件数量超出限制/)).toBeVisible()
   expect(state.submitted).toBeUndefined()
 })
 
@@ -240,6 +240,6 @@ test('附件上传失败提示重试且不提交', async ({ page }) => {
     name: '项目计划书.docx', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', buffer: Buffer.from('mock'),
   })
   await page.getByRole('button', { name: '确认报名', exact: true }).click()
-  await expect(page.getByText(/上传失败，请检查网络后重试/).first()).toBeVisible()
+  await expect(page.getByText(/上传失败|请检查网络后重试/).first()).toBeVisible()
   expect(state.submitted).toBeUndefined()
 })

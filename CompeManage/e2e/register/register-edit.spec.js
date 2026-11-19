@@ -165,9 +165,10 @@ test.describe('报名规则配置页面 E2E 测试', () => {
     const activeCount = await activeRadio.count()
     expect(activeCount).toBeGreaterThanOrEqual(1)
 
-    // 验证报名审核开关有初始状态
-    const auditSwitch = page.locator('.el-form-item').filter({ hasText: '报名审核' }).locator('.el-switch')
-    const hasState = await auditSwitch.evaluate((el) => el.classList.contains('is-checked')).catch(() => false)
+    // 验证报名审核开关有初始状态（label="需要审核"）
+    const auditSwitch = page.locator('.el-form-item:has-text("需要审核")').locator('.el-switch')
+    await expect(auditSwitch).toBeVisible({ timeout: 5000 })
+    const hasState = await auditSwitch.evaluate((el) => el.classList.contains('is-checked'))
     console.log(`报名审核开关状态: ${hasState}`)
 
     console.log('数据加载验证通过')
