@@ -89,6 +89,7 @@ export const api = {
   createNotice: (data) => post('/api/notice/comp/create', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
   updateNotice: (id, data) => put(`/api/notice/${id}`, data, { headers: { 'Content-Type': 'multipart/form-data' } }),
   publishNotice: (id) => put(`/api/notice/${id}/publish`),
+  revokeNotice: (id) => put(`/api/notice/${id}/revoke`),
   deleteNotice: (id) => del(`/api/notice/${id}`),
   // ==================== 获奖相关 ====================
   getAwardCompList: (params) => get('/api/award/list', params),
@@ -127,7 +128,32 @@ export const api = {
   getStatisticsDashboard: (params) => get('/api/statistics/dashboard', params),
 
   // ==================== 通用上传 ====================
-  uploadFile: (data) => post('/api/upload', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  uploadFile: (file, type, config = {}) => {
+    const data = typeof FormData !== 'undefined' && file instanceof FormData ? file : new FormData()
+    if (!(typeof FormData !== 'undefined' && file instanceof FormData)) {
+      data.append('file', file)
+      data.append('type', type)
+    }
+    return post('/api/upload', data, {
+      ...config,
+      headers: { 'Content-Type': 'multipart/form-data', ...config.headers },
+    })
+  },
+  cleanupUploadedFile: (fileUrl) => {
+    try {
+      const parsed = new URL(fileUrl, window.location.origin)
+      const segments = parsed.pathname.split('/').filter(Boolean)
+      const downloadIndex = segments.indexOf('download')
+      if (downloadIndex < 0 || !segments[downloadIndex + 1] || !segments[downloadIndex + 2]) {
+        return Promise.resolve(null)
+      }
+      const type = decodeURIComponent(segments[downloadIndex + 1])
+      const filename = decodeURIComponent(segments[downloadIndex + 2])
+      return del(`/api/file/unlinked/${encodeURIComponent(type)}/${encodeURIComponent(filename)}`)
+    } catch {
+      return Promise.resolve(null)
+    }
+  },
 
   // ==================== 专家评审相关 ====================
   // 管理员

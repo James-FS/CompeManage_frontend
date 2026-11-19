@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { EditPen } from '@element-plus/icons-vue'
 import api from '@/api'
+import { normalizeFileAttachments } from '@/utils/fileAttachments'
 
 const route = useRoute()
 const router = useRouter()
@@ -19,6 +20,7 @@ const submitting = ref(false)
 const form = ref({ score: null, comment: '' })
 
 const isEditing = computed(() => reviewRecord.value.status === 1)
+const workAttachments = computed(() => normalizeFileAttachments(work.value.work_attachment_url))
 
 const loadData = async () => {
   loading.value = true
@@ -110,8 +112,17 @@ onMounted(loadData)
         <el-form-item label="提交时间">
           <span class="info-text">{{ work.submitted_at }}</span>
         </el-form-item>
-        <el-form-item v-if="work.work_attachment_url" label="作品附件">
-          <el-button type="primary" link size="small" @click="api.downloadFile(work.work_attachment_url, true)">查看作品</el-button>
+        <el-form-item v-if="workAttachments.length" label="作品附件">
+          <el-button
+            v-for="file in workAttachments"
+            :key="file.url"
+            type="primary"
+            link
+            size="small"
+            @click="api.downloadFile(file.url, true, file.name)"
+          >
+            {{ file.name || '查看作品' }}
+          </el-button>
         </el-form-item>
 
         <el-divider border-style="dashed" />

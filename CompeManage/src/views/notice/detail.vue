@@ -86,23 +86,22 @@ function handleDelete(row) {
 
 // 发布/撤回通知
 async function handlePublish(row) {
-  const action = row.status === 1 ? '撤回' : '发布'
-  const newStatus = row.status === 1 ? 0 : 1
-  
+  const isPublished = Number(row.status) === 1
+  const action = isPublished ? '撤回' : '发布'
+
   try {
-    const res = await api.updateNoticeStatus({ 
-      id: row.ID, 
-      status: newStatus 
-    })
-    
-    if (res.code === 0) {
+    const res = isPublished
+      ? await api.revokeNotice(row.ID)
+      : await api.publishNotice(row.ID)
+
+    if (res?.code === 200 || res?.code === 0) {
       ElMessage.success(`${action}成功`)
-      row.status = newStatus // 更新本地状态
+      row.status = isPublished ? 0 : 1
     } else {
-      ElMessage.error(res.msg || `${action}失败`)
+      ElMessage.error(res?.message || res?.msg || `${action}失败`)
     }
   } catch (error) {
-    ElMessage.error(`${action}失败：` + error.message)
+    ElMessage.error(`${action}失败：` + (error.message || error))
   }
 }
 </script>

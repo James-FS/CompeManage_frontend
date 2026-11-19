@@ -14,12 +14,13 @@ import {
   Trophy,
   Document,
   UserFilled,
-  UploadFilled,
   Search,
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { debounce } from '@/utils/debounce'
 import { isValidPhone, isValidEmail, phoneRule, emailRule } from '@/utils/validators'
+import FileUploadField from '@/components/FileUploadField.vue'
+import { fileAttachmentsToJSON, normalizeFileAttachments } from '@/utils/fileAttachments'
 
 const router = useRouter()
 const route = useRoute()
@@ -33,12 +34,7 @@ const participationType = ref('individual')
 const currentStudent = ref(null)
 const savedRegistrationID = ref(null)
 const canChooseParticipationType = computed(() => compInfo.value.compType === 2 && minMembers.value <= 1 && maxMembers.value > 1)
-const uploadedUrls = ref([])
 const uploadRef = ref(null)
-const token = localStorage.getItem('token')
-const uploadHeaders = {
-  Authorization: `Bearer ${token}`,
-}
 const pageStatus = ref(0) // 0(未报名), 1(已报名/待审), 2(被驳回)
 const rejectReason = ref('') // 驳回理由
 const isReadOnly = computed(() => pageStatus.value === 1) // 是否只读
@@ -344,34 +340,6 @@ const selectStudent = (row) => {
 
 // ==================== 原有方法 ====================
 
-const handleUploadSuccess = (response, uploadFile, uploadFiles) => {
-  if (response.code !== 200) {
-    ElMessage.error(response.msg || '附件上传失败')
-    return
-  }
-
-  // 检查是否所有文件都上传完成了
-  // Element Plus 会把文件状态更新为 'success'
-  const isAllSuccess = uploadFiles.every((item) => item.status === 'success')
-
-  if (isAllSuccess) {
-    const urls = uploadFiles.map((item) => {
-      return item.response?.data?.url || item.url
-    })
-
-    const finalAttachmentUrl = urls.join(',')
-    submitForm(finalAttachmentUrl)
-  }
-}
-
-const handleUploadError = (err, file, fileList) => {
-  ElMessage.error(`文件 ${file.name} 上传失败，请检查网络后重试`)
-}
-
-const handleExceed = () => {
-  ElMessage.warning('附件数量超出限制')
-}
-
 function addMember() {
   if (formData.members.length >= maxMembers.value - 1) {
     ElMessage.warning(`团队成员最多只能添加到${maxMembers.value}人`)
@@ -411,14 +379,7 @@ async function checkRegStatus() {
        console.log('data.track =', data.track)  // 加这一行看看后端返回的值
       await parseSavedTrackValue(data.track || '')
       console.log("formData",formData);
-      if (data.attachment_url) {
-        const urls = data.attachment_url.split(',')
-        formData.fileList = urls.map((url) => ({
-          name: url.substring(url.lastIndexOf('/') + 1),
-          url: url,
-          status: 'success', // 标记为已成功，防止重复上传
-        }))
-      }
+      formData.fileList = normalizeFileAttachments(data.attachment_url)
 
       if (data.advisor_info) {
         try {
@@ -565,20 +526,18 @@ async function submitVerify() {
     return
   }
   
-  await formRef.value.validate((valid) => {
-    if (valid) {
-      // 核心判断：有没有待上传的文件？
-      if (formData.fileList.some((f) => f.status === 'ready')) {
-        uploadRef.value.submit()
-      } else {
-        const urls = formData.fileList.map((f) => f.response?.data?.url || f.url)
-        submitForm(urls.join(','))
-      }
-    } else {
-      ElMessage.error('请完善表单信息')
-    }
-  })
+  const valid = await formRef.value.validate().catch(() => false)
+  if (!valid) return ElMessage.error('请完善表单信息')
+
+  try {
+    const files = await uploadRef.value?.uploadPending()
+    await submitForm(fileAttachmentsToJSON(files || formData.fileList))
+  } catch (error) {
+    if (!error?.messageShown) ElMessage.error(error?.message || '附件上传失败，请重试')
+  }
 }
+
+const previewAttachment = (file) => api.downloadFile(file.url, true, file.name)
 
 async function submitForm(attachmentURL) {
   const compID = Number(route.params.id)
@@ -1021,25 +980,13 @@ onMounted(async () => {
 
           <div class="form-section" v-if="need_attachment > 0">
             <h3 class="section-title">附件材料</h3>
-            <el-upload
+            <FileUploadField
               ref="uploadRef"
-              class="simple-upload"
-              drag
-              action="/api/upload"
-              multiple
-              :auto-upload="false"
-              :data="{ type: 'reg_attachment' }"
-              :limit="5"
-              :headers="uploadHeaders"
-              :on-success="handleUploadSuccess"
-              :on-error="handleUploadError"
-              :on-exceed="handleExceed"
-              v-model:file-list="formData.fileList"
+              v-model="formData.fileList"
+              business-type="reg_attachment"
               :disabled="isReadOnly"
-            >
-              <el-icon class="el-icon--upload"><upload-filled /></el-icon>
-              <div class="el-upload__text">将项目计划书拖拽至此处，或 <em>点击上传</em></div>
-            </el-upload>
+              @preview="previewAttachment"
+            />
           </div>
 
           <div v-if="!isReadOnly" class="form-actions">

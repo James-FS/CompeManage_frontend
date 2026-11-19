@@ -278,14 +278,9 @@ const handleBatchDelete = async () => {
     }).catch(() => { });
 };
 
-// 获取项目来源文本
-const getSourceText = (source) => {
-    const sourceMap = {
-        1: '学校导入',
-        2: '学院申报'
-    };
-    return sourceMap[source] || '-';
-};
+// 项目来源显示添加/负责老师所属学院；缺少老师学院信息时回退到赛事所属学院。
+const getProjectSourceText = (competition) =>
+    competition?.manager?.college || competition?.college_info?.name || '-';
 
 // 导出数据
 const handleExport = async () => {
@@ -332,7 +327,7 @@ const handleExport = async () => {
                 '承办单位': item.undertaker || '-',
                 '赛事负责人': item.manager?.realname || '-',
                 '所属学院': item.college_info?.name || '-',
-                '项目来源': getSourceText(item.source),
+                '项目来源': getProjectSourceText(item),
                 '状态': statusText,
             };
         });
@@ -350,7 +345,7 @@ const handleExport = async () => {
             { wch: 25 }, // 承办单位
             { wch: 20 }, // 赛事负责人
             { wch: 25 }, // 所属学院
-            { wch: 20 }, // 项目来源
+            { wch: 25 }, // 项目来源
             { wch: 10 }, // 状态
         ];
         worksheet['!cols'] = wscols;
@@ -480,6 +475,7 @@ onMounted(async () => {
                         style="width: 220px" @change="handleSearch">
                         <el-option label="校级" value="校级"></el-option>
                         <el-option label="省级" value="省级"></el-option>
+                        <el-option label="省部级" value="省部级"></el-option>
                         <el-option label="国家级" value="国家级"></el-option>
                     </el-select>
                 </el-form-item>
@@ -622,9 +618,9 @@ onMounted(async () => {
                         {{ scope.row.college_info?.name || '-' }}
                     </template>
                 </el-table-column>
-                <el-table-column label="项目来源" min-width="80" align="center">
+                <el-table-column label="项目来源" min-width="140" align="center" show-overflow-tooltip>
                     <template #default="scope">
-                        {{ getSourceText(scope.row.source) }}
+                        {{ getProjectSourceText(scope.row) }}
                     </template>
                 </el-table-column>
                 <el-table-column label="状态" width="80" align="center">

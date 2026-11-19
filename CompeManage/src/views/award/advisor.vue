@@ -1,11 +1,15 @@
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import api from '@/api'
+import FileUploadField from '@/components/FileUploadField.vue'
+import { normalizeFileAttachments } from '@/utils/fileAttachments'
 
-const loading = ref(false), saving = ref(false), uploading = ref(false)
+const loading = ref(false), saving = ref(false)
 const list = ref([]), total = ref(0), visible = ref(false), detail = ref(null)
 const formRef = ref()
+const proofFiles = ref([])
+const uploading = computed(() => proofFiles.value.some(file => file.status === 'uploading'))
 const query = reactive({ keyword: '', status: '', page: 1, size: 10 })
 const form = reactive({ project_name: '', award_category: '', award_name: '', award_date: '', proof_url: '', remark: '', update_time: '' })
 const statuses = { draft: { text: '待审核', type: 'warning' }, rejected: { text: '已退回', type: 'danger' }, approved: { text: '已通过', type: 'success' } }
@@ -34,20 +38,14 @@ async function openDetail(row) {
     detail.value = res.data
     const a = res.data.award
     Object.assign(form, { project_name: a.project_name, award_category: a.award_category, award_name: a.award_name, award_date: a.award_time?.slice(0, 10) || '', proof_url: a.proof_url || '', remark: a.remark || '', update_time: a.update_time })
+    proofFiles.value = normalizeFileAttachments(a.proof_url || '')
     visible.value = true
     formRef.value?.clearValidate()
   } catch (error) { showError(error) }
 }
-async function upload({ file, onSuccess, onError }) {
-  uploading.value = true
-  try {
-    // Keep the existing certificate type so reuploads can reuse its file hash.
-    const data = new FormData(); data.append('file', file); data.append('type', 'award_cert')
-    const res = await api.uploadFile(data)
-    form.proof_url = res.data.url; onSuccess(res)
-    formRef.value?.clearValidate('proof_url')
-  } catch (error) { onError(error); showError(error) }
-  finally { uploading.value = false }
+function handleProofUploaded(file) {
+  form.proof_url = file.url
+  formRef.value?.clearValidate('proof_url')
 }
 async function save() {
   if (!await formRef.value.validate().catch(() => false)) return
@@ -60,8 +58,9 @@ async function save() {
   } catch (error) { showError(error) }
   finally { saving.value = false }
 }
-async function downloadProof() {
-  try { await api.downloadFile(form.proof_url, false, '获奖证明') }
+async function downloadProof(file = proofFiles.value[0]) {
+  if (!file?.url) return
+  try { await api.downloadFile(file.url, false, file.name || '获奖证明') }
   catch (error) { showError(error) }
 }
 function changesText(change) {
@@ -112,13 +111,26 @@ onMounted(fetchList)
         <h3>获奖信息</h3>
         <el-form ref="formRef" :model="form" :rules="rules" label-width="100px" :disabled="!detail.can_edit || saving">
           <el-form-item label="项目名称" prop="project_name"><el-input v-model="form.project_name" maxlength="255" /></el-form-item>
-          <el-form-item label="获奖类别" prop="award_category"><el-select v-model="form.award_category"><el-option v-for="item in ['校级', '省级', '国家级', '国际级']" :key="item" :label="item" :value="item" /></el-select></el-form-item>
-          <el-form-item label="获奖等级" prop="award_name"><el-select v-model="form.award_name"><el-option v-for="item in ['一等奖', '二等奖', '三等奖']" :key="item" :label="item" :value="item" /></el-select></el-form-item>
+          <el-form-item label="获奖类别" prop="award_category"><el-select v-model="form.award_category"><el-option v-for="item in ['校级', '省部级', '省级', '国家级', '国际级']" :key="item" :label="item" :value="item" /></el-select></el-form-item>
+          <el-form-item label="获奖等级" prop="award_name"><el-select v-model="form.award_name"><el-option v-for="item in ['一等奖', '二等奖', '三等奖', '金奖', '银奖', '铜奖', '冠军', '亚军', '季军']" :key="item" :label="item" :value="item" /></el-select></el-form-item>
           <el-form-item label="获奖日期" prop="award_date"><el-date-picker v-model="form.award_date" type="date" value-format="YYYY-MM-DD" /></el-form-item>
-          <el-form-item label="证明材料" prop="proof_url"><el-upload v-if="detail.can_edit" :http-request="upload" :show-file-list="false" accept=".jpg,.jpeg,.png,.pdf,.doc,.docx" :disabled="saving || uploading"><el-button :loading="uploading">{{ form.proof_url ? '更换证明' : '上传证明' }}</el-button></el-upload><span v-else>{{ form.proof_url ? '已上传' : '暂无证明' }}</span></el-form-item>
+          <el-form-item label="证明材料" prop="proof_url">
+            <FileUploadField
+              v-if="detail.can_edit"
+              v-model="proofFiles"
+              business-type="award_cert"
+              :auto-upload="true"
+              variant="button"
+              :button-text="form.proof_url ? '更换证明' : '上传证明'"
+              :disabled="saving || uploading"
+              @success="handleProofUploaded"
+              @preview="downloadProof"
+            />
+            <span v-else>{{ form.proof_url ? '已上传' : '暂无证明' }}</span>
+          </el-form-item>
           <el-form-item label="备注"><el-input v-model="form.remark" type="textarea" :rows="3" maxlength="2000" show-word-limit /></el-form-item>
         </el-form>
-        <el-button v-if="form.proof_url" link type="primary" @click="downloadProof">下载当前获奖证明</el-button>
+        <el-button v-if="form.proof_url" link type="primary" @click="downloadProof()">下载当前获奖证明</el-button>
         <h3>修改记录</h3>
         <el-empty v-if="!detail.changes?.length" description="暂无教师修改记录" :image-size="45" />
         <el-timeline v-else><el-timeline-item v-for="change in detail.changes" :key="change.id" :timestamp="change.create_time"><strong>{{ change.operator_name }}</strong><p class="change-text">{{ changesText(change) }}</p></el-timeline-item></el-timeline>
