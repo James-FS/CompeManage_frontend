@@ -696,7 +696,9 @@ watch(() => route.fullPath, () => {
               style="width: 180px; max-width: 100%"
               @change="markRowChanged(row)"
             >
-              <el-option v-for="college in collegeList" :key="college.id" :label="college.name" :value="college.name" />
+              <el-option v-for="college in collegeList" :key="college.id" :label="college.name" :value="college.name">
+                <span class="college-option-label" :title="college.name">{{ college.name }}</span>
+              </el-option>
             </el-select>
             <el-select v-else-if="column.key === 'award_category'" v-model="row[column.key]" :disabled="loading" @change="markRowChanged(row)">
               <el-option v-for="category in categories" :key="category" :label="category" :value="category" />
@@ -879,8 +881,12 @@ watch(() => route.fullPath, () => {
   border-radius: var(--el-border-radius-base);
   background: var(--el-color-primary);
   color: var(--el-color-white);
+  font-family: var(--el-font-family);
   font-size: 14px;
+  font-weight: var(--el-font-weight-primary);
   line-height: 1;
+  gap: 5px;
+  white-space: nowrap;
 }
 .actions :deep(.import-file-picker .file-upload-field__button:hover) {
   border-color: var(--el-color-primary-light-3);

@@ -105,6 +105,15 @@ test('回显保存并跳转列表', async ({ page }) => {
   await page.waitForURL(/competition\/list/)
 })
 
+test('非法赛事年份无法保存', async ({ page }) => {
+  const state = await setup(page)
+  await settle(page)
+  await page.getByPlaceholder('请输入所属年份').fill('abc')
+  await page.getByRole('button', { name: '保存', exact: true }).click()
+  await expect(page.getByText('所属年份须为1000至9999的4位数字')).toBeVisible()
+  expect(state.updated).toBeUndefined()
+})
+
 test('更新失败提示', async ({ page }) => {
   await setup(page, { updateFail: true })
   await settle(page)

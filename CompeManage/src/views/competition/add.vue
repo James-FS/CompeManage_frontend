@@ -1,4 +1,5 @@
 <script setup>
+import { competitionYearPattern } from '@/utils/validators';
 import { ref, reactive, computed, renderList, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { ElMessage, ElMessageBox, ElTableColumn } from 'element-plus';
@@ -13,6 +14,20 @@ const router = useRouter();
 const route = useRoute();
 const activeTab = ref('manual');
 const importPolicy = importFilePolicies.competitionDirectory;
+const compLevelOptions = [
+    { label: '校级', value: '校级' },
+    { label: '省级', value: '省级' },
+    { label: '省部级', value: '省部级' },
+    { label: '国家级', value: '国家级' }
+];
+const compTypeOptions = [
+    { label: '学科竞赛', value: '学科竞赛' },
+    { label: '创新大赛（原互联网+创新创业大赛）', value: '创新创业竞赛' },
+    { label: '创青春中国青年创新创业大赛', value: '创青春中国青年创新创业大赛' },
+    { label: '挑战杯', value: '挑战杯' },
+    { label: '其他', value: '其他' }
+];
+const hasOptionValue = (options, value) => options.some(option => option.value === value);
 
 // Tab 1 手动录入新赛事
 const formRef = ref(null);
@@ -140,11 +155,14 @@ const fetchHistoryData = () => {
                 id: item.id,
                 comp_name: item.comp_name,
                 comp_level: item.comp_level,
+                comp_type: item.comp_type || '',
                 organizer: item.organizer,
                 undertaker: item.undertaker,
-                manager: item.manager.realname,
-                manager_id: item.manager.id,
-                college: item.college_info?.name || '-'
+                manager: item.manager?.realname || '',
+                manager_id: item.manager?.id || '',
+                college: item.college_info?.name || '',
+                year: item.year || '',
+                desc: item.desc || ''
             }));
         } else {
             ElMessage.error(response.msg || '获取历史数据失败，请稍后重试');
@@ -212,8 +230,20 @@ const removeImportItem = (index) => {
 // 最终提交
 const handleFinalImport = () => {
     // 简单校验：检查是否有空名称
-    if (importList.value.some(item => !item.comp_name)) {
+    if (importList.value.some(item => !item.comp_name?.trim())) {
         ElMessage.error('赛事名称不能为空');
+        return;
+    }
+
+    const missingLevel = importList.value.find(item => !item.comp_level);
+    if (missingLevel) {
+        ElMessage.error(`赛事"${missingLevel.comp_name}"的赛事级别不能为空`);
+        return;
+    }
+
+    const missingManager = importList.value.find(item => !item.manager_id);
+    if (missingManager) {
+        ElMessage.error(`赛事"${missingManager.comp_name}"的负责人不能为空`);
         return;
     }
 
@@ -454,7 +484,7 @@ const handleUploadChange = (file) => {
                 manager: row[6] || '',                 // 读取姓名
                 manager_id: '',
                 college: row[7] || '',
-                year: row[8] ? String(row[8]) : new Date().getFullYear().toString(),
+                year: String(row[8] ?? '').trim() || new Date().getFullYear().toString(),
                 desc: row[9] || ''
             }));
 
@@ -497,9 +527,15 @@ const handleExcelImportSubmit = () => {
         return;
     }
     // 校验：检查是否有必要字段为空
-    const invalidItem = excelList.value.find(item => !item.comp_name || !item.comp_level || !item.manager_id);
+    const invalidItem = excelList.value.find(item => !item.comp_name?.trim() || !item.comp_level || !item.manager_id);
     if (invalidItem) {
         ElMessage.error('存在赛事名称、级别或负责人为空的数据，请补充完整');
+        return;
+    }
+
+    const invalidYear = excelList.value.find(item => item.year?.trim() && !competitionYearPattern.test(item.year.trim()));
+    if (invalidYear) {
+        ElMessage.error(`赛事「${invalidYear.comp_name}」的所属年份须为1000至9999的4位数字`);
         return;
     }
 
@@ -587,10 +623,8 @@ const queryManagerByWorkId = async (row) => {
                                 <el-col :span="12">
                                     <el-form-item label="赛事级别" prop="comp_level">
                                         <el-select v-model="form.comp_level" placeholder="请选择级别" style="width: 100%">
-                                            <el-option label="校级" value="校级" />
-                                            <el-option label="省级" value="省级" />
-                                            <el-option label="省部级" value="省部级" />
-                                            <el-option label="国家级" value="国家级" />
+                                            <el-option v-for="option in compLevelOptions" :key="option.value"
+                                                :label="option.label" :value="option.value" />
                                         </el-select>
                                     </el-form-item>
                                 </el-col>
@@ -599,11 +633,8 @@ const queryManagerByWorkId = async (row) => {
                                 <el-col :span="12">
                                     <el-form-item label="赛事类型" prop="comp_type">
                                         <el-select v-model="form.comp_type" placeholder="请选择类型" style="width: 100%">
-                                            <el-option label="学科竞赛" value="学科竞赛" />
-                                            <el-option label="创新大赛（原互联网+创新创业大赛）" value="创新创业竞赛" />
-                                            <el-option label="创青春中国青年创新创业大赛" value="创青春中国青年创新创业大赛" />
-                                            <el-option label="挑战杯" value="挑战杯" />
-                                            <el-option label="其他" value="其他" />
+                                            <el-option v-for="option in compTypeOptions" :key="option.value"
+                                                :label="option.label" :value="option.value" />
                                         </el-select>
                                     </el-form-item>
                                 </el-col>
@@ -686,12 +717,12 @@ const queryManagerByWorkId = async (row) => {
                             <el-table :data="historyTableData" border v-loading="historyLoading"
                                 @selection-change="handleSelectionChange" height="calc(100vh - 400px)">
                                 <el-table-column type="selection" width="40" align="center" />
-                                <el-table-column prop="comp_name" label="赛事名称" min-width="280" align="center" />
+                                <el-table-column prop="comp_name" label="赛事名称" width="360" align="center" />
                                 <el-table-column prop="comp_level" label="赛事级别" width="100" align="center" />
-                                <el-table-column prop="organizer" label="主办单位" width="150" align="center" />
-                                <el-table-column prop="undertaker" label="承办单位" width="150" align="center" />
+                                <el-table-column prop="organizer" label="主办单位" min-width="200" align="center" />
+                                <el-table-column prop="undertaker" label="承办单位" min-width="200" align="center" />
                                 <el-table-column prop="manager" label="赛事负责人" width="100" align="center" />
-                                <el-table-column prop="college" label="所属学院" width="160" align="center" />
+                                <el-table-column prop="college" label="所属学院" min-width="220" align="center" />
                                 <template #empty>
                                     <el-empty description="暂无数据" />
                                 </template>
@@ -710,14 +741,35 @@ const queryManagerByWorkId = async (row) => {
 
                         <div v-if="step === 2" class="step-content">
                             <div class="preview-tip">
-                                <el-alert :title="`系统已自动替换年份为${targetYear}年，请在下方直接修改赛事变动信息`" type="info" show-icon
+                                <el-alert :title="`系统已自动替换年份为${targetYear}年，请在下方修改赛事信息（表格可左右滚动查看全部字段）`" type="info" show-icon
                                     :closable="false" />
                             </div>
-                            <el-table :data="importList" border height="400" class="edit-table">
+                            <div class="copy-edit-table-scroll">
+                            <el-table :data="importList" border height="400" class="edit-table copy-edit-table">
                                 <el-table-column label="序号" type="index" width="55" align="center" />
                                 <el-table-column label="新赛事名称 (可编辑)" min-width="220" align="center">
                                     <template #default="{ row }">
                                         <el-input v-model="row.comp_name" placeholder="赛事名称" />
+                                    </template>
+                                </el-table-column>
+                                <el-table-column label="赛事级别" width="130" align="center">
+                                    <template #default="{ row }">
+                                        <el-select v-model="row.comp_level" placeholder="请选择级别" style="width: 100%">
+                                            <el-option v-if="row.comp_level && !hasOptionValue(compLevelOptions, row.comp_level)"
+                                                :label="row.comp_level" :value="row.comp_level" />
+                                            <el-option v-for="option in compLevelOptions" :key="option.value"
+                                                :label="option.label" :value="option.value" />
+                                        </el-select>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column label="赛事类型" width="220" align="center">
+                                    <template #default="{ row }">
+                                        <el-select v-model="row.comp_type" placeholder="请选择类型" style="width: 100%">
+                                            <el-option v-if="row.comp_type && !hasOptionValue(compTypeOptions, row.comp_type)"
+                                                :label="row.comp_type" :value="row.comp_type" />
+                                            <el-option v-for="option in compTypeOptions" :key="option.value"
+                                                :label="option.label" :value="option.value" />
+                                        </el-select>
                                     </template>
                                 </el-table-column>
                                 <el-table-column label="负责人" width="140" align="center">
@@ -741,7 +793,36 @@ const queryManagerByWorkId = async (row) => {
 
                                 <el-table-column label="所属学院" width="160" align="center">
                                     <template #default="{ row }">
-                                        <el-input v-model="row.college" placeholder="所属学院" />
+                                        <el-select v-model="row.college" placeholder="请选择学院" clearable filterable
+                                            style="width: 100%" :fit-input-width="true">
+                                            <el-option v-if="row.college && !collegeList.some(college => college.name === row.college)"
+                                                :label="row.college" :value="row.college">
+                                                <span class="college-option-label" :title="row.college">{{ row.college }}</span>
+                                            </el-option>
+                                            <el-option v-for="college in collegeList" :key="college.id"
+                                                :label="college.name" :value="college.name">
+                                                <span class="college-option-label" :title="college.name">{{ college.name }}</span>
+                                            </el-option>
+                                        </el-select>
+                                    </template>
+                                </el-table-column>
+
+                                <el-table-column label="所属年份" width="130" align="center">
+                                    <template #default="{ row }">
+                                        <el-select v-model="row.year" placeholder="请选择年份" style="width: 100%"
+                                            :loading="yearsLoading">
+                                            <el-option v-if="row.year && !yearOptions.some(year => year.value === String(row.year))"
+                                                :label="`${row.year}年`" :value="String(row.year)" />
+                                            <el-option v-for="year in yearOptions" :key="year.value"
+                                                :label="year.label" :value="year.value" />
+                                        </el-select>
+                                    </template>
+                                </el-table-column>
+
+                                <el-table-column label="备注说明" min-width="220" align="center">
+                                    <template #default="{ row }">
+                                        <el-input v-model="row.desc" type="textarea" :autosize="{ minRows: 1, maxRows: 3 }"
+                                            placeholder="请填写赛事说明" />
                                     </template>
                                 </el-table-column>
 
@@ -752,9 +833,10 @@ const queryManagerByWorkId = async (row) => {
                                     </template>
                                 </el-table-column>
                                 <template #empty>
-                                    <el-empty description="请先上传 Excel 文件导入数据" :image-size="80" />
+                                    <el-empty description="请先选择往年赛事" :image-size="80" />
                                 </template>
                             </el-table>
+                            </div>
                             <div class="step-footer">
                                 <el-button @click="step = 1" :icon="ArrowLeft">上一步</el-button>
                                 <el-button type="success" @click="handleFinalImport">
@@ -787,6 +869,7 @@ const queryManagerByWorkId = async (row) => {
                                     </el-icon>下载导入模板
                                 </el-button>
                                 <FileUploadField
+                                    class="excel-upload-field"
                                     variant="button"
                                     selection-only
                                     :multiple="false"
@@ -795,7 +878,6 @@ const queryManagerByWorkId = async (row) => {
                                     :max-size-mb="importPolicy.maxSizeMb"
                                     :max-files="1"
                                     button-text="选择 Excel 文件"
-                                    :helper-text="importPolicy.helperText"
                                     @select="handleUploadChange"
                                 />
                                 <el-button type="success" @click="handleExcelImportSubmit"
@@ -922,9 +1004,11 @@ const queryManagerByWorkId = async (row) => {
                 <el-form-item label="所属部门">
                     <el-select v-model="searchForm.college" placeholder="选择部门" clearable filterable
                         @change="onFilterChange" @clear="onFilterChange"
-                        popper-class="dept-select-popper" style="width: 330px;">
+                        popper-class="dept-select-popper" style="width: 330px;" fit-input-width>
                         <el-option v-for="dept in departmentList" :key="dept.id"
-                            :label="dept.name" :value="dept.name" />
+                            :label="dept.name" :value="dept.name">
+                            <span class="college-option-label" :title="dept.name">{{ dept.name }}</span>
+                        </el-option>
                     </el-select>
                 </el-form-item>
             </el-form>
@@ -979,8 +1063,18 @@ const queryManagerByWorkId = async (row) => {
 
 /* 向导样式 */
 .wizard-container {
-    max-width: 1000px;
+    width: 100%;
+    max-width: 1700px;
     margin: 0 auto;
+}
+
+.copy-edit-table-scroll {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.copy-edit-table {
+    min-width: 1665px;
 }
 
 .custom-steps {
@@ -1032,13 +1126,6 @@ const queryManagerByWorkId = async (row) => {
     :deep(.el-input__wrapper:hover) {
         border-bottom-color: var(--el-color-primary);
     }
-}
-
-.college-option-label {
-    display: block;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
 }
 
 // 搜索栏样式
@@ -1098,6 +1185,39 @@ const queryManagerByWorkId = async (row) => {
 
     .upload-demo {
         display: inline-block;
+    }
+}
+
+.excel-upload-field {
+    width: 165px;
+
+    :deep(.file-upload-field__button-wrap) {
+        width: 100%;
+        gap: 0;
+    }
+
+    :deep(.file-upload-field__button) {
+        box-sizing: border-box;
+        width: 100%;
+        min-height: 32px;
+        height: 32px;
+        padding: 8px 15px;
+        gap: 5px;
+        font-family: var(--el-font-family);
+        font-size: var(--el-font-size-base);
+        font-weight: var(--el-font-weight-primary);
+        line-height: 1;
+        border-color: var(--el-color-primary-light-5);
+        border-radius: var(--el-button-border-radius, var(--el-border-radius-base));
+        background-color: var(--el-color-primary-light-9);
+        color: var(--el-color-primary);
+        white-space: nowrap;
+    }
+
+    :deep(.file-upload-field__button:hover) {
+        border-color: var(--el-color-primary);
+        background-color: var(--el-color-primary);
+        color: var(--el-color-white);
     }
 }
 </style>

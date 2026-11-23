@@ -99,8 +99,10 @@ onMounted(() => {
           <el-input v-model="queryForm.manager" placeholder="请输入负责人" clearable style="width: 220px" @keyup.enter="fetchCompList" @clear="fetchCompList" />
         </el-form-item>
         <el-form-item label="所属学院">
-          <el-select v-model="queryForm.college" placeholder="全部学院" clearable style="width: 220px" @change="fetchCompList">
-            <el-option v-for="college in collegeList" :key="college.id" :label="college.name" :value="college.name" />
+          <el-select v-model="queryForm.college" placeholder="全部学院" clearable style="width: 220px" fit-input-width @change="fetchCompList">
+            <el-option v-for="college in collegeList" :key="college.id" :label="college.name" :value="college.name">
+              <span class="college-option-label" :title="college.name">{{ college.name }}</span>
+            </el-option>
           </el-select>
         </el-form-item>
         <el-form-item label="赛事状态">

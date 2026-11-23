@@ -32,6 +32,14 @@
     max-width: 350px !important;
 }
 
+.college-option-label {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 /* ================== 列表页统一筛选卡片 ==================
    所有带筛选区的列表页共用：模板写 <div class="filter-card">，
    内部放 <el-form :inline="true">。勿在组件 scoped 样式里重复定义，

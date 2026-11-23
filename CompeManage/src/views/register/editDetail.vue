@@ -698,9 +698,12 @@ onMounted(() => {
                   @change="handleExpertSearch"
                   @clear="handleExpertSearch"
                   popper-class="dept-select-popper"
+                  fit-input-width
                   style="width: 330px"
                 >
-                  <el-option v-for="department in expertDepartments" :key="department.id" :label="department.name" :value="department.name" />
+                  <el-option v-for="department in expertDepartments" :key="department.id" :label="department.name" :value="department.name">
+                    <span class="college-option-label" :title="department.name">{{ department.name }}</span>
+                  </el-option>
                 </el-select>
               </el-form-item>
             </el-form>

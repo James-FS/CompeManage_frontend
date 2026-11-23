@@ -29,13 +29,13 @@ export async function login(page, user, options = {}) {
       if (el) el.remove()
     }
     removeDevtools()
-    new MutationObserver(removeDevtools).observe(document.documentElement, {
+    new MutationObserver(removeDevtools).observe(document, {
       childList: true,
       subtree: true,
     })
   })
 
-  await page.goto('/#/login')
+  await page.goto('/#/login?method=password')
   await page.waitForLoadState('networkidle')
 
   // 展开管理员密码登录表单
@@ -51,7 +51,7 @@ export async function login(page, user, options = {}) {
       .then(() => true)
       .catch(() => false)
     if (formVisible) break
-    await page.goto('/#/login')
+    await page.goto('/#/login?method=password')
     await page.waitForLoadState('networkidle')
   }
 

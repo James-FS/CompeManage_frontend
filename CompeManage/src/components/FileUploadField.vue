@@ -87,7 +87,7 @@ function validateFile(file) {
   return ''
 }
 
-function addFiles(fileList) {
+async function addFiles(fileList) {
   if (props.disabled) return
 
   const incoming = Array.from(fileList || [])
@@ -133,8 +133,12 @@ function addFiles(fileList) {
   }
 
   if (props.autoUpload) {
-    // 直接传 item 引用，绕开 computed 缓存竞态（修复上传静默失败）
-    accepted.forEach((item) => uploadItem(item).catch(() => {}))
+    // Wait for the parent to pass the updated v-model back to this component.
+    await nextTick()
+    for (const item of accepted) {
+      if (componentUnmounted.value) break
+      await uploadItem(item).catch(() => {})
+    }
   }
 }
 

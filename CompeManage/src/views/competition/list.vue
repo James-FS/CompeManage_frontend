@@ -480,9 +480,11 @@ onMounted(async () => {
                     </el-select>
                 </el-form-item>
                 <el-form-item label="所属学院">
-                    <el-select v-model="searchForm.college" placeholder="全部学院" clearable="true" style="width: 220px" @change="handleSearch">
+                    <el-select v-model="searchForm.college" placeholder="全部学院" clearable="true" style="width: 220px" fit-input-width @change="handleSearch">
                         <el-option v-for="college in collegeList" :key="college.id" :label="college.name"
-                            :value="college.name"></el-option>
+                            :value="college.name">
+                            <span class="college-option-label" :title="college.name">{{ college.name }}</span>
+                        </el-option>
                     </el-select>
                 </el-form-item>
                 <el-form-item label="赛事负责人">
