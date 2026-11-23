@@ -1,10 +1,11 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { User, UserFilled, Search, Refresh } from '@element-plus/icons-vue'
 import api from '@/api'
 import { debounce } from '@/utils/debounce'
 import { useUserStore } from '@/stores/user'
+import { getPermissionReference } from './referenceData'
 
 const userStore = useUserStore()
 
@@ -17,7 +18,8 @@ const total = ref(0)
 const currentUser = ref(null)
 const selectedRoleId = ref(null)
 const selectedManagedCollegeId = ref(null)
-let requestSequence = 0
+let usersController
+let isActive = true
 
 const filters = reactive({
   page: 1,
@@ -87,23 +89,32 @@ function applyUserToEditor(user) {
 }
 
 async function loadBaseOptions() {
-  const [rolesResponse, collegesResponse] = await Promise.all([
-    api.getRoleList(),
-    api.getCollegeList(),
-  ])
-  const roles = rolesResponse.data || []
-  roleList.value = [...roles].sort((left, right) => {
-    const leftIndex = roleOrder.indexOf(left.role_code)
-    const rightIndex = roleOrder.indexOf(right.role_code)
-    return (leftIndex === -1 ? 999 : leftIndex) - (rightIndex === -1 ? 999 : rightIndex)
-  })
-  collegeList.value = collegesResponse.data || []
+  try {
+    await Promise.all([
+      getPermissionReference('role-options', () => api.getRoleList({ brief: true })).then(response => {
+        if (!isActive) return
+        roleList.value = [...(response.data ?? [])].sort((left, right) => {
+          const leftIndex = roleOrder.indexOf(left.role_code)
+          const rightIndex = roleOrder.indexOf(right.role_code)
+          return (leftIndex === -1 ? 999 : leftIndex) - (rightIndex === -1 ? 999 : rightIndex)
+        })
+      }),
+      getPermissionReference('colleges', api.getCollegeList).then(response => {
+        if (isActive) collegeList.value = response.data ?? []
+      }),
+    ])
+  } catch (error) {
+    if (isActive && !error.messageShown) ElMessage.error(error.message || '筛选选项加载失败')
+  }
 }
 
 async function loadUsers({ preserveSelection = true } = {}) {
-  const sequence = ++requestSequence
+  if (!isActive) return
+  usersController?.abort()
+  const controller = new AbortController()
+  usersController = controller
   loading.value = true
-  const selectedID = preserveSelection ? currentUser.value?.id : null
+  if (!preserveSelection) applyUserToEditor(null)
   try {
     const response = await api.getAllUsers({
       page: filters.page,
@@ -112,29 +123,30 @@ async function loadUsers({ preserveSelection = true } = {}) {
       role_id: filters.role_id || undefined,
       identity_type: filters.identity_type || undefined,
       college_id: filters.college_id || undefined,
-    })
-    if (sequence !== requestSequence) return
+    }, { signal: controller.signal })
+    if (controller.signal.aborted) return
     userList.value = response.data?.list || []
     total.value = response.data?.total || 0
-    if (selectedID) {
-      const selected = userList.value.find((item) => item.id === selectedID)
-      applyUserToEditor(selected || null)
-    } else if (!preserveSelection) {
-      applyUserToEditor(null)
+    if (currentUser.value) {
+      const selected = userList.value.find(item => item.id === currentUser.value.id)
+      applyUserToEditor(selected)
     }
+  } catch (error) {
+    if (!controller.signal.aborted && !error.messageShown) ElMessage.error(error.message || '用户列表加载失败')
   } finally {
-    if (sequence === requestSequence) loading.value = false
+    if (usersController === controller) {
+      loading.value = false
+      usersController = undefined
+    }
   }
 }
 
-const debouncedSearch = debounce(() => {
-  filters.page = 1
-  loadUsers({ preserveSelection: false })
-}, 300)
+const debouncedSearch = debounce(handleFilterChange, 300)
 
 function handleFilterChange() {
+  debouncedSearch.cancel()
   filters.page = 1
-  loadUsers({ preserveSelection: false })
+  void loadUsers({ preserveSelection: false })
 }
 
 function handleFilterReset() {
@@ -143,19 +155,18 @@ function handleFilterReset() {
   filters.identity_type = undefined
   filters.managed_college_id = undefined
   filters.college_id = undefined
-  filters.page = 1
-  loadUsers({ preserveSelection: false })
+  handleFilterChange()
 }
 
 function handlePageChange(page) {
+  debouncedSearch.cancel()
   filters.page = page
-  loadUsers({ preserveSelection: false })
+  void loadUsers({ preserveSelection: false })
 }
 
 function handlePageSizeChange(size) {
   filters.page_size = size
-  filters.page = 1
-  loadUsers({ preserveSelection: false })
+  handleFilterChange()
 }
 
 async function handleUserClick(user) {
@@ -171,7 +182,7 @@ async function handleUserClick(user) {
       return
     }
   }
-  applyUserToEditor(user)
+  if (isActive) applyUserToEditor(user)
 }
 
 function handleRoleChange() {
@@ -196,6 +207,7 @@ async function saveRole() {
         ? selectedManagedCollegeId.value
         : undefined,
     })
+    if (!isActive) return
     if (response.data?.cache_refreshed === false) {
       if (response.data?.cache_retry_queued) {
         ElMessage.warning('角色已更新，权限缓存正在后台重试刷新')
@@ -207,26 +219,27 @@ async function saveRole() {
       ElMessage.success('角色分配成功，请通知该用户重新登录')
     }
     await loadUsers({ preserveSelection: true })
+  } catch (error) {
+    if (isActive && !error.messageShown) ElMessage.error(error.message || '角色分配失败')
   } finally {
     saving.value = false
   }
 }
 
-onMounted(async () => {
-  loading.value = true
-  try {
-    await loadBaseOptions()
-    await loadUsers({ preserveSelection: false })
-  } catch (error) {
-    ElMessage.error(error?.message || '用户管理数据加载失败')
-  } finally {
-    loading.value = false
-  }
+onMounted(() => {
+  void loadUsers({ preserveSelection: false })
+  void loadBaseOptions()
+})
+
+onBeforeUnmount(() => {
+  isActive = false
+  debouncedSearch.cancel()
+  usersController?.abort()
 })
 </script>
 
 <template>
-  <div class="user-manage-page" v-loading="loading">
+  <div class="user-manage-page">
     <div class="filter-card">
       <el-form :inline="true" class="filter-form">
         <el-form-item label="关键字">
@@ -235,8 +248,8 @@ onMounted(async () => {
             clearable
             placeholder="请输入账号、姓名或所属单位"
             @input="debouncedSearch"
-            @clear="debouncedSearch"
-            @keyup.enter="debouncedSearch"
+            @clear="handleFilterChange"
+            @keyup.enter="handleFilterChange"
           />
         </el-form-item>
         <el-form-item label="角色">
@@ -264,14 +277,14 @@ onMounted(async () => {
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" :icon="Search" @click="debouncedSearch">搜索</el-button>
+          <el-button type="primary" :icon="Search" @click="handleFilterChange">搜索</el-button>
           <el-button :icon="Refresh" @click="handleFilterReset">重置</el-button>
         </el-form-item>
       </el-form>
     </div>
 
     <div class="content-grid">
-      <el-card class="user-panel" shadow="never">
+      <el-card class="user-panel" shadow="never" v-loading="loading">
         <template #header>
           <div class="panel-title"><el-icon><User /></el-icon><span>用户列表</span></div>
         </template>

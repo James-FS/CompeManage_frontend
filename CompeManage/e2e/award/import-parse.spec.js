@@ -107,3 +107,37 @@ test('正常导入提交', async ({ page }) => {
   expect(state.imported.rows).toHaveLength(1)
   expect(state.imported.rows[0].student_id).toBe('001')
 })
+
+test('Excel 日期保留原始日期供后端校验', async ({ page }) => {
+  const state = await setup(page)
+  await uploadExcel(page, [
+    ['001', '学生甲', '计算机学院', '软件', '项目A', '2026-02-31', '校级', '一等奖', '', '', ''],
+    ['002', '学生乙', '数学学院', '统计', '项目B', '2026-02-28', '校赛', '二等奖', '', '', ''],
+  ])
+  await toast(page, '已读取 2 名学生数据')
+  await page.getByRole('button', { name: '提交导入', exact: true }).click()
+  await expect.poll(() => state.imported?.rows.map(row => row.award_month)).toEqual(['2026-02-31', '2026-02-28'])
+})
+
+test('数字工号不按千分位拆分，Excel 日期转为标准日期', async ({ page }) => {
+  const state = await setup(page)
+  const book = XLSX.utils.book_new()
+  const sheet = XLSX.utils.aoa_to_sheet([HEADER,
+    [123, '学生甲', '计算机学院', '软件', '项目A', 46111, '校级', '一等奖', '', 102971, ''],
+    ['00124', '学生乙', '数学学院', '统计', '项目B', 46111, '校级', '二等奖', '', '102971，105654', ''],
+    ['00125', '学生丙', '数学学院', '统计', '项目C', 46111, '校级', '二等奖', '', 102971105654, ''],
+  ])
+  sheet.A2.z = '00000'
+  sheet.J2.z = '#,##0'
+  sheet.J4.z = '#,##0'
+  for (const cell of ['F2', 'F3', 'F4']) sheet[cell].z = 'm/d/yy'
+  XLSX.utils.book_append_sheet(book, sheet, 'Sheet1')
+  await uploadExcel(page, [], '数字与日期.xlsx', XLSX.write(book, { bookType: 'xlsx', type: 'buffer' }))
+  await toast(page, '已读取 3 名学生数据')
+  await page.getByRole('button', { name: '提交导入', exact: true }).click()
+  await expect.poll(() => state.imported?.rows).toMatchObject([
+    { student_id: '00123', advisor_usernames: '102971', award_month: '2026-03-30' },
+    { student_id: '00124', advisor_usernames: '102971，105654', award_month: '2026-03-30' },
+    { student_id: '00125', advisor_usernames: '102971105654', award_month: '2026-03-30' },
+  ])
+})

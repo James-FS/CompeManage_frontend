@@ -12,7 +12,7 @@ const router = useRouter()
 
 watch(() => route.fullPath, () => {
   if (['school_admin', 'college_admin', 'competition_manager', 'teacher'].includes(userStore.role)) {
-    userStore.refreshReviewerAccess()
+    userStore.refreshReviewerAccess({ force: false })
   }
 }, { immediate: true })
 

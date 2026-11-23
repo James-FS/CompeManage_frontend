@@ -4,7 +4,7 @@ import { useUserStore } from './user'
 
 // mock 掉 api 层：单测只验证 store 自身的状态流转
 vi.mock('@/api', () => ({
-  api: { login: vi.fn() },
+  api: { login: vi.fn(), getMyReviewAccess: vi.fn() },
 }))
 import { api } from '@/api'
 
@@ -13,6 +13,7 @@ describe('useUserStore', () => {
     setActivePinia(createPinia())
     localStorage.clear()
     vi.mocked(api.login).mockReset()
+    vi.mocked(api.getMyReviewAccess).mockReset()
   })
 
   it('login 成功：写入 token/role/userInfo 并持久化 localStorage', async () => {
@@ -74,5 +75,35 @@ describe('useUserStore', () => {
     expect(store.hasPermission([])).toBe(true)
     expect(store.hasPermission(['student'])).toBe(true)
     expect(store.hasPermission(['school_admin', 'college_admin'])).toBe(false)
+  })
+
+  it('shares reviewer lookups and revalidates access for the route guard', async () => {
+    const store = useUserStore()
+    store.token = 'admin-session'
+    vi.mocked(api.getMyReviewAccess)
+      .mockResolvedValueOnce({ code: 200, data: { can_review: true } })
+      .mockResolvedValueOnce({ code: 200, data: { can_review: false } })
+
+    const menuLookup = store.refreshReviewerAccess({ force: false })
+    const routeLookup = store.refreshReviewerAccess()
+    expect(await Promise.all([menuLookup, routeLookup])).toEqual([true, true])
+    expect(await store.refreshReviewerAccess({ force: false })).toBe(true)
+    expect(api.getMyReviewAccess).toHaveBeenCalledTimes(1)
+
+    expect(await store.refreshReviewerAccess()).toBe(false)
+    expect(api.getMyReviewAccess).toHaveBeenCalledTimes(2)
+  })
+
+  it('ignores reviewer results from a logged-out session', async () => {
+    const store = useUserStore()
+    store.token = 'old-session'
+    let complete
+    vi.mocked(api.getMyReviewAccess).mockReturnValue(new Promise(resolve => { complete = resolve }))
+    const lookup = store.refreshReviewerAccess()
+
+    store.logout()
+    complete({ code: 200, data: { can_review: true } })
+    expect(await lookup).toBe(false)
+    expect(store.reviewerAccess).toBe(false)
   })
 })

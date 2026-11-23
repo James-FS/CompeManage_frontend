@@ -63,6 +63,7 @@ service.interceptors.response.use(
     return res
   },
   (error) => {
+    if (axios.isCancel(error)) return Promise.reject(error)
     console.error('响应错误:', error)
     const isLoginRequest = error.config?.url?.includes('/api/login')
     

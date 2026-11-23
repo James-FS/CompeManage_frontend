@@ -22,6 +22,7 @@ const detailVisible = ref(false)
 const detailKeys = ref(null)
 const detailProblemKeys = ref(new Set())
 const detailName = ref('全部赛事')
+const detailCompetitionID = ref(null)
 const summaryPage = ref(1)
 const summarySize = ref(20)
 const requireRegistration = ref(false)
@@ -102,7 +103,7 @@ const competitionSummaries = computed(() => {
   const groups = new Map()
   for (const row of tableData.value) {
     const key = competitionKey(row)
-    if (!groups.has(key)) groups.set(key, { key, comp_name: row.comp_name, comp_year: row.comp_year, comp_code: row.competition?.comp_code || row.comp_code, match_status: row.match_status, candidates: row.candidates || [], total: 0, ready: 0, success: 0, existing: 0, failed: 0 })
+    if (!groups.has(key)) groups.set(key, { key, comp_name: row.comp_name, comp_id: row.match_status === 'matched' ? row.comp_id : null, comp_year: row.comp_year, comp_code: row.competition?.comp_code || row.comp_code, match_status: row.match_status, candidates: row.candidates || [], total: 0, ready: 0, success: 0, existing: 0, failed: 0 })
     const group = groups.get(key)
     group.total++
     if (row.error) group.failed++
@@ -119,6 +120,7 @@ watch([() => competitionSummaries.value.length, summarySize], () => {
 const openDetails = (group = null, errors = false) => {
   detailKeys.value = group ? new Set(tableData.value.filter(row => competitionKey(row) === group.key).map(row => row._rowKey)) : null
   detailName.value = group?.comp_name || '全部赛事'
+  detailCompetitionID.value = group?.comp_id ?? null
   detailProblemKeys.value = new Set(tableData.value.filter(row => row.error && (!detailKeys.value || detailKeys.value.has(row._rowKey))).map(row => row._rowKey))
   onlyErrors.value = errors
   currentPage.value = 1
@@ -229,7 +231,7 @@ const columns = computed(() => isUnified.value ? [
   { key: 'comp_name', label: '赛事名称', width: 260 },
   ...baseColumns,
 ] : baseColumns)
-const categories = ['校赛', '国家级', '省部级', '省级', '国际级']
+const categories = ['校级', '校赛', '省级', '省部级', '国家级', '国际级']
 const awardLevels = ['一等奖', '二等奖', '三等奖', '金奖', '银奖', '铜奖', '冠军', '亚军', '季军']
 const advisorRoleLabels = {
   teacher: '教师',
@@ -402,6 +404,7 @@ const addRow = () => {
   if (isUnified.value && detailKeys.value) {
     const row = tableData.value.at(-1)
     row.comp_name = detailName.value
+    if (detailCompetitionID.value !== null) row.comp_id = detailCompetitionID.value
     detailKeys.value.add(row._rowKey)
   }
   currentPage.value = Math.ceil(filteredRows.value.length / pageSize.value)
@@ -427,6 +430,17 @@ const downloadTemplate = async () => {
   }
   catch (error) { ElMessage.error(errorMessage(error)) }
 }
+const excelIdentifier = (cell, displayed) => {
+  if (cell?.t !== 'n') return displayed
+  const raw = String(cell.v)
+  return /^0+\d+$/.test(displayed) && /^\d+$/.test(raw) && Number(displayed) === cell.v ? displayed : raw
+}
+const excelAwardDate = (cell, displayed, date1904) => {
+  if (cell?.t !== 'n' || !cell.z || !XLSX.SSF.is_date(cell.z)) return displayed
+  const date = XLSX.SSF.parse_date_code(cell.v, { date1904 })
+  if (!date || !date.m || !date.d) return displayed
+  return [String(date.y).padStart(4, '0'), String(date.m).padStart(2, '0'), String(date.d).padStart(2, '0')].join('-')
+}
 const handleFileChange = async file => {
   if (!file || loading.value) return
   loadingText.value = '正在读取 Excel…'
@@ -440,7 +454,7 @@ const handleFileChange = async file => {
     const buffer = await file.arrayBuffer()
     const readDuration = performance.now() - readStarted
     const parseStarted = performance.now()
-    const workbook = XLSX.read(buffer, { type: 'array', sheets: [0] })
+    const workbook = XLSX.read(buffer, { type: 'array', sheets: [0], cellNF: true })
     const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
     const usedRange = firstSheet?.['!ref'] ? XLSX.utils.decode_range(firstSheet['!ref']) : null
     if (usedRange && usedRange.e.r > 10000) throw new Error('Excel 数据区域超过10000行，请拆分后导入')
@@ -449,6 +463,9 @@ const handleFileChange = async file => {
     const columnIndexes = Object.fromEntries(columns.value.map(column => [column.key, headers.indexOf(column.excelHeader || column.label)]))
     if (columnIndexes.award_month < 0) columnIndexes.award_month = headers.indexOf('获奖时间')
     if (columnIndexes.award_month < 0) columnIndexes.award_month = headers.indexOf('获奖时间（年/月/日）')
+    const advisorIndex = headers.indexOf('指导教师工号')
+    const advisorCollegeIndex = headers.indexOf('指导教师所在学院')
+    const date1904 = Boolean(workbook.Workbook?.WBProps?.date1904)
     const missing = columns.value.filter(c => c.key !== 'remark' && !c.optional && columnIndexes[c.key] < 0)
     if (missing.length) throw new Error(`缺少字段：${missing.map(c => c.label).join('、')}，请下载新版模板`)
     const data = []
@@ -457,7 +474,11 @@ const handleFileChange = async file => {
       if (String(row[0] || '').trim().startsWith('说明：')) break
       if (String(row[0] || '').trim() === '示例') continue
       const item = Object.fromEntries(columns.value.map(c => [c.key, String(row[columnIndexes[c.key]] || '').trim()]))
-      if (/^\d{4}-\d{2}-\d{2}$/.test(item.award_month)) item.award_month = item.award_month.slice(0, 7)
+      const cellAt = index => index < 0 ? undefined : firstSheet[XLSX.utils.encode_cell({ r: usedRange.s.r + i, c: usedRange.s.c + index })]
+      item.student_id = excelIdentifier(cellAt(columnIndexes.student_id), item.student_id)
+      item.award_month = excelAwardDate(cellAt(columnIndexes.award_month), item.award_month, date1904)
+      item.advisor_usernames = excelIdentifier(cellAt(advisorIndex), String(row[advisorIndex] || '').trim())
+      item.advisor_colleges = String(row[advisorCollegeIndex] || '').trim()
       const dottedMonth = /^(\d{4})\.(\d{1,2})$/.exec(item.award_month)
       if (dottedMonth) item.award_month = `${dottedMonth[1]}-${dottedMonth[2].padStart(2, '0')}`
       if (item.award_name) {
@@ -467,9 +488,6 @@ const handleFileChange = async file => {
       }
       if (!Object.values(item).some(Boolean)) continue
       item.row_number = i + 1
-      for (const [key, label] of [['advisor_usernames', '指导教师工号'], ['advisor_colleges', '指导教师所在学院']]) {
-        item[key] = String(row[headers.indexOf(label)] || '').trim()
-      }
       data.push(item)
     }
     if (data.length > 5000) throw new Error('每批最多导入5000行')
@@ -663,7 +681,7 @@ watch(() => route.fullPath, () => {
           </div>
         </div>
       </template>
-      <el-alert title="获奖类别支持校赛、国家级、省部级、省级和国际级；国际级统一保存为国家级。同一赛事内项目名称相同视为同一团队，获奖类别、等级和时间必须一致。" type="info" :closable="false" />
+      <el-alert title="获奖类别支持校级（也可填校赛）、省级、省部级、国家级和国际级，国际级统一保存为国家级。同一赛事内项目名称相同视为同一团队，获奖类别、等级和时间必须一致。" type="info" :closable="false" />
       <div v-if="isUnified" class="preview-controls">
         <el-checkbox v-model="onlyErrors" :disabled="loading" @change="currentPage = 1">只看失败行</el-checkbox>
         <el-button :disabled="loading || !filteredRows.some(row => row.error)" @click="exportValidationReport">导出失败名单（{{ filteredRows.filter(row => row.error).length }} 条）</el-button>
@@ -713,6 +731,12 @@ watch(() => route.fullPath, () => {
             >
               <el-option v-for="level in awardLevels" :key="level" :label="level" :value="level" />
             </el-select>
+            <el-input
+              v-else-if="column.key === 'award_month' && row.award_month && !/^\d{4}-(0[1-9]|1[0-2])$/.test(row.award_month)"
+              :model-value="row.award_month"
+              :disabled="loading"
+              @change="value => { row.award_month = value; markRowChanged(row) }"
+            />
             <el-date-picker
               v-else-if="column.key === 'award_month'"
               v-model="row[column.key]"

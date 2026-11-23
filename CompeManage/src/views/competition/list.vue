@@ -5,7 +5,6 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { Search, Refresh, Download, Upload, Plus, Delete, ArrowDown, Edit, Setting } from '@element-plus/icons-vue';
 import { useUserStore } from '@/stores/user';
 import api from '@/api/index';
-import * as XLSX from 'xlsx';
 
 // 搜索表单数据
 const searchForm = reactive({
@@ -333,6 +332,7 @@ const handleExport = async () => {
         });
 
         // 4.创建工作簿和工作表
+        const XLSX = await import('xlsx');
         const worksheet = XLSX.utils.json_to_sheet(dataTOExport);
         const workbook = XLSX.utils.book_new();
 
@@ -354,7 +354,7 @@ const handleExport = async () => {
         XLSX.utils.book_append_sheet(workbook, worksheet, '赛事列表');
 
         // 5. 导出为Excel文件
-        XLSX.writeFile(workbook, `赛事列表_${currentYear.value}年度.xlsx`);
+        XLSX.writeFile(workbook, `赛事列表_${params.year}年度.xlsx`);
 
         ElMessage.success('导出成功');
     } catch (error) {
