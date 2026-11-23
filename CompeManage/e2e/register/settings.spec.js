@@ -72,7 +72,7 @@ test.describe('报名设置功能测试', () => {
     const managerInput = page.locator('.manager-input input')
     await managerInput.click()
 
-    const managerDialog = page.locator('.el-dialog:has-text("选择负责人")')
+    const managerDialog = page.locator('.el-dialog:has-text("选择赛事负责人")')
     await expect(managerDialog).toBeVisible({ timeout: 10000 })
 
     // 搜索教职工池后加载列表（关键词"何"命中教师池测试账号）
@@ -88,9 +88,15 @@ test.describe('报名设置功能测试', () => {
     // 等待弹窗关闭
     await expect(managerDialog).not.toBeVisible({ timeout: 5000 })
 
-    // 填写所属年份
-    const yearInput = page.getByRole('textbox', { name: '所属年份' })
-    await yearInput.fill('2026')
+    // 选择所属年份（el-select，不是 textbox）—— 用 prop="year" 精确定位赛事表单字段
+    const yearSelect = page
+      .locator('.el-form-item:has-text("所属年份")')
+      .locator('.el-select')
+      .first()
+    await yearSelect.click()
+    await page.getByRole('option', { name: '2026' }).first().waitFor({ state: 'visible', timeout: 5000 })
+    await page.getByRole('option', { name: '2026' }).first().click()
+    await page.waitForTimeout(300)
 
     // 拦截创建响应并提交
     const createRespPromise = page.waitForResponse(
@@ -172,8 +178,8 @@ test.describe('报名设置功能测试', () => {
     await page.locator('.form-section-title').first().click()
     await page.waitForTimeout(300)
 
-    // 报名审核 - 保持默认开启，验证开关可见
-    const auditSwitch = page.locator('.el-switch').filter({ hasText: '需要审核' })
+    // 报名审核 - 保持默认开启，验证开关可见（label="需要审核"，开关文案为 开/关）
+    const auditSwitch = page.locator('.el-form-item:has-text("需要审核")').locator('.el-switch')
     await expect(auditSwitch).toBeVisible()
 
     // --- 资格与限制 ---
