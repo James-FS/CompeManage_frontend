@@ -106,9 +106,9 @@ test('附件选择与移除', async ({ page }) => {
   await page.locator('input[type=file]').setInputFiles({
     name: '申报材料.pdf', mimeType: 'application/pdf', buffer: Buffer.from('pdf'),
   })
-  await toast(page, '附件已选择：申报材料.pdf')
+  await expect(page.getByText('待上传', { exact: true })).toBeVisible()
   await expect(page.getByText('申报材料.pdf').first()).toBeVisible()
-  await page.getByRole('button', { name: '移除' }).click()
+  await page.getByRole('button', { name: '移除文件' }).click()
   await expect(page.getByText('申报材料.pdf')).toHaveCount(0) // 移除后列表无此文件
 })
 

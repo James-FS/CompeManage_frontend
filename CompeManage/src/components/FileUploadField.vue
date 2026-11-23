@@ -24,7 +24,31 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'success', 'upload-error', 'preview', 'select'])
 const inputRef = ref(null)
 const componentUnmounted = ref(false)
-const files = computed(() => props.modelValue || [])
+// 2026-11-19 修复：改为内部 ref 数组，直接在组件内维护状态。
+// 旧实现 files 是 computed(() => props.modelValue)，而 emit('update:modelValue')
+// 到父组件 v-model 更新（Vue 异步 flush）之间存在竞态窗口：
+// addFiles 同步 emit 后立即 uploadItem，uploadItem 内 updateItem 又读
+// props.modelValue.map(...)（仍是旧数组），emit 出的新数组丢失该条目，
+// 上传成功后 url 不回填 → 提交时误判"请重新上传失败的作品文件"。
+// 内部 ref 让 updateItem/removeFile 直接操作最新数组，彻底绕开竞态。
+// 2026-11-19 修复：内部 ref 数组 + 双向绑定。
+// 去掉 watch(() => props.modelValue) 覆盖逻辑——它会在 emitFiles 后
+// 把内部 ref 覆盖回旧数组（next !== files.value 判断错误），导致 updateItem 丢失条目。
+// 改用 computed get/set 双向绑定，父组件主动改变 modelValue 时自动同步。
+// 2026-11-19 修复：内部 ref 数组，直接在组件内维护状态。
+// 旧实现 files 是 computed(() => props.modelValue)，而 emit('update:modelValue')
+// 到父组件 v-model 更新（Vue 异步 flush）之间存在竞态窗口：
+// addFiles 同步 emit 后立即 uploadItem，uploadItem 内 updateItem 又读
+// files.value.map(...)（仍是旧数组），emit 出的新数组丢失该条目，
+// 上传成功后 url 不回填 → 提交时误判"请重新上传失败的作品文件"。
+// 内部 ref 让 updateItem/removeFile 直接操作最新数组，彻底绕开竞态。
+const files = ref([...(props.modelValue || [])])
+// 父组件主动改变 modelValue（如 initData 回填）时同步内部数组
+// 用 nextTick 延迟同步，避免 emitFiles 后被覆盖回旧数组
+watch(() => props.modelValue, async (next) => {
+  await nextTick()
+  if (next && next !== files.value) files.value = [...next]
+})
 const knownUrls = new Set()
 watch(files, (items) => {
   for (const item of items) {
@@ -43,7 +67,7 @@ const allowedExtensions = computed(() => acceptValue.value
   .map((value) => value.trim().toLowerCase())
   .filter((value) => value.startsWith('.')))
 
-const emitFiles = (next) => emit('update:modelValue', next)
+const emitFiles = (next) => { files.value = next; emit('update:modelValue', next) }
 
 function openPicker() {
   if (!props.disabled) inputRef.value?.click()
@@ -63,7 +87,7 @@ function validateFile(file) {
   return ''
 }
 
-function addFiles(fileList) {
+async function addFiles(fileList) {
   if (props.disabled) return
 
   const incoming = Array.from(fileList || [])
@@ -109,7 +133,12 @@ function addFiles(fileList) {
   }
 
   if (props.autoUpload) {
-    accepted.forEach((item) => uploadOne(item.uid).catch(() => {}))
+    // Wait for the parent to pass the updated v-model back to this component.
+    await nextTick()
+    for (const item of accepted) {
+      if (componentUnmounted.value) break
+      await uploadItem(item).catch(() => {})
+    }
   }
 }
 
@@ -123,25 +152,35 @@ function handleDrop(event) {
   if (!props.disabled) addFiles(event.dataTransfer?.files)
 }
 
-function updateItem(uid, patch) {
-  emitFiles(files.value.map((item) => item.uid === uid ? { ...item, ...patch } : item))
+// 2026-11-19 修复：updateItem 改为"快照式"更新——直接用传入的 item 对象作为该条目最新状态，
+// 绕开 files.value（computed ← props.modelValue）缓存刷新竞态。
+// 旧实现 files.value.map(...) 在 addFiles→uploadItem 连续调用期间读到旧数组，
+// 导致上传成功后 emit 出的新数组丢失该条目（url 不回填 → 提交时误判"请重新上传失败的作品文件"）。
+function updateItem(item, patch) {
+  const updated = { ...item, ...patch }
+  const next = files.value.map((candidate) => candidate.uid === item.uid ? updated : candidate)
+  emitFiles(next)
 }
 
-async function uploadOne(uid) {
+// 2026-11-19 修复：uploadOne 改为接收 item 对象直接操作。
+// 旧实现从 files.value（computed ← props.modelValue）按 uid 查找，而 addFiles 的
+// emitFiles(next) 到 uploadOne 之间存在 Vue computed 缓存刷新竞态——files.value
+// 仍是旧数组导致 find 不到新文件、上传静默跳过、文件停留在 status:'ready'，
+// 提交时被 workDetail 判为"请重新上传失败的作品文件"。
+async function uploadItem(item) {
   if (!props.businessType) throw new Error('缺少文件业务类型')
-  const item = files.value.find((candidate) => candidate.uid === uid)
   const rawFile = item?.raw || item?.file
   if (!item || !rawFile || item.url) return item
   if (item.status === 'uploading') return item
 
-  updateItem(uid, { status: 'uploading', progress: 0, error: '' })
+  updateItem(item, { status: 'uploading', progress: 0, error: '' })
 
   try {
     const response = await api.uploadFile(rawFile, props.businessType, {
       timeout: 120000,
       onUploadProgress: (event) => {
         if (!event.total) return
-        updateItem(uid, { progress: Math.round((event.loaded * 100) / event.total) })
+        updateItem(item, { progress: Math.round((event.loaded * 100) / event.total) })
       },
     })
     if (response?.code !== 200 && response?.code !== 0) {
@@ -168,12 +207,12 @@ async function uploadOne(uid) {
       api.cleanupUploadedFile(data.url).catch(() => {})
       return uploaded
     }
-    updateItem(uid, uploaded)
+    updateItem(item, uploaded)
     emit('success', uploaded, response)
     return uploaded
   } catch (error) {
     const message = error?.response?.data?.message || error?.response?.data?.msg || error?.message || '上传失败'
-    updateItem(uid, { status: 'error', error: message })
+    updateItem(item, { status: 'error', error: message })
     emit('upload-error', error, item)
     if (!error?.messageShown) {
       ElMessage.error(`${item.name}：${message}`)
@@ -183,12 +222,18 @@ async function uploadOne(uid) {
   }
 }
 
+async function uploadOne(uid) {
+  // 兼容包装：按 uid 查找后转交 uploadItem（供 retryFile/uploadPending 用）
+  const item = files.value.find((candidate) => candidate.uid === uid)
+  return uploadItem(item)
+}
+
 async function uploadPending() {
   const pending = files.value.filter((item) => !item.url && (item.raw || item.file))
   const errors = []
   for (const item of pending) {
     try {
-      await uploadOne(item.uid)
+      await uploadItem(item)
     } catch (error) {
       errors.push(error)
     }
@@ -203,7 +248,8 @@ function removeFile(uid) {
 }
 
 function retryFile(uid) {
-  uploadOne(uid).catch(() => {})
+  const item = files.value.find((candidate) => candidate.uid === uid)
+  if (item) uploadItem(item).catch(() => {})
 }
 
 function previewFile(item) {

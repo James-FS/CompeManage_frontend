@@ -11,7 +11,10 @@ const formRef = ref()
 const proofFiles = ref([])
 const uploading = computed(() => proofFiles.value.some(file => file.status === 'uploading'))
 const query = reactive({ keyword: '', status: '', page: 1, size: 10 })
-const form = reactive({ project_name: '', award_category: '', award_name: '', award_date: '', proof_url: '', remark: '', update_time: '' })
+const form = reactive({
+  project_name: '', award_category: '', award_name: '', award_date: '', remark: '', update_time: '',
+  get proof_url() { return proofFiles.value[0]?.url || '' },
+})
 const statuses = { draft: { text: '待审核', type: 'warning' }, rejected: { text: '已退回', type: 'danger' }, approved: { text: '已通过', type: 'success' } }
 const rules = Object.fromEntries(['project_name', 'award_category', 'award_name', 'award_date', 'proof_url'].map(key => [key, [{ required: true, message: '请填写此项', trigger: 'change' }]]))
 const date = value => value ? value.slice(0, 10) : '—'
@@ -37,14 +40,13 @@ async function openDetail(row) {
     if (current !== detailSequence) return
     detail.value = res.data
     const a = res.data.award
-    Object.assign(form, { project_name: a.project_name, award_category: a.award_category, award_name: a.award_name, award_date: a.award_time?.slice(0, 10) || '', proof_url: a.proof_url || '', remark: a.remark || '', update_time: a.update_time })
+    Object.assign(form, { project_name: a.project_name, award_category: a.award_category, award_name: a.award_name, award_date: a.award_time?.slice(0, 10) || '', remark: a.remark || '', update_time: a.update_time })
     proofFiles.value = normalizeFileAttachments(a.proof_url || '')
     visible.value = true
     formRef.value?.clearValidate()
   } catch (error) { showError(error) }
 }
-function handleProofUploaded(file) {
-  form.proof_url = file.url
+function handleProofUploaded() {
   formRef.value?.clearValidate('proof_url')
 }
 async function save() {

@@ -17,7 +17,7 @@ async function setup(page) {
     let data = []
     if (url.pathname === '/api/reg/user/list') data = { list: url.searchParams.get('role') === 'teacher' ? teachers : url.searchParams.get('search') === '00123' ? [students[0]] : students, total: 2 }
     if (url.pathname === '/api/award/comp/list') data = { list: [{ id: 7, comp_name: '数学建模竞赛', comp_code: 'G2026007', year: 2026, comp_level: '国家级' }], total: 1 }
-    if (url.pathname === '/api/upload') data = { url: '/proof.pdf' }
+    if (url.pathname === '/api/upload') data = { url: req.postData()?.includes('new-proof.pdf') ? '/new-proof.pdf' : '/proof.pdf' }
     if (url.pathname === '/api/award/student/supplement') { submitted = req.postDataJSON(); data = { award_id: 1 } }
     await route.fulfill({ json: { code: 200, message: 'success', data } })
   })
@@ -53,7 +53,7 @@ async function fillAward(page) {
   await page.getByPlaceholder('选择获奖日期').press('Enter')
   await page.getByPlaceholder('填写需要补充说明的信息（选填）').fill('项目备注')
   await page.locator('input[type=file]').setInputFiles({ name: 'proof.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 test') })
-  await expect(page.getByText('proof.pdf', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'proof.pdf', exact: true })).toBeEnabled()
 }
 
 test('个人申报使用本人信息，提交类别、项目、多位指导老师和备注', async ({ page }) => {
@@ -63,8 +63,16 @@ test('个人申报使用本人信息，提交类别、项目、多位指导老�
   await expect(page.locator('.el-form-item').filter({ hasText: '参赛项目名称' }).locator('.el-input__count')).toHaveCount(0)
   await expect(page.getByRole('button', { name: '添加成员', exact: true })).toBeHidden()
   await fillAward(page)
+  await page.getByRole('button', { name: '移除文件', exact: true }).click()
+  await page.getByRole('button', { name: '确认提交' }).click()
+  await expect(page.getByText('请上传获奖证书证明', { exact: true })).toBeVisible()
+  expect(submitted()).toBeUndefined()
+
+  await page.locator('input[type=file]').setInputFiles({ name: 'new-proof.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 test') })
+  await expect(page.getByRole('button', { name: 'new-proof.pdf', exact: true })).toBeEnabled()
   await page.getByRole('button', { name: '确认提交' }).click()
   await expect.poll(submitted).toBeTruthy()
+  expect(submitted().proof_url).toBe('/new-proof.pdf')
   expect(submitted()).toMatchObject({ comp_id: 7, participation_type: 'individual', team_name: '智能交通项目', award_category: '国家级', award_name: '一等奖', award_level: '国家级一等奖', award_date: '2026-10-12', remark: '项目备注', advisors: [{ id: 11, username: 'T001', name: '张老师', college: '学院甲' }, { id: 12, username: 'T002', name: '李老师', college: '学院乙' }] })
   expect(submitted().members).toHaveLength(1)
   expect(submitted().members[0].student_id).toBe('00123')
@@ -112,7 +120,7 @@ test('驳回后重新申报回显团队、日期、多位指导老师和备注',
   await page.goto('/#/award/student/declare?comp_id=7&comp_name=数学建模竞赛')
   await page.reload()
   await expect(page.getByPlaceholder('请输入参赛项目名称，同一赛事通过项目名称区分团队')).toHaveValue('待修正项目')
-  await expect(page.getByPlaceholder('选择获奖日期')).toHaveValue('2026-10-10')
+  await expect(page.getByPlaceholder('选择获奖日期')).toHaveValue('2026年10月10日')
   await expect(page.locator('.advisor-card')).toHaveCount(2)
   await expect(page.locator('.advisor-card').nth(1).locator('input').first()).toHaveValue('指导老师乙')
   await expect(page.getByPlaceholder('填写需要补充说明的信息（选填）')).toHaveValue('回显备注')

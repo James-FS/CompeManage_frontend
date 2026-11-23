@@ -94,14 +94,14 @@ test('格式校验与空表拦截', async ({ page }) => {
   await page.locator('input[type=file]').setInputFiles({
     name: 'x.txt', mimeType: 'text/plain', buffer: Buffer.from('hi'),
   })
-  await toast(page, '只能上传 xlsx / xls 文件')
+  await toast(page, '格式不支持')
 
   // 仅表头 → 表格内容为空
   await uploadExcel(page, [])
   await toast(page, '表格内容为空')
 })
 
-test('提交校验：字段缺失与学院不存在', async ({ page }) => {
+test('提交校验：字段缺失、学院不存在和非法年份', async ({ page }) => {
   const state = await setup(page)
   // 缺级别/负责人
   await uploadExcel(page, [['缺字段赛事', '', '学科竞赛', '主办', '承办', 'T2023012', '', '计算机学院', '2026', '']])
@@ -114,6 +114,13 @@ test('提交校验：字段缺失与学院不存在', async ({ page }) => {
   await uploadExcel(page, [['学院错误赛事', '校级', '学科竞赛', '主办', '承办', 'T2023012', '', '不存在学院', '2026', '']])
   await page.getByRole('button', { name: /确认导入/ }).click()
   await toast(page, '不存在，请检查后重试')
+  expect(state.imported).toBeUndefined()
+
+  await uploadExcel(page, [['年份错误赛事', '校级', '学科竞赛', '主办', '承办', 'T2023012', '', '计算机学院', 0, '']])
+  await expect(page.getByPlaceholder('年份')).toHaveValue('0')
+  await expect(page.getByPlaceholder('自动匹配或点击选择')).toHaveValue('何老师')
+  await page.getByRole('button', { name: /确认导入/ }).click()
+  await toast(page, '所属年份须为1000至9999的4位数字')
   expect(state.imported).toBeUndefined()
 })
 

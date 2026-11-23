@@ -1039,6 +1039,7 @@ onMounted(async () => {
             @change="fetchStudentList"
             @clear="fetchStudentList"
             popper-class="dept-select-popper"
+            fit-input-width
             style="width: 330px"
           >
             <el-option
@@ -1046,7 +1047,9 @@ onMounted(async () => {
               :key="item.id"
               :label="item.name"
               :value="item.name"
-            />
+            >
+              <span class="college-option-label" :title="item.name">{{ item.name }}</span>
+            </el-option>
           </el-select>
         </el-form-item>
       </el-form>

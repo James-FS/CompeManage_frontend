@@ -19,13 +19,14 @@ import {
  * 本机原生 MySQL（服务 MySQL80）与 docker 容器两种环境都能跑，避免"套件只能在一种环境通过"。
  * 可用 E2E_MYSQL_HOST/USER/PASSWORD/DB 覆盖本地连接参数。
  */
+const MYSQL_DB = process.env.E2E_MYSQL_DB || 'CompeManage'
+if (!/^[A-Za-z0-9_]+$/.test(MYSQL_DB)) throw new Error('E2E_MYSQL_DB 必须是有效的数据库名')
 const DOCKER_MYSQL_BASE =
-  'docker exec -i compemanage_mysql mysql -uroot -p123456 --default-character-set=utf8mb4 CompeManage'
+  `docker exec -i compemanage_mysql mysql -uroot -p123456 --default-character-set=utf8mb4 ${MYSQL_DB}`
 const LOCAL_MYSQL_HOST = process.env.E2E_MYSQL_HOST || '127.0.0.1'
 const LOCAL_MYSQL_USER = process.env.E2E_MYSQL_USER || 'root'
 const LOCAL_MYSQL_PASSWORD = process.env.E2E_MYSQL_PASSWORD || 'lhh5555'
-const LOCAL_MYSQL_DB = process.env.E2E_MYSQL_DB || 'CompeManage'
-const LOCAL_MYSQL_BASE = `mysql -h${LOCAL_MYSQL_HOST} -u${LOCAL_MYSQL_USER} -p${LOCAL_MYSQL_PASSWORD} --default-character-set=utf8mb4 ${LOCAL_MYSQL_DB}`
+const LOCAL_MYSQL_BASE = `mysql -h${LOCAL_MYSQL_HOST} -u${LOCAL_MYSQL_USER} -p${LOCAL_MYSQL_PASSWORD} --default-character-set=utf8mb4 ${MYSQL_DB}`
 
 /** 探测成功的连接基础命令（不含 -N 等每次不同的附加参数） */
 let resolvedMysqlBase = null

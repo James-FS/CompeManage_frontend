@@ -2,11 +2,11 @@
  * 获奖填报全流程 E2E（串行，按真实业务顺序执行）：
  *
  * 1. 校管理员在"赛事管理 → 新增赛事"手动创建 3 个校级赛事
- * 2. 院管理员在"获奖管理 → 获奖填报"里：
- *    - 赛事A：列表卡片"导入数据"直传 Excel（3人跨学院团队 + 1个国家级个人）
- *    - 赛事B：详情页"导入名单"进导入页，Excel 上传 → 校验（含1行学号不存在）→ 删错行 → 提交
+ * 2. 在"获奖管理 → 获奖填报"里：
+ *    - 赛事A：校管理员从列表卡片进入导入页，上传跨学院获奖名单
+ *    - 赛事B：校管理员从详情进入导入页，上传 Excel，核对部分导入结果并删除失败行
  *             （2人跨学院团队 + 校赛个人 + 国际级个人，验证国际级归一为国家级）
- *    - 赛事C：导入页"新增一条"手动录入 2 人团队（含跨赛重复队员）
+ *    - 赛事C：院管理员手动录入本院 2 人团队（含跨赛重复队员）
  * 3. 校管理员回到"校赛填报"，按赛事年份导出附件1（省级以上项目）与附件2（省级以上学生），
  *    解析下载的 Excel 核对内容：省级以上样例齐全、校赛样例不出现
  *
@@ -57,11 +57,11 @@ test('校管理员手动新建 3 个赛事', async ({ page }) => {
 
     await pickManagerByWorkId(page, comp.managerWorkId)
 
-    await page.locator('input[placeholder="请选择所属年份"]').fill(YEAR)
-    await page.locator('textarea[placeholder="填写赛事的其他补充说明..."]').fill(comp.desc)
+    await selectElOption(page, '所属年份', `${YEAR}年`)
+    await page.getByRole('textbox', { name: '备注说明' }).fill(comp.desc)
 
     const createResp = page.waitForResponse(r => r.url().includes('/api/comp/create') && r.request().method() === 'POST')
-    await page.locator('button:has-text("创建")').first().click()
+    await page.getByRole('button', { name: '创建', exact: true }).click()
     const resp = await createResp
     const json = await resp.json()
     expect(json.code, `创建「${name}」应成功：${json.message}`).toBe(200)
@@ -75,7 +75,7 @@ test('校管理员手动新建 3 个赛事', async ({ page }) => {
   expect(Object.keys(state.comps)).toHaveLength(3)
 })
 
-test('院管理员在校赛填报用"导入数据"直传赛事A获奖名单', async ({ page }) => {
+test('校管理员从列表导入赛事A的跨学院获奖名单', async ({ page }) => {
   const comp = state.comps.A
   const rowsA = [
     { ...STUDENT.E2E2601, project: P.A1, month: '2026-05', category: '省级', level: '一等奖' },
@@ -84,15 +84,12 @@ test('院管理员在校赛填报用"导入数据"直传赛事A获奖名单', as
     { ...STUDENT.E2E2604, project: P.A2, month: '2026-06', category: '国家级', level: '二等奖', remark: 'E2E个人样例' },
   ]
 
-  await login(page, COLLEGE_ADMIN)
+  await login(page, SCHOOL_ADMIN)
   await gotoAwardListViaMenu(page)
 
   const card = page.locator('.comp-card').filter({ hasText: comp.name })
   await expect(card).toBeVisible()
-  await expect(card.locator('.btn-text', { hasText: '导入数据' })).toBeVisible()
-
-  // 列表卡片"导入数据"进入导入页（不再是卡片内直传）
-  await card.locator('.btn-text', { hasText: '导入数据' }).click()
+  await card.getByRole('button', { name: '导入获奖名单', exact: true }).click()
   await expect(page).toHaveURL(new RegExp(`award/import/${comp.id}`))
 
   await page.locator('input[type="file"]').setInputFiles(awardExcelFile(`赛事A获奖名单_${RUN_TAG}.xlsx`, rowsA))
@@ -115,24 +112,25 @@ test('院管理员在校赛填报用"导入数据"直传赛事A获奖名单', as
   const teamRow = page.locator('.el-table__body tr').filter({ hasText: P.A1 })
   await expect(teamRow).toContainText('省级')
   await expect(teamRow).toContainText('一等奖')
-  await expect(teamRow).toContainText('王奕辰、刘思远、陈嘉懿（3人）')
+  const teamMembers = teamRow.getByRole('button', { name: '王奕辰、刘思远、陈嘉懿', exact: true })
+  await expect(teamMembers).toBeVisible()
 
   const individualRow = page.locator('.el-table__body tr').filter({ hasText: P.A2 })
   await expect(individualRow).toContainText('国家级')
-  await expect(individualRow).toContainText('赵雨桐（1人）')
+  await expect(individualRow).toContainText('赵雨桐')
 
   // 打开团队获奖成员弹窗，核对跨学院成员与学院
-  await teamRow.locator('button').filter({ hasText: '（3人）' }).click()
-  const dialog = page.locator('.el-dialog:visible').first()
+  await teamMembers.click()
+  const dialog = page.getByRole('dialog', { name: '获奖成员', exact: true })
   await expect(dialog).toBeVisible()
   for (const u of ['E2E2601', 'E2E2602', 'E2E2603']) await expect(dialog).toContainText(u)
   await expect(dialog).toContainText('数学与信息科学学院')
   await expect(dialog).toContainText('电子与通信工程学院')
-  await page.locator('.el-dialog__headerbtn').first().click()
+  await dialog.locator('.el-dialog__headerbtn').click()
   await expect(dialog).not.toBeVisible()
 })
 
-test('院管理员为赛事B走导入页：校验报错、删错行、提交成功', async ({ page }) => {
+test('校管理员为赛事B导入跨学院名单并处理失败行', async ({ page }) => {
   const comp = state.comps.B
   const rowsB = [
     { ...STUDENT.E2E2605, major: '', project: P.B1, month: '2026-04', category: '省级', level: '二等奖' }, // 专业留空，按系统资料回填
@@ -142,7 +140,7 @@ test('院管理员为赛事B走导入页：校验报错、删错行、提交成�
     { username: 'E2E9999', name: '不存在学生', college: '数学学院', major: '数学与应用数学', project: P.BAD, month: '2026-05', category: '省级', level: '一等奖' },
   ]
 
-  await login(page, COLLEGE_ADMIN)
+  await login(page, SCHOOL_ADMIN)
   await page.goto('/#/award/list')
   const card = page.locator('.comp-card').filter({ hasText: comp.name })
   await expect(card).toBeVisible()
@@ -150,7 +148,7 @@ test('院管理员为赛事B走导入页：校验报错、删错行、提交成�
   await expect(page).toHaveURL(new RegExp(`award/detail/${comp.id}`))
   await expect(page.getByText(/0 个团队项目\s*·\s*0 名获奖学生/)).toBeVisible()
 
-  await page.getByRole('button', { name: '导入名单' }).click()
+  await page.getByRole('button', { name: '导入获奖名单', exact: true }).click()
   await expect(page).toHaveURL(new RegExp(`award/import/${comp.id}`))
 
   await page.locator('input[type="file"]').setInputFiles(awardExcelFile(`赛事B获奖名单_${RUN_TAG}.xlsx`, rowsB))
@@ -192,10 +190,10 @@ test('院管理员为赛事B走导入页：校验报错、删错行、提交成�
   // 校赛样例正常入库
   await expect(page.locator('.el-table__body tr').filter({ hasText: P.B2 })).toContainText('校赛')
   // 跨学院团队两名成员
-  await expect(page.locator('.el-table__body tr').filter({ hasText: P.B1 })).toContainText('林芷晴、黄子涛（2人）')
+  await expect(page.locator('.el-table__body tr').filter({ hasText: P.B1 })).toContainText('林芷晴、黄子涛')
 })
 
-test('已导入成员不能重复补录，同赛事重复获奖记录整批拒绝', async ({ page }) => {
+test('已导入成员不能重复补录，同赛事冲突的导入行被拦截', async ({ page }) => {
   let comp = state.comps.B
   if (!comp) {
     // 支持单独运行本条回归用例：此前 B 赛事由前序 UI 用例创建，这里补齐最小 API fixture。
@@ -311,12 +309,12 @@ test('院管理员为赛事C手动新增 2 人团队获奖', async ({ page }) =>
   await expect(card).toBeVisible()
   await card.locator('.primary-btn').click()
   await expect(page).toHaveURL(new RegExp(`award/detail/${comp.id}`))
-  await page.getByRole('button', { name: '导入名单' }).click()
+  await page.getByRole('button', { name: '导入获奖名单', exact: true }).click()
   await expect(page).toHaveURL(new RegExp(`award/import/${comp.id}`))
 
   await page.getByRole('button', { name: '新增一条', exact: true }).click()
   await fillImportRow(page, 0, {
-    学号: STUDENT.E2E2609.username, 姓名: STUDENT.E2E2609.name, 学院: STUDENT.E2E2609.college, 专业: STUDENT.E2E2609.major,
+    学号: STUDENT.E2E2604.username, 姓名: STUDENT.E2E2604.name, 学院: STUDENT.E2E2604.college, 专业: STUDENT.E2E2604.major,
     项目: P.C1, 时间: '2026-08', 类别: '省级', 等级: '三等奖',
   })
   await page.getByRole('button', { name: '新增一条', exact: true }).click()
@@ -337,7 +335,7 @@ test('院管理员为赛事C手动新增 2 人团队获奖', async ({ page }) =>
   await expect(page).toHaveURL(new RegExp(`award/detail/${comp.id}`))
   await expect(page.getByText(/1 个团队项目\s*·\s*2 名获奖学生/)).toBeVisible()
   // 详情页成员展示顺序与提交顺序无关，只断言两名成员都在
-  await expect(page.locator('.el-table__body tr').filter({ hasText: P.C1 })).toContainText(/(郑晓萌、王奕辰|王奕辰、郑晓萌)（2人）/)
+  await expect(page.locator('.el-table__body tr').filter({ hasText: P.C1 })).toContainText(/赵雨桐、王奕辰|王奕辰、赵雨桐/)
 })
 
 test('校管理员按赛事年份导出附件1/附件2并核对内容', async ({ page }) => {
@@ -355,7 +353,7 @@ test('校管理员按赛事年份导出附件1/附件2并核对内容', async ({
   await expect(yearInput).toHaveValue(new RegExp(YEAR))
 
   const download1 = page.waitForEvent('download')
-  await page.getByRole('button', { name: '导出附件1（省级以上项目）' }).click()
+  await page.getByRole('button', { name: '导出附件1：省级以上获奖项目一览表' }).click()
   const d1 = await download1
   expect(d1.suggestedFilename()).toBe(`${YEAR}年大学生参加省级以上各类竞赛获奖项目一览表（本科生获奖统计）.xlsx`)
   const f1 = test.info().outputPath(d1.suggestedFilename())
@@ -363,7 +361,7 @@ test('校管理员按赛事年份导出附件1/附件2并核对内容', async ({
   await expect(page.locator('.el-message--success').first()).toBeVisible()
 
   const download2 = page.waitForEvent('download')
-  await page.getByRole('button', { name: '导出附件2（省级以上学生）' }).click()
+  await page.getByRole('button', { name: '导出附件2：省级以上获奖学生一览表' }).click()
   const d2 = await download2
   expect(d2.suggestedFilename()).toBe(`${YEAR}年大学生参加省级以上各类竞赛获奖学生一览表（本科生获奖统计）.xlsx`)
   const f2 = test.info().outputPath(d2.suggestedFilename())
@@ -402,14 +400,14 @@ test('校管理员按赛事年份导出附件1/附件2并核对内容', async ({
   const rC1 = findProjectRow(P.C1)
   expect(rC1, `附件1应含项目 ${P.C1}`).toBeTruthy()
   expect(rC1).toContain('省级三等奖')
-  expect(rC1).toContain('郑晓萌')
+  expect(rC1).toContain('赵雨桐')
   expect(rC1).toContain('王奕辰')
 
   expect(projectRows.some(t => t.includes(P.B2)), '校赛样例不应出现在省级以上附件1').toBe(false)
 
   // ---- 附件2：省级以上学生一览 ----
   const studentRows = sheetRowTexts(f2, '获奖学生')
-  const exportedIds = ['E2E2601', 'E2E2602', 'E2E2603', 'E2E2604', 'E2E2605', 'E2E2606', 'E2E2608', 'E2E2609']
+  const exportedIds = ['E2E2601', 'E2E2602', 'E2E2603', 'E2E2604', 'E2E2605', 'E2E2606', 'E2E2608']
   for (const id of exportedIds) {
     expect(studentRows.some(t => t.includes(id)), `附件2应含学号 ${id}`).toBe(true)
   }
@@ -425,7 +423,7 @@ test('校管理员按赛事年份导出附件1/附件2并核对内容', async ({
   expect(r2605).toContain('省级')
   expect(r2605).toContain('二等奖')
 
-  const r2604 = studentRows.find(t => t.includes('E2E2604'))
+  const r2604 = studentRows.find(t => t.includes('E2E2604') && t.includes(P.A2))
   expect(r2604).toContain('E2E个人样例') // 备注列随导出保留
 })
 
@@ -473,7 +471,7 @@ test('校赛填报列表支持关键词/级别筛选（服务端过滤）', asyn
 
 test('回归：导入页点面包屑"获奖详情"应回填路由参数而不是 ":id"', async ({ page }) => {
   const comp = state.comps.B
-  await login(page, COLLEGE_ADMIN)
+  await login(page, SCHOOL_ADMIN)
   await page.goto(`/#/award/import/${comp.id}`)
   await expect(page.locator('.breadcrumb-container a.redirect', { hasText: '获奖详情' })).toBeVisible()
 

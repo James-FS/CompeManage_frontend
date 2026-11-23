@@ -255,9 +255,12 @@ onMounted(async () => {
             clearable
             filterable
             placeholder="全部学院"
+            fit-input-width
             @change="handleFilterChange"
           >
-            <el-option v-for="college in collegeList" :key="college.id" :label="college.name" :value="college.id" />
+            <el-option v-for="college in collegeList" :key="college.id" :label="college.name" :value="college.id">
+              <span class="college-option-label" :title="college.name">{{ college.name }}</span>
+            </el-option>
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -375,8 +378,11 @@ onMounted(async () => {
               placeholder="请选择院管理员负责的学院"
               :disabled="isSelf || currentUser.role_conflict"
               class="college-select"
+              fit-input-width
             >
-              <el-option v-for="college in collegeList" :key="college.id" :label="college.name" :value="college.id" />
+              <el-option v-for="college in collegeList" :key="college.id" :label="college.name" :value="college.id">
+                <span class="college-option-label" :title="college.name">{{ college.name }}</span>
+              </el-option>
             </el-select>
           </div>
         </template>

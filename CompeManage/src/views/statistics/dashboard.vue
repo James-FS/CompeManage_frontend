@@ -913,13 +913,16 @@ onBeforeUnmount(() => {
               aria-label="按所属学院筛选"
               clearable
               class="filter-item"
+              fit-input-width
             >
               <el-option
                 v-for="item in collegeFilterOptions"
                 :key="item"
                 :label="item"
                 :value="item"
-              />
+              >
+                <span class="college-option-label" :title="item">{{ item }}</span>
+              </el-option>
             </el-select>
             <el-date-picker
               v-model="reportYear"

@@ -23,7 +23,8 @@ async function setup(page, opts = {}) {
     const p = url.pathname
     if (p.startsWith('/api/declare/') && (p.endsWith('/list') || p.endsWith('/pending') || p.endsWith('/published'))) {
       state.lastListUrl = url.toString()
-      await route.fulfill({ json: { code: 200, message: 'success', data: { items: ROWS, total: 20 } } })
+      const items = opts.partialFailure ? ROWS.filter(row => !state.audits.some(audit => audit.declare_id === row.id)) : ROWS
+      await route.fulfill({ json: { code: 200, message: 'success', data: { items, total: 20 } } })
       return
     }
     if (p === '/api/college/list') {
@@ -31,11 +32,12 @@ async function setup(page, opts = {}) {
       return
     }
     if (p === '/api/declare/audit') {
-      if (opts.auditFail) {
+      const audit = req.postDataJSON()
+      if (opts.auditFail || (opts.partialFailure && audit.declare_id === 2)) {
         await route.fulfill({ json: { code: 500, message: '审核服务不可用' } })
         return
       }
-      state.audits.push(req.postDataJSON())
+      state.audits.push(audit)
       await route.fulfill({ json: { code: 200, message: 'success', data: {} } })
       return
     }
@@ -106,6 +108,18 @@ test('批量通过失败提示', async ({ page }) => {
   await page.getByRole('button', { name: '批量通过' }).click()
   await page.locator('.el-message-box').getByRole('button', { name: '确定' }).click()
   await toast(page, /审核服务不可用|批量审核失败/)
+})
+
+test('批量通过部分失败时显示实际数量并刷新待审核列表', async ({ page }) => {
+  await setup(page, { partialFailure: true })
+  const rows = page.locator('.el-table__body tr')
+  await rows.filter({ hasText: '待审赛事甲' }).locator('.el-checkbox__inner').click()
+  await rows.filter({ hasText: '待审赛事乙' }).locator('.el-checkbox__inner').click()
+  await page.getByRole('button', { name: '批量通过' }).click()
+  await page.locator('.el-message-box').getByRole('button', { name: '确定' }).click()
+  await toast(page, '已通过 1 项，1 项审核失败')
+  await expect(rows.filter({ hasText: '待审赛事甲' })).toHaveCount(0)
+  await expect(rows.filter({ hasText: '待审赛事乙' })).toHaveCount(1)
 })
 
 test('驳回弹窗：原因必填、成功与失败提示', async ({ page }) => {

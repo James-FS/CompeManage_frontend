@@ -466,7 +466,7 @@ onUnmounted(() => clearTimeout(competitionSearchTimer))
       <el-form v-if="memberEdit" label-width="110px">
         <el-form-item label="学号"><el-input v-model="memberEdit.student_id" /><div class="hint">修正学号时，姓名、学院、专业随系统学生资料更新。</div></el-form-item>
         <el-form-item label="备注"><el-input v-model="memberEdit.remark" type="textarea" maxlength="2000" /></el-form-item>
-        <el-form-item v-if="userStore.role === 'school_admin' && !memberEdit.submitted_college_id" label="确认填报学院"><el-select v-model="memberEdit.assign_college" clearable filterable><el-option v-for="c in colleges" :key="c.id" :label="c.name" :value="c.id" /></el-select><div class="hint">仅用于确认历史或尚未确定的填报归属。</div></el-form-item>
+        <el-form-item v-if="userStore.role === 'school_admin' && !memberEdit.submitted_college_id" label="确认填报学院"><el-select v-model="memberEdit.assign_college" clearable filterable fit-input-width><el-option v-for="c in colleges" :key="c.id" :label="c.name" :value="c.id"><span class="college-option-label" :title="c.name">{{ c.name }}</span></el-option></el-select><div class="hint">仅用于确认历史或尚未确定的填报归属。</div></el-form-item>
       </el-form>
       <template #footer><el-button @click="memberEdit = null">取消</el-button><el-button type="primary" :loading="saving" @click="saveMember">保存</el-button></template>
     </el-dialog>

@@ -27,8 +27,7 @@ test('真实模板下载 → 匹配校验 → 部分导入 → 失败导出重�
   })
   const unauthenticated = await request.post(`${fixture.url}/api/award/import/unified`, { data: { rows: [] } })
   expect(unauthenticated.status()).toBe(401)
-  await page.goto('/#/award/list')
-  await page.getByRole('button', { name: '统一导入获奖名单', exact: true }).click()
+  await page.goto('/#/award/import-all')
   const templateDownload = page.waitForEvent('download')
   await page.getByRole('button', { name: '下载模板', exact: true }).click()
   const book = XLSX.read(await downloadedBuffer(await templateDownload), { type: 'buffer' })
@@ -65,7 +64,7 @@ test('真实模板下载 → 匹配校验 → 部分导入 → 失败导出重�
   values[2][3] = '实测学生乙'
   book.Sheets['获奖名单'] = XLSX.utils.aoa_to_sheet([header, ...values])
   await page.locator('input[type=file]').setInputFiles(file(XLSX.write(book, { type: 'buffer', bookType: 'xlsx' })))
-  await page.getByRole('button', { name: '确认跳过重复记录', exact: true }).click()
+  await page.getByRole('button', { name: '确认跳过 3 条重复记录', exact: true }).click()
   await page.getByRole('button', { name: '查看全部明细', exact: true }).click()
   await expect(page.locator('.preview-table').getByText('已存在，已跳过', { exact: true })).toHaveCount(3)
   await page.getByRole('button', { name: '完成编辑', exact: true }).click()

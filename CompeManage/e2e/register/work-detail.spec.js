@@ -86,9 +86,13 @@ test('时间分支：窗口内可提交', async ({ page }) => {
 test('文件解析与移除', async ({ page }) => {
   await setup(page, { windowOpen: true })
   // parseFileString：去时间戳前缀
-  await expect(page.getByText('报名表.docx')).toBeVisible()
-  await expect(page.getByText('附件.pdf')).toBeVisible()
-  await expect(page.getByText('作品.zip')).toBeVisible()
+  // 报名材料在 .file-grid（regFileList），作品在 .work-list-container（workFileList）
+  // 分区断言避免 FileUploadField 列表重复匹配
+  const regGrid = page.locator('.file-grid')
+  await expect(regGrid.getByText('报名表.docx')).toBeVisible()
+  await expect(regGrid.getByText('附件.pdf')).toBeVisible()
+  const workList = page.locator('.work-list-container')
+  await expect(workList.getByText('作品.zip')).toBeVisible()
 
   // removeWorkFile 单语句分支（按钮不稳）挂账——文件名解析分支已覆盖
 })
@@ -98,7 +102,7 @@ test('上传成功追加与失败双分支', async ({ page }) => {
   await setup(page, { windowOpen: true })
   await page.locator('input[type=file]').setInputFiles({ name: '新作品.zip', mimeType: 'application/zip', buffer: Buffer.from('z') })
   await toast(page, '文件上传成功')
-  await expect(page.getByText('新作品.zip')).toBeVisible()
+  await expect(page.locator('.work-list-container').getByText('新作品.zip')).toBeVisible()
 })
 
 test('上传失败双分支', async ({ page }) => {
