@@ -63,7 +63,7 @@ async function chooseOption(page, formItemLabel, optionName) {
 
 async function pickManager(page) {
   await page.locator('.manager-input input').click()
-  const dialog = page.getByRole('dialog', { name: '选择负责人（教职工）' })
+  const dialog = page.getByRole('dialog', { name: '选择赛事负责人' })
   await expect(dialog).toBeVisible()
   await dialog.getByPlaceholder('输入姓名').fill('何')
   await expect(dialog.locator('.el-table__body tr')).toHaveCount(1)
@@ -91,7 +91,7 @@ test('新建申报：全字段 + 负责人弹窗 + 附件上传 → 创建成功
   await page.locator('input[type=file]').setInputFiles({
     name: '计划书.pdf', mimeType: 'application/pdf', buffer: Buffer.from('pdf'),
   })
-  await expect(page.getByText('附件已选择：计划书.pdf')).toBeVisible()
+  await expect(page.getByRole('button', { name: '计划书.pdf', exact: true })).toBeVisible()
 
   await page.getByRole('button', { name: '保存', exact: true }).click()
   await expect.poll(() => state.created).toBeTruthy()
@@ -120,7 +120,9 @@ test('编辑模式回显详情（附件名解析）并更新申报', async ({ pa
   await expect.poll(() => state.updated).toBeTruthy()
   expect(state.updated.comp_name).toBe('修改后的申报')
   // 已有附件 URL 直接沿用，不触发上传
-  expect(state.updated.attachment_path).toBe('http://mock/a_计划书.pdf,http://mock/b_名单.xlsx')
+  expect(JSON.parse(state.updated.attachment_path).map(file => file.url)).toEqual([
+    'http://mock/a_计划书.pdf', 'http://mock/b_名单.xlsx',
+  ])
   expect(state.uploads).toBe(0)
 })
 
@@ -176,6 +178,7 @@ test('必填校验拦截空表单，附件上传失败中断保存', async ({ pa
     name: '计划书.pdf', mimeType: 'application/pdf', buffer: Buffer.from('pdf'),
   })
   await page.getByRole('button', { name: '保存', exact: true }).click()
-  await expect(page.locator('.el-message').filter({ hasText: /附件上传失败/ })).toBeVisible()
+  await expect(page.locator('.el-message').filter({ hasText: /保存失败/ })).toBeVisible()
+  expect(state.uploads).toBe(1)
   expect(state.created).toBeUndefined()
 })

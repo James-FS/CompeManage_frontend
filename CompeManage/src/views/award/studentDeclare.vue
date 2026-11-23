@@ -59,7 +59,7 @@ const form = reactive({
   awardLevel: '',
   awardLevelOther: '',
   teamName: '',
-  certImage: '',
+  get certImage() { return certFiles.value[0]?.url || '' },
   awardDate: '',
   
   // ✅ 添加队长和成员信息
@@ -264,8 +264,7 @@ function removeMember(index) {
 
 // ==================== 上传和提交相关方法 ====================
 
-const handleCertificateUploaded = (file) => {
-  form.certImage = file.url
+const handleCertificateUploaded = () => {
   formRef.value?.clearValidate('certImage')
   ElMessage.success('证书上传成功')
 }
@@ -406,8 +405,7 @@ onMounted(async () => {
         const advisors = typeof data.advisor_info === 'string' ? JSON.parse(data.advisor_info || '[]') : data.advisor_info
         form.advisors = Array.isArray(advisors) ? advisors : []
         form.teamName = data.team_name || ''
-        form.certImage = data.proof_url || ''
-        certFiles.value = normalizeFileAttachments(form.certImage)
+        certFiles.value = normalizeFileAttachments(data.proof_url || '')
 
         const members = data.members || []
         const leader = members.find(m => m.is_leader)
@@ -770,14 +768,15 @@ onMounted(async () => {
             v-model="searchForm.college"
             placeholder="选择学院"
             clearable
+            fit-input-width
             @change="fetchStudentList"
             @clear="fetchStudentList"
             style="width: 180px"
           >
-            <el-option label="计算机科学与网络工程学院" value="计算机科学与网络工程学院" />
-            <el-option label="电子信息工程学院" value="电子信息工程学院" />
-            <el-option label="经济管理学院" value="经济管理学院" />
-            <el-option label="数学学院" value="数学学院" />
+            <el-option label="计算机科学与网络工程学院" value="计算机科学与网络工程学院"><span class="college-option-label" title="计算机科学与网络工程学院">计算机科学与网络工程学院</span></el-option>
+            <el-option label="电子信息工程学院" value="电子信息工程学院"><span class="college-option-label" title="电子信息工程学院">电子信息工程学院</span></el-option>
+            <el-option label="经济管理学院" value="经济管理学院"><span class="college-option-label" title="经济管理学院">经济管理学院</span></el-option>
+            <el-option label="数学学院" value="数学学院"><span class="college-option-label" title="数学学院">数学学院</span></el-option>
           </el-select>
         </el-form-item>
         <el-form-item>

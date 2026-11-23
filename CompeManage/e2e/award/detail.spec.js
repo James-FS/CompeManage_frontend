@@ -6,7 +6,7 @@ test('团队共享编辑、成员编辑权限和逐学生导出', async ({ page 
   await mockAwardSession(page, 'college_admin')
   await page.goto('/#/award/detail/1')
   await expect(page.getByText('1 个团队项目 · 2 名获奖学生')).toBeVisible()
-  await page.getByRole('button', { name: '修改获奖信息' }).click()
+  await page.getByRole('button', { name: '修改', exact: true }).click()
   const teamDialog = page.getByRole('dialog', { name: '修改获奖信息' })
   await teamDialog.locator('input').first().fill('修改后的项目')
   await teamDialog.getByRole('button', { name: '保存', exact: true }).click()

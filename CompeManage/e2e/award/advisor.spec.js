@@ -56,13 +56,14 @@ test('advisor page preview', async ({ page }) => {
 })
 
 test('upload keeps the project dialog open until completion', async ({ page }) => {
-  await setup(page)
+  const submitted = await setup(page)
+  const newProof = '/api/file/download/award_cert/01234567890123456789012345678901_proof.pdf'
   let releaseUpload
   const gate = new Promise(resolve => { releaseUpload = resolve })
   await page.route('**/api/upload', async route => {
     expect(route.request().postData()).toContain('award_cert')
     await gate
-    await route.fulfill({ json: { code: 200, data: { url: '/api/file/download/award_cert/01234567890123456789012345678901_proof.pdf' } } })
+    await route.fulfill({ json: { code: 200, data: { url: newProof } } })
   })
   await page.goto('/#/award/advisor')
   await page.getByRole('button', { name: '查看 / 修改' }).click()
@@ -75,4 +76,18 @@ test('upload keeps the project dialog open until completion', async ({ page }) =
     await expect(dialog).toBeVisible()
   } finally { releaseUpload() }
   await expect(dialog.getByRole('button', { name: '关闭', exact: true })).toBeEnabled()
+  await dialog.getByRole('button', { name: '保存并送审', exact: true }).click()
+  await expect.poll(() => submitted()?.proof_url).toBe(newProof)
+})
+
+test('移除原获奖证明后必须重新上传才能送审', async ({ page }) => {
+  const submitted = await setup(page)
+  await page.goto('/#/award/advisor')
+  await page.getByRole('button', { name: '查看 / 修改' }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('button', { name: '移除文件', exact: true }).click()
+  await expect(dialog.getByRole('button', { name: '下载当前获奖证明' })).toHaveCount(0)
+  await dialog.getByRole('button', { name: '保存并送审', exact: true }).click()
+  await expect(dialog.getByText('请填写此项', { exact: true })).toBeVisible()
+  expect(submitted()).toBeUndefined()
 })

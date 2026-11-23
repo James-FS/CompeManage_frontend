@@ -27,11 +27,11 @@ async function setup(page, opts = {}) {
     const req = route.request(), url = new URL(req.url())
     const p = url.pathname
     let data = []
-    if (p === '/api/comp/years') data = { years: ['2025', '2024'] }
+    if (p === '/api/comp/years') data = { years: ['2026', '2025', '2024'] }
     if (p === '/api/college/list') data = [{ id: 4, name: '计算机学院' }, { id: 5, name: '数学学院' }]
     if (p === '/api/department/list') data = [{ id: 1, name: '教务处' }]
     if (p === '/api/comp/manager/list') data = { list: [MANAGER], total: 1 }
-    if (p === '/api/comp/list') data = { list: HISTORY_LIST, total: 2 }
+    if (p === '/api/comp/list') data = { list: opts.history || HISTORY_LIST, total: HISTORY_LIST.length }
     if (p === '/api/comp/create' && req.method() === 'POST') {
       if (opts.createFail) {
         await route.fulfill({ json: { code: 500, message: '创建失败' } })
@@ -55,7 +55,7 @@ async function setup(page, opts = {}) {
 
 async function pickManager(page) {
   await page.locator('.manager-input input').first().click()
-  const dialog = page.getByRole('dialog', { name: '选择负责人（教职工）' })
+  const dialog = page.getByRole('dialog', { name: '选择赛事负责人' })
   await expect(dialog).toBeVisible()
   await dialog.getByPlaceholder('输入姓名').fill('何')
   await expect(dialog.locator('.el-table__body tr')).toHaveCount(1)
@@ -74,7 +74,8 @@ async function fillManualForm(page) {
   await page.getByPlaceholder('请填写主办单位').fill('测试主办方')
   await page.getByPlaceholder('请填写承办单位').fill('测试承办方')
   await pickManager(page)
-  await page.getByPlaceholder('请选择所属年份').fill('2026')
+  await page.locator('.el-form-item').filter({ hasText: '所属年份' }).locator('.el-select').first().click()
+  await page.getByRole('option', { name: '2026年', exact: true }).click()
 }
 
 async function gotoCopyTab(page) {
@@ -134,7 +135,10 @@ test('往年复用：历史加载失败提示并清空表格', async ({ page }) 
 })
 
 test('往年复用全流程：勾选→编辑→名称/学院校验→确认导入', async ({ page }) => {
-  const state = await setup(page)
+  const oldCollege = '已撤销学院'
+  const state = await setup(page, {
+    history: [{ ...HISTORY_LIST[0], college_info: { name: oldCollege } }, HISTORY_LIST[1]],
+  })
   await gotoCopyTab(page)
   const historyRows = page.locator('.el-table__body tr')
   await expect(historyRows).toHaveCount(2)
@@ -153,15 +157,13 @@ test('往年复用全流程：勾选→编辑→名称/学院校验→确认导�
   await expect(page.locator('.el-message').filter({ hasText: '赛事名称不能为空' })).toBeVisible()
   expect(state.imported).toBeUndefined()
 
-  // 恢复名称，学院改为不存在 → 学院校验拦截
-  await importRows.first().locator('input').first().fill('复用后的新赛事')
-  await importRows.first().locator('input').last().fill('不存在学院')
+  await importRows.first().getByPlaceholder('赛事名称').fill('复用后的新赛事')
   await page.getByRole('button', { name: /确认导入/ }).click()
   await expect(page.locator('.el-message').filter({ hasText: '不存在，请检查后重试' })).toBeVisible()
   expect(state.imported).toBeUndefined()
 
-  // 修正学院 → 确认框 → 导入成功
-  await importRows.first().locator('input').last().fill('计算机学院')
+  await importRows.first().locator('.el-select').filter({ hasText: oldCollege }).click()
+  await page.getByRole('option', { name: '计算机学院', exact: true }).click()
   await page.getByRole('button', { name: /确认导入/ }).click()
   const msgbox = page.locator('.el-message-box')
   await expect(msgbox).toBeVisible()

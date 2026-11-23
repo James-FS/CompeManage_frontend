@@ -24,6 +24,8 @@ export function isValidEmail(email) {
   return emailRegex.test(email)
 }
 
+export const competitionYearPattern = /^[1-9]\d{3}$/
+
 /**
  * Element Plus 电话号码验证规则
  */

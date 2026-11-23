@@ -351,9 +351,12 @@ const selectTeacher = (row) => {
                         </el-col>
                         <el-col :span="10">
                             <el-form-item label="所属学院" prop="college">
-                                <el-select v-model="form.college" placeholder="请选择所属学院" clearable style="width: 100%" :disabled="isReadOnly">
+                                <el-select v-model="form.college" placeholder="请选择所属学院" clearable style="width: 100%" :disabled="isReadOnly"
+                                    fit-input-width>
                                     <el-option v-for="college in collegeList" :key="college.id" :label="college.name"
-                                        :value="college.id" />
+                                        :value="college.id">
+                                        <span class="college-option-label" :title="college.name">{{ college.name }}</span>
+                                    </el-option>
                                 </el-select>
                             </el-form-item>
                         </el-col>
@@ -434,9 +437,11 @@ const selectTeacher = (row) => {
                 <el-form-item label="所属部门">
                     <el-select v-model="searchForm.college" placeholder="选择部门" clearable filterable
                         @change="onFilterChange" @clear="onFilterChange"
-                        popper-class="dept-select-popper" style="width: 330px;">
+                        popper-class="dept-select-popper" style="width: 330px;" fit-input-width>
                         <el-option v-for="dept in departmentList" :key="dept.id"
-                            :label="dept.name" :value="dept.name" />
+                            :label="dept.name" :value="dept.name">
+                            <span class="college-option-label" :title="dept.name">{{ dept.name }}</span>
+                        </el-option>
                     </el-select>
                 </el-form-item>
             </el-form>

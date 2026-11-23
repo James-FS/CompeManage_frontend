@@ -37,6 +37,7 @@ const handleReset = () => {
 
 // 加载状态
 const loading = ref(false);
+const batchAuditing = ref(false);
 
 const multipleSelection = ref([]);
 const collegeList = ref([]);
@@ -185,34 +186,36 @@ const handleApprove = (row) => {
 
 // [校管理员] 批量通过
 const handleBatchApprove = () => {
+    if (batchAuditing.value) return;
     if (multipleSelection.value.length === 0) {
         ElMessage.warning('请先勾选需要通过的赛事');
         return;
     }
+    const selected = [...multipleSelection.value];
+    batchAuditing.value = true;
     ElMessageBox.confirm(
-        `确定批量通过这 ${multipleSelection.value.length} 项赛事吗？`,
+        `确定批量通过这 ${selected.length} 项赛事吗？`,
         '批量审核',
         { confirmButtonText: '确定', cancelButtonText: '取消', type: 'success' }
     ).then(async () => {
-        try {
-            // 逐个调用审核接口
-            const promises = multipleSelection.value.map(row =>
-                api.auditDeclare({
-                    declare_id: row.id,
-                    audit_status: 2,
-                    audit_remark: ''
-                })
-            );
-            await Promise.all(promises);
+        const results = await Promise.allSettled(selected.map(row => api.auditDeclare({
+            declare_id: row.id,
+            audit_status: 2,
+            audit_remark: ''
+        })));
+        const approved = results.filter(result => result.status === 'fulfilled').length;
+        const failed = selected.length - approved;
+        if (failed === 0) {
             ElMessage.success('批量操作成功');
-            // 清空选中并刷新列表
-            multipleSelection.value = [];
-            await handleSearch();
-        } catch (error) {
+        } else if (approved === 0) {
             ElMessage.error('批量审核失败');
-            console.error(error);
+        } else {
+            ElMessage.warning(`已通过 ${approved} 项，${failed} 项审核失败`);
         }
-    }).catch(() => { });
+        multipleSelection.value = [];
+        current_page.value = 1;
+        await handleSearch();
+    }).catch(() => {}).finally(() => { batchAuditing.value = false; });
 };
 
 // [校管理员] 驳回审核
@@ -375,13 +378,15 @@ watch(() => activeTab.value, () => {
                     <el-input v-model="searchForm.comp_name" placeholder="请输入赛事名称" clearable style="width: 220px" @keyup.enter="handleSearch" @clear="handleSearch" />
                 </el-form-item>
                 <el-form-item label="所属学院" v-if="currentRole === 'school_admin'">
-                    <el-select v-model="searchForm.college" placeholder="全部学院" clearable style="width: 220px" @change="handleSearch">
+                    <el-select v-model="searchForm.college" placeholder="全部学院" clearable style="width: 220px" fit-input-width @change="handleSearch">
                         <el-option
                             v-for="college in collegeList"
                             :key="college.id"
                             :label="college.name"
                             :value="college.id"
-                        />
+                        >
+                            <span class="college-option-label" :title="college.name">{{ college.name }}</span>
+                        </el-option>
                     </el-select>
                 </el-form-item>
                 <el-form-item label="审核状态" v-if="currentRole === 'school_admin' && activeTab === 'history'">
@@ -406,7 +411,7 @@ watch(() => activeTab.value, () => {
             <div class="toolbar">
                 <div class="left-actions">
                     <template v-if="currentRole === 'school_admin' && activeTab === 'pending'">
-                        <el-button type="success" :icon="Check" @click="handleBatchApprove"
+                        <el-button type="success" :icon="Check" :loading="batchAuditing" @click="handleBatchApprove"
                             :disabled="multipleSelection.length === 0">
                             批量通过
                         </el-button>
@@ -437,15 +442,15 @@ watch(() => activeTab.value, () => {
                 <el-table-column prop="college" label="申报学院" min-width="110" show-overflow-tooltip align="center" />
                 <el-table-column v-if="currentRole === 'school_admin'" prop="applicant" label="申报人" width="80" align="center" />
                 <el-table-column prop="manager" label="赛事负责人" width="95" align="center" />
-                <el-table-column prop="apply_time" label="申报时间" min-width="100" show-overflow-tooltip align="center" />
-                <el-table-column label="备注/原因" min-width="110" show-overflow-tooltip align="center">
+                <el-table-column prop="apply_time" label="申报时间" width="110" show-overflow-tooltip align="center" />
+                <el-table-column label="备注/原因" width="120" show-overflow-tooltip align="center">
                     <template #default="{ row }">
                         <span v-if="row.audit_status === 3" class="text-danger">{{ row.audit_comment }}</span>
                         <span v-else class="text-gray">-</span>
                     </template>
                 </el-table-column>
 
-                <el-table-column label="操作" width="180" align="center" fixed="right">
+                <el-table-column label="操作" width="240" align="center" fixed="right">
                     <template #default="{ row }">
                         <div v-if="currentRole === 'school_admin' && row.audit_status === 1">
                             <el-button link type="info" :icon="View" @click="handleViewDetail(row)">详情</el-button>

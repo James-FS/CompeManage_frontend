@@ -3,6 +3,7 @@ import { ref, reactive, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { debounce } from '@/utils/debounce';
+import { competitionYearPattern } from '@/utils/validators';
 import api from '@/api/index';
 
 const router = useRouter();
@@ -32,7 +33,10 @@ const rules = {
     comp_name: [{ required: true, message: '请输入赛事名称', trigger: 'blur' }],
     comp_level: [{ required: true, message: '请选择赛事级别', trigger: 'change' }],
     manager: [{ required: true, message: '请选择赛事负责人', trigger: 'change' }],
-    year: [{ required: true, message: '请输入所属年份', trigger: 'blur' }]
+    year: [
+        { required: true, message: '请输入所属年份', trigger: 'blur' },
+        { pattern: competitionYearPattern, message: '所属年份须为1000至9999的4位数字', trigger: 'blur' }
+    ]
 };
 
 const managerDialogVisible = ref(false);
@@ -273,9 +277,12 @@ onMounted(async () => {
                     </el-col>
                     <el-col :span="12">
                         <el-form-item label="所属学院" prop="college">
-                            <el-select v-model="form.college" :disabled="!capabilities.can_change_college" placeholder="请选择学院" style="width: 100%" clearable>
+                            <el-select v-model="form.college" :disabled="!capabilities.can_change_college" placeholder="请选择学院" style="width: 100%" clearable
+                                fit-input-width>
                                 <el-option v-for="college in collegeList" :key="college.id" :label="college.name"
-                                    :value="college.name" />
+                                    :value="college.name">
+                                    <span class="college-option-label" :title="college.name">{{ college.name }}</span>
+                                </el-option>
                             </el-select>
                         </el-form-item>
                     </el-col>
@@ -330,9 +337,11 @@ onMounted(async () => {
                 <el-form-item label="所属部门">
                     <el-select v-model="searchForm.college" placeholder="选择部门" clearable filterable
                         @change="onFilterChange" @clear="onFilterChange"
-                        popper-class="dept-select-popper" style="width: 330px;">
+                        popper-class="dept-select-popper" style="width: 330px;" fit-input-width>
                         <el-option v-for="dept in departmentList" :key="dept.id"
-                            :label="dept.name" :value="dept.name" />
+                            :label="dept.name" :value="dept.name">
+                            <span class="college-option-label" :title="dept.name">{{ dept.name }}</span>
+                        </el-option>
                     </el-select>
                 </el-form-item>
             </el-form>
