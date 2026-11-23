@@ -6,7 +6,7 @@
  */
 export const debounce = (fn, delay = 500) => {
   let timer = null
-  return function (...args) {
+  const debounced = function (...args) {
     // 如果已有定时器，清除它，重新计时
     if (timer) clearTimeout(timer)
     
@@ -14,8 +14,13 @@ export const debounce = (fn, delay = 500) => {
     const context = this
     
     timer = setTimeout(() => {
-      fn.apply(context, args)
       timer = null
+      fn.apply(context, args)
     }, delay)
   }
+  debounced.cancel = () => {
+    clearTimeout(timer)
+    timer = null
+  }
+  return debounced
 }

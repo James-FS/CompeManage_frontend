@@ -33,14 +33,28 @@ async function setup(page, opts = {}) {
     const p = url.pathname
     state.urls.push(decodeURIComponent(p + '?' + url.searchParams.toString()))
     if (p === '/api/perm/role/list') {
-      await route.fulfill({ json: { code: 200, message: 'success', data: ROLES } })
+      await opts.optionsGate
+      await route.fulfill({ json: { code: 200, message: 'success', data: opts.roles ?? ROLES } })
+      return
+    }
+    if (p === '/api/perm/permission/list') {
+      await opts.permissionGate
+      await route.fulfill({ json: { code: 200, data: [
+        { id: 1, parent_id: 0, name: '系统设置' },
+        { id: 2, parent_id: 1, name: '用户操作' },
+        { id: 3, parent_id: 2, name: '查看用户' },
+      ] } })
       return
     }
     if (p === '/api/college/list') {
+      await opts.optionsGate
       await route.fulfill({ json: { code: 200, message: 'success', data: [{ id: 4, name: '计算机学院' }, { id: 5, name: '数学学院' }] } })
       return
     }
     if (p === '/api/perm/member/list') {
+      if (url.searchParams.get('search') === '旧搜索') {
+        await opts.searchGate
+      }
       if (opts.loadFail) {
         await route.fulfill({ json: { code: 500, message: '服务不可用' } })
         return
@@ -154,4 +168,77 @@ test('自己不可改（isSelf 守卫）', async ({ page }) => {
 test('数据加载失败提示', async ({ page }) => {
   await setup(page, { loadFail: true })
   await toast(page, /服务不可用|用户管理数据加载失败/)
+})
+
+test('用户列表与筛选选项并行加载，切回页面复用选项', async ({ page }) => {
+  let releaseOptions
+  const optionsGate = new Promise(resolve => { releaseOptions = resolve })
+  try {
+    const state = await setup(page, { optionsGate })
+    await expect(page.locator('.user-item').filter({ hasText: '张管理' })).toBeVisible()
+    expect(state.urls).toContain('/api/perm/role/list?brief=true')
+    const optionsLoaded = page.waitForResponse(response => response.url().includes('/api/college/list'))
+    releaseOptions()
+    await optionsLoaded
+    await page.evaluate(() => { location.hash = '/permission' })
+    await expect(page.getByText('权限配置', { exact: true })).toBeVisible()
+    await page.evaluate(() => { location.hash = '/permission/users' })
+    await expect(page.locator('.user-item').filter({ hasText: '张管理' })).toBeVisible()
+    expect(state.urls.filter(url => url.startsWith('/api/college/list'))).toHaveLength(1)
+    expect(state.urls.filter(url => url.startsWith('/api/perm/role/list?brief=true'))).toHaveLength(1)
+    expect(state.urls.filter(url => url.startsWith('/api/review/my/access'))).toHaveLength(1)
+  } finally {
+    releaseOptions()
+  }
+})
+
+test('快速搜索取消较早的请求且不显示网络错误', async ({ page }) => {
+  let releaseSearch
+  const searchGate = new Promise(resolve => { releaseSearch = resolve })
+  try {
+    await setup(page, { searchGate })
+    const input = page.getByPlaceholder('请输入账号、姓名或所属单位')
+    const hasSearch = (request, value) => new URL(request.url()).searchParams.get('search') === value
+    const oldStarted = page.waitForRequest(request => hasSearch(request, '旧搜索'))
+    const oldCanceled = page.waitForEvent('requestfailed', request => hasSearch(request, '旧搜索'))
+    await input.fill('旧搜索')
+    await input.press('Enter')
+    await oldStarted
+    const newest = page.waitForResponse(response => hasSearch(response.request(), '新搜索'))
+    await input.fill('新搜索')
+    await input.press('Enter')
+    await newest
+    expect((await oldCanceled).failure()?.errorText).toContain('ERR_ABORTED')
+    await expect(page.locator('.el-message--error')).toHaveCount(0)
+  } finally {
+    releaseSearch()
+  }
+})
+
+test('权限树迟到时仍回显最后选中的角色', async ({ page }) => {
+  let releasePermissions
+  const permissionGate = new Promise(resolve => { releasePermissions = resolve })
+  const roles = ROLES.map(role => ({
+    ...role,
+    permissions: role.role_code === 'college_admin' ? [{ id: 3 }] : [],
+  }))
+  try {
+    const state = await setup(page, { permissionGate, roles })
+    await page.evaluate(() => { location.hash = '/permission' })
+    await page.locator('.role-item').filter({ hasText: '校级管理员' }).click()
+    await page.locator('.role-item').filter({ hasText: '院级管理员' }).click()
+    await expect(page.getByRole('button', { name: '保存', exact: true })).toBeDisabled()
+    releasePermissions()
+
+    await expect(page.getByText('用户操作', { exact: true })).toBeVisible()
+    await expect(page.getByText('查看用户', { exact: true })).not.toBeVisible()
+    await page.getByText('用户操作', { exact: true }).click()
+    const permission = page.locator('.el-tree-node__content').filter({ hasText: '查看用户' })
+    await expect(permission.getByRole('checkbox')).toBeChecked()
+    await page.getByRole('button', { name: '保存', exact: true }).click()
+    await toast(page, '权限分配成功')
+    expect(state.urls.filter(url => url === '/api/perm/role/list?')).toHaveLength(1)
+  } finally {
+    releasePermissions()
+  }
 })

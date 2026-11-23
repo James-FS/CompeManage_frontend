@@ -1,14 +1,16 @@
 <script setup>
-import { onMounted, ref, nextTick } from 'vue'
-import { UserFilled, Plus, ArrowRight, Lock, Folder, Document } from '@element-plus/icons-vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
+import { UserFilled, ArrowRight, Lock, Folder, Document } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import api from '@/api'
+import { getPermissionReference } from './referenceData'
 
 const treeRef = ref(null)
 const isSaving = ref(false)
 const checkStrictly = ref(false)
+const loadController = new AbortController()
+const loadingPermissions = ref(true)
 
-// ✨ 修改 1: label 对应后端返回的 'name'
 const defaultProps = {
   children: 'children',
   label: 'name',
@@ -19,86 +21,78 @@ const getTagTypeByIndex = (index) => {
   return tagTypes[index % tagTypes.length]
 }
 const roleList = ref([])
-const permissionData = ref([])
-const currentRole = ref(null) 
+const permissionData = shallowRef(null)
+const rootPermissionIds = computed(() => permissionData.value?.map(node => node.id) ?? [])
+const currentRole = ref(null)
 
 const handleRoleClick = (role) => {
+  if (isSaving.value || currentRole.value?.id === role.id) return
   currentRole.value = role
-  // ✨ 修改 2: role.Permissions -> role.permissions, p.ID -> p.id
-  const rolePermIds = role.permissions ? role.permissions.map((p) => p.id) : []
-  
-  checkStrictly.value = true
-  nextTick(() => {
-    if (treeRef.value) {
-      treeRef.value.setCheckedKeys(rolePermIds)
-      checkStrictly.value = false
-    }
-  })
 }
 
-/**
- * 扁平数组转树形结构
- * ✨ 修改 3: 默认 key 改为 id 和 parent_id
- */
-function listToTree(list, idKey = 'id', pidKey = 'parent_id') {
-  const map = {}
+watch([currentRole, permissionData], async ([role, permissions], _, onCleanup) => {
+  if (!role || !permissions) return
+  let obsolete = false
+  onCleanup(() => { obsolete = true })
+  checkStrictly.value = true
+  await nextTick()
+  if (obsolete || loadController.signal.aborted) return
+  treeRef.value?.setCheckedKeys(role.permissions?.map(permission => permission.id) ?? [])
+  checkStrictly.value = false
+})
+
+function listToTree(list) {
+  const nodes = new Map(list.map(item => [item.id, { ...item, children: [] }]))
   const tree = []
-
-  list.forEach((item) => {
-    item.children = []
-    map[item[idKey]] = item
-  })
-
-  list.forEach((item) => {
-    const parentId = item[pidKey]
-    if (parentId && parentId !== 0 && map[parentId]) {
-      map[parentId].children.push(item)
-    } else {
-      tree.push(item)
-    }
-  })
-
+  for (const node of nodes.values()) {
+    const parent = nodes.get(node.parent_id)
+    if (parent) parent.children.push(node)
+    else tree.push(node)
+  }
   return tree
 }
 
 async function fetchRoles() {
   try {
-    const response = await api.getRoleList()
-    if (response.code === 200) {
-      roleList.value = response.data
+    const response = await api.getRoleList(undefined, { signal: loadController.signal })
+    if (!loadController.signal.aborted && response.code === 200) {
+      roleList.value = response.data ?? []
     }
   } catch (error) {
-    ElMessage.error(error.message || '获取失败')
+    if (!loadController.signal.aborted && !error.messageShown) ElMessage.error(error.message || '获取角色失败')
   }
 }
 
 async function fetchPermissions() {
   try {
-    const response = await api.getPermissionList()
-    if (response.code === 200) {
-      permissionData.value = listToTree(response.data)
+    const response = await getPermissionReference('permissions', api.getPermissionList)
+    if (!loadController.signal.aborted && response.code === 200) {
+      permissionData.value = listToTree(response.data ?? [])
     }
   } catch (error) {
-    ElMessage.error(error.message || '获取失败')
+    if (!loadController.signal.aborted && !error.messageShown) ElMessage.error(error.message || '获取权限失败')
+  } finally {
+    loadingPermissions.value = false
   }
 }
 
 async function handleSaveClick() {
-  if (!currentRole.value) return
+  const role = currentRole.value
+  if (!role || !treeRef.value || checkStrictly.value || isSaving.value) return
 
   isSaving.value = true
   try {
     const checkedKeys = treeRef.value.getCheckedKeys()
     const halfCheckedKeys = treeRef.value.getHalfCheckedKeys()
-    const finalPermIds = [...checkedKeys, ...halfCheckedKeys]
+    const finalPermIds = [...new Set([...checkedKeys, ...halfCheckedKeys])]
 
     const res = await api.assignPermissions({
-      // ✨ 修改 4: ID -> id
-      role_id: currentRole.value.id, 
+      role_id: role.id,
       perm_ids: finalPermIds,
     })
 
-    if (res.code === 200) {
+    if (res.code === 200 && !loadController.signal.aborted) {
+      role.permissions = finalPermIds.map(id => ({ id }))
       if (res.data?.cache_refreshed === false) {
         if (res.data?.manual_follow_up_required) {
           const ttlSeconds = res.data?.cache_ttl_seconds || 300
@@ -109,19 +103,19 @@ async function handleSaveClick() {
       } else {
         ElMessage.success('权限分配成功')
       }
-      await fetchRoles()
     }
   } catch (error) {
-    ElMessage.error(error.message || '保存失败')
+    if (!loadController.signal.aborted && !error.messageShown) ElMessage.error(error.message || '保存失败')
   } finally {
     isSaving.value = false
   }
 }
 
 onMounted(() => {
-  fetchRoles()
-  fetchPermissions()
+  void fetchRoles()
+  void fetchPermissions()
 })
+onBeforeUnmount(() => loadController.abort())
 </script>
 
 <template>
@@ -172,7 +166,7 @@ onMounted(() => {
           <el-button
             type="primary"
             size="small"
-            :disabled="!currentRole"
+            :disabled="!treeRef || checkStrictly"
             :loading="isSaving"
             @click="handleSaveClick"
           >
@@ -181,23 +175,24 @@ onMounted(() => {
         </div>
       </template>
 
-      <div class="scroll-content tree-wrapper">
+      <div class="scroll-content tree-wrapper" v-loading="loadingPermissions && !!currentRole">
         <el-empty v-if="!currentRole" description="请选择一个角色" :image-size="100" />
+        <el-empty v-else-if="!loadingPermissions && !permissionData" description="权限数据加载失败" :image-size="100" />
 
         <el-tree
-          v-else
+          v-else-if="permissionData"
           ref="treeRef"
           :data="permissionData"
           show-checkbox
           node-key="id" 
-          default-expand-all
+          :default-expanded-keys="rootPermissionIds"
           :props="defaultProps"
           :check-strictly="checkStrictly"
           class="custom-tree"
         >
           <template #default="{ node, data }">
             <span class="custom-tree-node">
-              <el-icon v-if="data.children" class="node-icon"><Folder /></el-icon>
+              <el-icon v-if="data.children.length" class="node-icon"><Folder /></el-icon>
               <el-icon v-else class="node-icon"><Document /></el-icon>
               <span>{{ node.label }}</span>
             </span>
