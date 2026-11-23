@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { CanceledError } from 'axios'
 
 // ElMessage 打桩：只验证调用，不渲染 UI
 vi.mock('element-plus', () => ({
@@ -74,6 +75,12 @@ describe('request HTTP 错误分支', () => {
     rejectWith(httpError(403, { message: '没有权限访问该资源' }, '/api/x'))
     await expect(get('/api/x')).rejects.toMatchObject({ message: '没有权限访问该资源' })
     expect(ElMessage.error).toHaveBeenCalledWith('没有权限访问该资源')
+  })
+
+  it('请求取消时不显示网络错误', async () => {
+    rejectWith(new CanceledError())
+    await expect(get('/api/x')).rejects.toMatchObject({ code: 'ERR_CANCELED' })
+    expect(ElMessage.error).not.toHaveBeenCalled()
   })
 
   it('HTTP 404/500：固定文案', async () => {

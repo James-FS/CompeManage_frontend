@@ -18,12 +18,12 @@ export const api = {
 
   // ==================== 角色相关 ====================
   // 获取所有角色列表
-  getRoleList: () => get('/api/perm/role/list'),
+  getRoleList: (params, config) => get('/api/perm/role/list', params, config),
   // 分配权限给角色
   assignPermissions: (data) => post('/api/perm/role/assign_perm', data),
 
   // ==================== 用户管理相关 ====================
-  getAllUsers: (params) => get('/api/perm/member/list', params),
+  getAllUsers: (params, config) => get('/api/perm/member/list', params, config),
   assignUserRole: (id, data) => put(`/api/perm/member/${id}/role`, data),
 
   // ==================== 学院相关 ====================

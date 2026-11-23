@@ -585,8 +585,9 @@ router.beforeEach(async (to, from, next) => {
   // 检查角色权限
   const allowedRoles = to.meta.roles
   if (allowedRoles) {
-    const reviewerAccessAllowed = !to.meta.reviewerTaskRequired || await userStore.refreshReviewerAccess()
-    if (allowedRoles.includes(userStore.role) && reviewerAccessAllowed) {
+    const allowed = allowedRoles.includes(userStore.role)
+      && (!to.meta.reviewerTaskRequired || await userStore.refreshReviewerAccess())
+    if (allowed) {
       next()
     } else {
       // 无权限：轻提示并留在当前页，避免误以为平台故障

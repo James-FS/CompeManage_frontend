@@ -3,7 +3,6 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Download, Upload, Edit, Delete } from '@element-plus/icons-vue'
-import ExcelJS from 'exceljs'
 import { saveAs } from 'file-saver'
 import api from '@/api'
 import { put } from '@/utils/request'
@@ -34,6 +33,7 @@ const awardTable = ref(null)
 const selectedAwards = ref([])
 const memberTeam = ref(null)
 const teamEdit = ref(null)
+const teamAdvisorsChanged = ref(false)
 const memberEdit = ref(null)
 const saving = ref(false)
 const deletingAwardID = ref('')
@@ -170,7 +170,9 @@ const fetchData = async (id = compID.value) => {
   }
 }
 const openTeam = t => {
+  teamAdvisorsChanged.value = false
   teamEdit.value = { ...t, advisors: (t.advisors || []).map(a => ({ username: a.username, name: a.name, college: a.college })) }
+  if (teamEdit.value.award_category === '校级') teamEdit.value.award_category = '校赛'
 }
 // —— 指导教师选择弹窗（任务7：仅可从教师列表选择，不支持手填工号）——
 const teacherDialog = ref(false)
@@ -205,14 +207,18 @@ const addAdvisor = u => {
     return
   }
   list.push({ username: u.username, name: u.name, college: u.college })
+  teamAdvisorsChanged.value = true
 }
 const removeAdvisor = u => {
   teamEdit.value.advisors = (teamEdit.value.advisors || []).filter(a => a.username !== u.username)
+  teamAdvisorsChanged.value = true
 }
 const saveTeam = async () => {
   saving.value = true
   try {
-    await put(`/api/award/teams/${teamEdit.value.id}`, teamEdit.value)
+    const { advisors, ...team } = teamEdit.value
+    if (teamAdvisorsChanged.value) team.advisors = advisors
+    await put(`/api/award/teams/${team.id}`, team)
     teamEdit.value = null
     await fetchData()
     ElMessage.success('获奖信息已更新')
@@ -293,6 +299,11 @@ const deleteSelectedAwards = async () => {
 }
 const handleExport = async () => {
   if (!studentCount.value) { ElMessage.warning('暂无可导出的成员数据'); return }
+  const exportTeams = filteredTeams.value
+  const safeCompetitionName = (competitionName.value || `赛事${compID.value}`).replace(/[\\/:*?"<>|]/g, '_').trim()
+  let ExcelJS
+  try { ({ default: ExcelJS } = await import('exceljs')) }
+  catch (e) { ElMessage.error(errorMessage(e)); return }
   const workbook = new ExcelJS.Workbook()
   const sheet = workbook.addWorksheet('获奖名单')
   const headers = ['序号', '学号', '学生姓名', '所属学院', '所在专业', '参赛项目名称', '获奖时间（年/月）', '获奖类别', '获奖等级', '指导老师', '备注']
@@ -301,7 +312,7 @@ const handleExport = async () => {
   sheet.getColumn(2).numFmt = '@'
   sheet.getColumn(7).numFmt = '@'
   let index = 0
-  filteredTeams.value.forEach(t => {
+  exportTeams.forEach(t => {
     const advisorNameList = (t.advisors || []).map(a => a.name).filter(Boolean)
     const teacherNames = advisorNameList.length ? advisorNameList.join(' ') : advisorNames(t.advisor_info).replace(/、/g, ' ')
     t.members.forEach(m => sheet.addRow([++index, m.student_id, m.name, m.college, m.major, t.project_name, t.award_month, t.award_category, t.award_name, teacherNames, m.remark]))
@@ -321,7 +332,6 @@ const handleExport = async () => {
       cell.alignment = { horizontal: cell.col === 6 && !isHeader ? 'left' : 'center', vertical: 'middle', wrapText: true }
     })
   })
-  const safeCompetitionName = (competitionName.value || `赛事${compID.value}`).replace(/[\\/:*?"<>|]/g, '_').trim()
   try { saveAs(new Blob([await workbook.xlsx.writeBuffer()]), `${safeCompetitionName}获奖名单.xlsx`) }
   catch (e) { ElMessage.error(errorMessage(e)) }
 }
@@ -438,7 +448,7 @@ onUnmounted(() => clearTimeout(competitionSearchTimer))
         <el-alert title="修改将影响该团队所有获奖成员。不同学院提交的信息不会被删除。" type="info" :closable="false" />
         <el-form label-width="110px" style="margin-top: 18px">
           <el-form-item label="项目名称"><el-input v-model="teamEdit.project_name" maxlength="255" /></el-form-item>
-          <el-form-item label="获奖类别"><el-select v-model="teamEdit.award_category"><el-option v-for="c in ['校级', '省部级', '省级', '国家级', '国际级']" :key="c" :label="c" :value="c" /></el-select></el-form-item>
+          <el-form-item label="获奖类别"><el-select v-model="teamEdit.award_category"><el-option v-for="c in ['校赛', '省部级', '省级', '国家级', '国际级']" :key="c" :label="c === '校赛' ? '校级' : c" :value="c" /></el-select></el-form-item>
           <el-form-item label="获奖等级"><el-input v-model="teamEdit.award_name" maxlength="100" /></el-form-item>
           <el-form-item label="获奖时间"><el-date-picker v-model="teamEdit.award_month" type="month" format="YYYY-MM" value-format="YYYY-MM" /></el-form-item>
           <el-form-item label="指导老师">

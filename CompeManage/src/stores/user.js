@@ -8,6 +8,9 @@ export const useUserStore = defineStore('user', () => {
     const token = ref('')
     const userInfo = ref(JSON.parse(localStorage.getItem('userInfo') || '{}'))
     const reviewerAccess = ref(false)
+    let reviewerAccessRequest
+    let reviewerAccessToken
+    let reviewerAccessExpiresAt = 0
 
     // 模拟后端数据库中的用户表（用于开发测试）
     const mockUsers = [
@@ -34,7 +37,7 @@ export const useUserStore = defineStore('user', () => {
                 // 设置用户信息
                 token.value = resToken
                 role.value = resUserInfo.role
-                reviewerAccess.value = false
+                resetReviewerAccess()
                 userInfo.value = {
                     id: resUserInfo.id,
                     name: resUserInfo.realname || resUserInfo.username,
@@ -60,7 +63,7 @@ export const useUserStore = defineStore('user', () => {
     function logout() {
         role.value = ''
         token.value = ''
-        reviewerAccess.value = false
+        resetReviewerAccess()
         userInfo.value = {}
         localStorage.removeItem('token')
         localStorage.removeItem('role')
@@ -78,18 +81,39 @@ export const useUserStore = defineStore('user', () => {
         if (savedUserInfo) userInfo.value = JSON.parse(savedUserInfo)
     }
 
-    async function refreshReviewerAccess() {
-        if (!token.value) {
-            reviewerAccess.value = false
-            return false
+    function resetReviewerAccess() {
+        reviewerAccessRequest = undefined
+        reviewerAccessToken = undefined
+        reviewerAccessExpiresAt = 0
+        reviewerAccess.value = false
+    }
+
+    async function refreshReviewerAccess({ force = true } = {}) {
+        const currentToken = token.value
+        if (!currentToken) return false
+        if (reviewerAccessRequest?.token === currentToken) return reviewerAccessRequest.promise
+        if (!force && reviewerAccessToken === currentToken && Date.now() < reviewerAccessExpiresAt) {
+            return reviewerAccess.value
         }
-        try {
-            const response = await api.getMyReviewAccess()
+
+        const request = { token: currentToken }
+        reviewerAccessRequest = request
+        request.promise = api.getMyReviewAccess().then(response => {
+            if (reviewerAccessRequest !== request || token.value !== currentToken) return false
             reviewerAccess.value = response.code === 200 && !!response.data?.can_review
-        } catch {
-            reviewerAccess.value = false
-        }
-        return reviewerAccess.value
+            reviewerAccessToken = currentToken
+            reviewerAccessExpiresAt = Date.now() + 30_000
+            return reviewerAccess.value
+        }).catch(() => {
+            if (reviewerAccessRequest === request && token.value === currentToken) {
+                reviewerAccess.value = false
+                reviewerAccessExpiresAt = 0
+            }
+            return false
+        }).finally(() => {
+            if (reviewerAccessRequest === request) reviewerAccessRequest = undefined
+        })
+        return request.promise
     }
 
     // 检查是否有权限

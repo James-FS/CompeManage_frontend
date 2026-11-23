@@ -142,6 +142,22 @@ test('修改名称必须重新校验，仅往年有的赛事禁止提交', async
   await expect(page.locator('.preview-table .el-table__body tbody tr')).toHaveCount(1)
 })
 
+test('同名赛事明细新增行继承已经选定的赛事', async ({ page }) => {
+  const submissions = await mockUnified(page)
+  await page.goto('/#/award/import-all')
+  await page.locator('input[type=file]').setInputFiles(spreadsheet([['同年同名赛事']]))
+  const summary = page.locator('.competition-summary-table')
+  await summary.locator('.el-select').click()
+  await page.getByRole('option', { name: '同年同名赛事（系统编号0004）', exact: true }).click()
+  await expect(page.getByRole('button', { name: '导入可新增的 1 行', exact: true })).toBeEnabled()
+  await summary.getByRole('button', { name: '查看明细', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: /导入数据预览/ })
+  await dialog.getByRole('button', { name: '新增一条', exact: true }).click()
+  await dialog.getByRole('button', { name: '完成编辑', exact: true }).click()
+  await page.getByRole('button', { name: '导入可新增的 2 行', exact: true }).click()
+  await expect.poll(() => submissions[0]?.map(row => row.comp_id)).toEqual([4, 4])
+})
+
 test('全部重复也可确认跳过，原有单赛事页面仍使用单赛事接口', async ({ page }) => {
   await mockUnified(page, { existing: true })
   await page.goto('/#/award/import-all')
