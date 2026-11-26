@@ -35,7 +35,25 @@ async function setup(page, opts = {}) {
         await route.fulfill({ json: { code: 500, message: '获奖服务不可用' } })
         return
       }
-      await route.fulfill({ json: { code: 200, message: 'success', data: { list: TEAMS, total: TEAMS.length } } })
+      const params = url.searchParams
+      const source = opts.many ? Array.from({ length: 12 }, (_, index) => ({
+        ...TEAMS[index % TEAMS.length], id: index + 1, project_name: `分页项目 ${index + 1}`,
+      })) : TEAMS
+      const keyword = params.get('keyword')
+      const category = params.get('category')
+      const level = params.get('level')
+      const categoryMatches = { 校级: ['校级', '校赛'], 国家级: ['国家级', '国际级'] }
+      const levelMatches = { 一等奖: ['冠军', '金奖'], 二等奖: ['二等'], 三等奖: ['铜奖', '季军', '三等奖'] }
+      const filtered = source.filter(team =>
+        (!keyword || JSON.stringify(team).includes(keyword)) &&
+        (!category || (categoryMatches[category] || [category]).includes(team.award_category)) &&
+        (!level || (levelMatches[level] || [level]).includes(team.award_name)))
+      const current = Number(params.get('page'))
+      const size = Number(params.get('page_size'))
+      const list = current ? filtered.slice((current - 1) * size, current * size) : filtered
+      await route.fulfill({ json: { code: 200, data: {
+        list, team_count: filtered.length, student_count: filtered.reduce((count, team) => count + team.members.length, 0),
+      } } })
       return
     }
     if (p === '/api/college/list') {
@@ -46,7 +64,7 @@ async function setup(page, opts = {}) {
   })
   await page.goto('/#/award/detail/7')
   if (!opts.detailFail && !opts.awardsFail) {
-    await expect(page.getByText('6 个团队项目')).toBeVisible()
+    await expect(page.getByText(`${opts.many ? 12 : 6} 个团队项目`)).toBeVisible()
   }
   return page
 }
@@ -57,7 +75,7 @@ async function rowCount(page) {
 
 test('级别筛选别名：冠军/金奖→一等奖，二等/亚军→二等奖，季军/铜奖→三等奖', async ({ page }) => {
   await setup(page)
-  const levelSelect = page.locator('.el-select').nth(1) // 工具栏第 2 个：获奖等级
+  const levelSelect = page.locator('.toolbar .el-select').nth(1)
 
   await levelSelect.click()
   await page.getByRole('option', { name: '一等奖' }).click()
@@ -72,19 +90,21 @@ test('级别筛选别名：冠军/金奖→一等奖，二等/亚军→二等奖
   await expect.poll(() => rowCount(page)).toBe(3) // 季军 + 铜奖 + 三等奖
 
   // 清空筛选（clear 图标 hover 才显形，force 点击）
-  await levelSelect.locator('.el-select__clear').click({ force: true })
+  await levelSelect.hover()
+  await levelSelect.locator('.el-select__clear').click()
   await expect.poll(() => rowCount(page)).toBe(6)
 })
 
 test('类别筛选别名：校级含校赛、国家级含国际级', async ({ page }) => {
   await setup(page)
-  const catSelect = page.locator('.el-select').nth(0) // 工具栏第 1 个：获奖类别
+  const catSelect = page.locator('.toolbar .el-select').nth(0)
 
   await catSelect.click()
   await page.getByRole('option', { name: '校级' }).click()
   await expect.poll(() => rowCount(page)).toBe(2) // 校赛 + 校级
 
-  await catSelect.locator('.el-select__clear').click({ force: true })
+  await catSelect.hover()
+  await catSelect.locator('.el-select__clear').click()
   await catSelect.click()
   await page.getByRole('option', { name: '国家级' }).click()
   await expect.poll(() => rowCount(page)).toBe(2) // 国际级 + 国家级
@@ -98,19 +118,38 @@ test('关键字搜索命中项目名/成员/导师多字段', async ({ page }) =
   await expect.poll(() => rowCount(page)).toBe(1)
 
   await input.fill('学生乙')
-  await expect.poll(() => rowCount(page)).toBe(1)
+  await expect(page.getByText('项目金奖', { exact: true })).toBeVisible()
 
   await input.fill('003')
-  await expect.poll(() => rowCount(page)).toBe(1)
+  await expect(page.getByText('项目二等', { exact: true })).toBeVisible()
 
   await input.fill('李老师')
-  await expect.poll(() => rowCount(page)).toBe(1)
+  await expect(page.getByText('项目金奖', { exact: true })).toBeVisible()
 
   await input.fill('电子学院')
-  await expect.poll(() => rowCount(page)).toBe(1)
+  await expect(page.getByText('项目铜奖', { exact: true })).toBeVisible()
 
   await input.fill('')
   await expect.poll(() => rowCount(page)).toBe(6)
+})
+
+test('获奖名单只加载当前页，导出请求保留筛选并读取全部记录', async ({ page }) => {
+  await setup(page, { many: true })
+  await expect.poll(() => rowCount(page)).toBe(10)
+  await page.locator('.el-pagination .btn-next').click()
+  await expect(page.getByText('分页项目 12', { exact: true })).toBeVisible()
+  await expect.poll(() => rowCount(page)).toBe(2)
+
+  await page.getByPlaceholder('搜索项目、姓名、学号、学院或指导老师').fill('分页项目 1')
+  await expect(page.getByText('4 个团队项目')).toBeVisible()
+  const exportRequest = page.waitForRequest(req => {
+    const url = new URL(req.url())
+    return url.pathname === '/api/award/comp-awards' && !url.searchParams.has('page')
+  })
+  const download = page.waitForEvent('download')
+  await page.getByRole('button', { name: '导出 Excel' }).click()
+  expect(new URL((await exportRequest).url()).searchParams.get('keyword')).toBe('分页项目 1')
+  expect((await download).suggestedFilename()).toBe('筛选测试赛获奖名单.xlsx')
 })
 
 test('加载失败提示（赛事名源）', async ({ page }) => {

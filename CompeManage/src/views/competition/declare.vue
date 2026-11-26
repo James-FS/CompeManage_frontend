@@ -224,7 +224,7 @@ const handleSave = async (formEl) => {
                 loading.value = false;
             } catch (error) {
                 loading.value = false;
-                ElMessage.error('保存失败，请重试');
+                if (!error?.messageShown) ElMessage.error('保存失败，请重试');
             }
         } else {
             ElMessage.warning('请填写完整的必填项');
@@ -352,7 +352,7 @@ const selectTeacher = (row) => {
                         <el-col :span="10">
                             <el-form-item label="所属单位" prop="college">
                                 <el-select v-model="form.college" placeholder="请选择所属单位" clearable style="width: 100%" :disabled="isReadOnly"
-                                    fit-input-width>
+                                    filterable fit-input-width no-match-text="未找到匹配的单位">
                                     <el-option v-for="college in collegeList" :key="college.id" :label="college.name"
                                         :value="college.id">
                                         <span class="college-option-label" :title="college.name">{{ college.name }}</span>

@@ -461,6 +461,7 @@ const handleFileChange = async file => {
     const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: '', raw: false })
     const headers = (rows[0] || []).map(v => String(v).trim())
     const columnIndexes = Object.fromEntries(columns.value.map(column => [column.key, headers.indexOf(column.excelHeader || column.label)]))
+    if (columnIndexes.college < 0) columnIndexes.college = headers.indexOf('所属学院')
     if (columnIndexes.award_month < 0) columnIndexes.award_month = headers.indexOf('获奖时间')
     if (columnIndexes.award_month < 0) columnIndexes.award_month = headers.indexOf('获奖时间（年/月/日）')
     const advisorIndex = headers.indexOf('指导教师工号')
@@ -709,7 +710,7 @@ watch(() => route.fullPath, () => {
               filterable
               clearable
               fit-input-width
-              placeholder="请选择学院"
+              placeholder="请选择单位"
               :disabled="loading"
               style="width: 180px; max-width: 100%"
               @change="markRowChanged(row)"

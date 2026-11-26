@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '@/api/index.js'
 import { normalizeFileAttachments } from '@/utils/fileAttachments'
+import { getRegistrationAuditStatus } from '@/utils/registrationAuditStatus'
 import {
   User,
   Iphone,
@@ -53,11 +54,12 @@ const advisorInfos = computed(() => {
   }
 })
 
-const statusMap = {
-  0: { label: '待审核', type: 'warning', icon: Timer },
-  1: { label: '已通过', type: 'success', icon: CircleCheck },
-  2: { label: '已驳回', type: 'danger', icon: CircleClose },
+const statusIcons = {
+  warning: Timer,
+  success: CircleCheck,
+  danger: CircleClose,
 }
+const auditStatus = computed(() => getRegistrationAuditStatus(detail.value.status))
 
 // --- 函数区 ---
 async function fetchDetail() {
@@ -143,7 +145,7 @@ onMounted(() => {
         <h2 class="page-title">报名详情审核</h2>
         <el-tag
           v-if="detail.status !== undefined"
-          :type="statusMap[detail.status].type"
+          :type="auditStatus.type"
           effect="dark"
           round
           class="status-tag"
@@ -153,11 +155,11 @@ onMounted(() => {
               <Timer />
             </el-icon>
 
-            <el-icon v-else class="tag-icon">
-              <component :is="statusMap[detail.status].icon" />
+            <el-icon v-else-if="statusIcons[auditStatus.type]" class="tag-icon">
+              <component :is="statusIcons[auditStatus.type]" />
             </el-icon>
 
-            <span>{{ statusMap[detail.status].label }}</span>
+            <span>{{ auditStatus.label }}</span>
           </div>
         </el-tag>
       </div>
@@ -322,7 +324,7 @@ onMounted(() => {
         <div v-else class="empty-attachment">未上传作品资料</div>
       </div>
 
-      <div class="info-section" v-if="detail.status == 2">
+      <div class="info-section" v-if="auditStatus.type === 'danger'">
         <h3 class="section-title">驳回原因</h3>
         <div class="reject-box">
          <div class="reject-content">

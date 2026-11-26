@@ -4,17 +4,12 @@ import { useRouter } from 'vue-router'
 import { Search, Refresh, CircleCheck, CircleClose, Message, Iphone } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox, ElPagination } from 'element-plus'
 import api from '@/api/index.js'
+import ListTableCard from '@/components/ListTableCard.vue'
+import { getRegistrationAuditStatus } from '@/utils/registrationAuditStatus'
 
 let total = ref(100)
 const router = useRouter()
 const regList = ref([])
-
-// ---  状态字典 ---
-const statusMap = {
-  0: { label: '待审核', type: 'warning' },
-  1: { label: '已通过', type: 'success' },
-  2: { label: '已驳回', type: 'danger' },
-}
 
 // ---  筛选与重置 ---
 const queryForm = reactive({
@@ -179,9 +174,9 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="list-container">
+  <div class="table-list-page">
     <div class="filter-card">
-      <el-form :inline="true" :model="queryForm" class="filter-form">
+      <el-form :inline="true" :model="queryForm" class="table-list-filters">
         <el-form-item label="赛事名称">
           <el-input
             v-model="queryForm.comp_name"
@@ -233,7 +228,7 @@ onMounted(() => {
           />
         </el-form-item> -->
 
-        <el-form-item class="filter-actions">
+        <el-form-item>
           <el-button type="primary" :icon="Search" @click="fetchRegList">
             搜索
           </el-button>
@@ -242,26 +237,28 @@ onMounted(() => {
       </el-form>
     </div>
 
-    <div class="table-container">
-      <div class="action-bar">
-        <div class="left-actions">
-          <el-button type="success" plain :icon="CircleCheck" @click="handleBatchPass">
-            批量通过
-          </el-button>
+    <ListTableCard>
+      <template #toolbar>
+        <div class="action-bar">
+          <div class="left-actions">
+            <el-button type="success" plain :icon="CircleCheck" @click="handleBatchPass">
+              批量通过
+            </el-button>
 
-          <el-button type="danger" plain :icon="CircleClose" @click="openBatchRejectDialog">
-            批量驳回
-          </el-button>
+            <el-button type="danger" plain :icon="CircleClose" @click="openBatchRejectDialog">
+              批量驳回
+            </el-button>
+          </div>
+          <div class="right-info">
+            已选 <span class="num">{{ selectedRows.length }}</span> 项
+          </div>
         </div>
-        <div class="right-info">
-          已选 <span class="num">{{ selectedRows.length }}</span> 项
-        </div>
-      </div>
+      </template>
       <el-table
         :data="regList"
         v-loading="loading"
         stripe
-        style="width: 100%; flex: 1; overflow: auto"
+        height="100%"
         @selection-change="handleSelectionChange"
       >
         <el-table-column type="selection" width="50" align="center" />
@@ -294,11 +291,11 @@ onMounted(() => {
 
         <el-table-column prop="create_time" label="报名时间" width="150" sortable align="center" />
 
-        <el-table-column label="状态" width="100" align="center">
+        <el-table-column label="状态" width="116" align="center">
           <template #default="{ row }">
             <div class="status-dot-wrapper">
-              <span class="status-dot" :class="'status-' + row.status"></span>
-              <span>{{ statusMap[row.status]?.label || '未知' }}</span>
+              <span class="status-dot" :class="getRegistrationAuditStatus(row.status).type"></span>
+              <span>{{ getRegistrationAuditStatus(row.status).label }}</span>
             </div>
           </template>
         </el-table-column>
@@ -312,11 +309,11 @@ onMounted(() => {
           </template>
         </el-table-column>
         <template #empty>
-          <el-empty description="暂无数据" />
+          <el-empty description="暂无报名记录" />
         </template>
       </el-table>
 
-      <div class="pagination-bar">
+      <template #pagination>
         <el-pagination
           background
           layout="total, sizes, prev, pager, next, jumper"
@@ -326,8 +323,8 @@ onMounted(() => {
           @current-change="fetchRegList"
           @size-change="fetchRegList"
         />
-      </div>
-    </div>
+      </template>
+    </ListTableCard>
 
     <el-dialog v-model="batchRejectDialogVisible" title="批量驳回" width="400px" align-center>
       <div style="margin-bottom: 12px; color: #606266; font-size: 14px">
@@ -356,26 +353,12 @@ onMounted(() => {
 </template>
 
 <style scoped lang="scss">
-:root {
-  --primary-dark: #08979c;
-}
-
-.list-container {
-  min-height: calc(100vh - 110px);
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  background-color: #f0f2f5;
-  padding: var(--container-padding);
-  gap: 12px;
-}
-
 .action-bar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
-  padding: 0;
+  flex-wrap: wrap;
+  gap: 8px;
 
   .right-info {
     color: #909399;
@@ -386,18 +369,6 @@ onMounted(() => {
       margin: 0 2px;
     }
   }
-}
-
-.table-container {
-  flex: 1;
-  background: #fff;
-  padding: 16px;
-  border-radius: var(--card-radius);
-  display: flex;
-  flex-direction: column;
-  max-height: calc(75vh - 10px);
-  box-shadow: var(--card-shadow);
-  margin-top: 10px;
 }
 
 .comp-text {
@@ -430,13 +401,14 @@ onMounted(() => {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  &.status-0 {
+  background-color: var(--el-color-info);
+  &.warning {
     background-color: #faad14;
   }
-  &.status-1 {
+  &.success {
     background-color: #52c41a;
   }
-  &.status-2 {
+  &.danger {
     background-color: #ff4d4f;
   }
 }
@@ -453,12 +425,5 @@ onMounted(() => {
   &:hover {
     color: #08979c;
   }
-}
-
-.pagination-bar {
-  flex-shrink: 0;
-  margin-top: 15px;
-  display: flex;
-  justify-content: center;
 }
 </style>

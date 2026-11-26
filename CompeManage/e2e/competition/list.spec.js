@@ -203,9 +203,8 @@ test.describe('赛事目录页面测试', () => {
   });
 
   test('工具栏按钮 - 导出数据功能（严格验证）', async ({ page }) => {
-    // 拦截 API 响应并验证数据结构
-    const listResponse = page.waitForResponse(
-      response => response.url().includes('/api/comp/list') || response.url().includes('/comp/list'),
+    const exportResponse = page.waitForResponse(
+      response => new URL(response.url()).pathname === '/api/comp/export',
       { timeout: 15000 }
     );
 
@@ -213,23 +212,18 @@ test.describe('赛事目录页面测试', () => {
     await page.locator('button:has-text("导出数据")').click();
 
     // 等待 API 响应
-    const response = await listResponse;
+    const response = await exportResponse;
 
     // 严格验证：响应状态正常
     expect(response.status()).toBeLessThan(500);
 
-    // 验证响应内容是 JSON 且包含 list 字段
-    const responseBody = await response.json();
-    console.log('导出 API 响应:', JSON.stringify(responseBody, null, 2));
-
-    // 严格验证：响应结构正确
-    expect(responseBody).toHaveProperty('data');
-    expect(Array.isArray(responseBody.data?.list)).toBe(true);
-
-    // 验证数据条数合理
-    const total = responseBody.data?.total || 0;
-    console.log(`导出数据总量: ${total}`);
-    expect(total).toBeGreaterThanOrEqual(0);
+    const contentType = response.headers()['content-type'];
+    if (contentType.includes('application/json')) {
+      expect((await response.json()).message).toBe('暂无数据可导出');
+    } else {
+      expect(contentType).toContain('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      expect(response.headers()['content-disposition']).toContain('attachment');
+    }
   });
 
   test('工具栏按钮 - 批量删除(无选中时警告)', async ({ page }) => {

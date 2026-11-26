@@ -42,7 +42,6 @@ const apiPost = async (request, token, url, data) => {
 
 // 注意：必须在测试体内再 readState()，不能在模块顶层——
 // Playwright 收集用例时会先加载本文件，此时 globalSetup 还没写新状态。
-const sharedCompId = () => Number(readState().sharedCompId || 0)
 const collegeAId = () => Number(readState().collegeACompId || 0)
 const collegeBId = () => Number(readState().collegeBCompId || 0)
 
@@ -52,69 +51,48 @@ test.describe('多学院并行填报', () => {
   test('20 个学院负责人并行登录、校验隔离并导入本院数据', async ({ request }) => {
     test.setTimeout(180_000)
     const state = readState()
-    const sharedId = sharedCompId()
-    expect(sharedId, 'shared competition id').toBeGreaterThan(0)
+    const competitions = state.sourceCompetitions || []
+    expect(competitions).toHaveLength(COLLEGES.length)
 
-    // 20 学院并行：各自登录 → 隔离断言 → 导入共享校赛
     const results = await Promise.all(
       COLLEGES.map(async (college, index) => {
         const admin = collegeAdmin(index)
         const token = await apiLogin(request, admin)
+        const competition = competitions[index]
+        const foreign = competitions[(index - 1 + COLLEGES.length) % COLLEGES.length]
 
-        // ① 获奖赛事列表：本院专属/校级/未分配可见；其他学院专属省级不可见
         const list = await apiGet(request, token, '/api/award/list?page=1&size=100')
         expect(list.status, `${admin.username} award/list`).toBe(200)
         const names = (list.body.data?.list || []).map(c => c.comp_name)
-        const sharedName = (await apiGet(request, token, `/api/comp/list?page=1&page_size=5&id=${sharedId}`))
-        // 校级共享赛对所有院管可见（校级范围）
-        const sharedVisible = names.some(n => n && n.includes('校级共享赛'))
-        expect(sharedVisible, `${admin.username} 应能看到校级共享赛`).toBe(true)
+        expect(names).toContain(competition.name)
+        // 另一场校赛的所属单位是本院，但项目来源是上一所学院。
+        expect(names).not.toContain(foreign.name)
+        const denied = await apiGet(request, token, `/api/award/comp-awards?comp_id=${foreign.id}`)
+        expect(denied.status).toBe(403)
 
-        // 其他学院专属赛事不可见
-        const otherCollegeName = COLLEGES[(index + 1) % COLLEGES.length].name
-        // 仅对甲/乙两个有专属省赛的学院做"不可见"硬断言（其余学院无专属赛，列表不含即可）
-        if (index !== 0) {
-          const aName = (await apiGet(request, token, `/api/award/list?page=1&size=100`))
-          const listNames = (aName.body.data?.list || []).map(c => c.comp_name || '')
-          // 甲学院省赛只应给甲学院（或校管）看到
-          expect(
-            listNames.some(n => n.includes('甲学院省赛')),
-            `${admin.username} 不应看到甲学院省赛`,
-          ).toBe(false)
-        }
-        if (index !== 1) {
-          const bList = await apiGet(request, token, '/api/award/list?page=1&size=100')
-          const listNames = (bList.body.data?.list || []).map(c => c.comp_name || '')
-          expect(
-            listNames.some(n => n.includes('乙学院省赛')),
-            `${admin.username} 不应看到乙学院省赛`,
-          ).toBe(false)
-        }
-        void otherCollegeName
-
-        // ② 导入本院 1 条省级一等奖到共享校赛
         const rows = awardRowsForCollege(index, state.runTag)
         const imported = await apiPost(
           request,
           token,
-          `/api/award/import?comp_id=${sharedId}`,
+          `/api/award/import?comp_id=${competition.id}`,
           { rows: toImportRows(rows) },
         )
         expect(imported.status, `${admin.username} import status: ${JSON.stringify(imported.body)}`).toBe(200)
         expect(imported.body.code, `${admin.username} import code`).toBe(200)
 
-        return { index, admin, token, project: rows[0].project, college }
+        return { admin, token, project: rows[0].project, college, competition }
       }),
     )
 
     expect(results).toHaveLength(20)
 
-    // ③ 导入归属：每个学院的获奖成员 submitted_college_id = 本院 id
+    const schoolToken = await apiLogin(request, SCHOOL_ADMIN)
+    // 核对院管与校管读取的实际填报归属。
     for (const r of results) {
       const awards = await apiGet(
         request,
         r.token,
-        `/api/award/comp-awards?comp_id=${sharedId}`,
+        `/api/award/comp-awards?comp_id=${r.competition.id}`,
       )
       expect(awards.status, `${r.admin.username} comp-awards`).toBe(200)
       const teams = awards.body.data?.list || []
@@ -124,6 +102,9 @@ test.describe('多学院并行填报', () => {
       for (const cid of memberColleges) {
         expect(cid, `${r.admin.username} 成员归属学院`).toBe(r.college.id)
       }
+      const all = await apiGet(request, schoolToken, `/api/award/comp-awards?comp_id=${r.competition.id}`)
+      expect(all.status).toBe(200)
+      expect(all.body.data?.list?.map(t => t.project_name)).toContain(r.project)
     }
   })
 
@@ -176,36 +157,6 @@ test.describe('多学院并行填报', () => {
     expect(bAwards.status, '甲访问乙省赛获奖应 403').toBe(403)
   })
 
-  test('校级管理员汇总 = 各学院导入之和', async ({ request }) => {
-    test.setTimeout(60_000)
-    const state = readState()
-    const token = await apiLogin(request, SCHOOL_ADMIN)
-    const sharedId = sharedCompId()
-
-    // 校管能看全部 20 条（每学院 1 人）
-    const all = await apiGet(request, token, `/api/award/comp-awards?comp_id=${sharedId}`)
-    expect(all.status).toBe(200)
-    const teams = all.body.data?.list || []
-    const runTag = state.runTag || ''
-    const mine = teams.filter(t => (t.project_name || '').includes(runTag))
-    expect(mine.length, `共享赛应有 20 个项目，实际 ${mine.length}`).toBe(20)
-
-    // 每个项目的成员归属学院互不相同且覆盖 20 学院
-    const collegeIds = new Set()
-    for (const t of mine) {
-      for (const m of t.members || []) {
-        if (m.submitted_college_id) collegeIds.add(m.submitted_college_id)
-      }
-    }
-    for (const c of COLLEGES) {
-      expect(collegeIds.has(c.id), `汇总应包含 ${c.name}`).toBe(true)
-    }
-
-    // 统计看板：校管总获奖人数 ≥ 20（库里可能还有历史数据，做下限断言 + 与 comp-awards 一致）
-    const dash = await apiGet(request, token, '/api/statistics/dashboard?months=24')
-    expect(dash.status).toBe(200)
-    expect(dash.body.code).toBe(200)
-  })
 
   test('院管统计看板只含本院范围', async ({ request }) => {
     const admin = collegeAdmin(0)
@@ -236,7 +187,7 @@ test.describe('多学院并行填报', () => {
     await page.waitForTimeout(1500)
     const bodyText = await page.locator('body').innerText()
     expect(bodyText).not.toContain('没有权限访问该资源')
-    // 应出现至少一个"导入数据"入口（校级共享赛）
+    // 本院来源赛事应提供导入入口。
     const importBtns = page.locator('text=导入数据')
     expect(await importBtns.count(), '院管应看到导入数据入口').toBeGreaterThan(0)
   })

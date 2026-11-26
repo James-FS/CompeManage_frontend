@@ -1034,8 +1034,9 @@ onMounted(async () => {
         <el-form-item :label="isSelectingAdvisor ? '所属部门' : '所属单位'">
           <el-select
             v-model="searchForm.college"
-            :placeholder="isSelectingAdvisor ? '选择部门' : '选择学院'"
+            :placeholder="isSelectingAdvisor ? '选择部门' : '选择单位'"
             clearable
+            filterable
             @change="fetchStudentList"
             @clear="fetchStudentList"
             popper-class="dept-select-popper"

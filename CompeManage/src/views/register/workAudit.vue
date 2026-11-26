@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { Search, Refresh } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import api from '@/api/index'
+import ListTableCard from '@/components/ListTableCard.vue'
 
 const router = useRouter()
 
@@ -47,14 +48,7 @@ const handleReset = () => {
 }
 
 const loadCollegeList = async () => {
-  try {
-    const res = await api.getCollegeList()
-    if (res.code === 200 || res.code === 0) {
-      collegeList.value = res.data || []
-    }
-  } catch (error) {
-    console.error(error)
-  }
+  collegeList.value = await api.getCompetitionUnits()
 }
 
 const fetchCompList = async () => {
@@ -89,9 +83,9 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="competition-container">
+  <div class="table-list-page">
     <div class="filter-card">
-      <el-form :inline="true" :model="queryForm" class="search-form">
+      <el-form :inline="true" :model="queryForm" class="table-list-filters">
         <el-form-item label="赛事名称">
           <el-input v-model="queryForm.comp_name" placeholder="请输入赛事名称" clearable style="width: 220px" @keyup.enter="fetchCompList" @clear="fetchCompList" />
         </el-form-item>
@@ -99,9 +93,9 @@ onMounted(() => {
           <el-input v-model="queryForm.manager" placeholder="请输入负责人" clearable style="width: 220px" @keyup.enter="fetchCompList" @clear="fetchCompList" />
         </el-form-item>
         <el-form-item label="所属单位">
-          <el-select v-model="queryForm.college" placeholder="全部学院" clearable style="width: 220px" fit-input-width @change="fetchCompList">
-            <el-option v-for="college in collegeList" :key="college.id" :label="college.name" :value="college.name">
-              <span class="college-option-label" :title="college.name">{{ college.name }}</span>
+          <el-select v-model="queryForm.college" placeholder="全部单位" clearable filterable style="width: 220px" fit-input-width @change="fetchCompList">
+            <el-option v-for="unit in collegeList" :key="unit" :label="unit" :value="unit">
+              <span class="college-option-label" :title="unit">{{ unit }}</span>
             </el-option>
           </el-select>
         </el-form-item>
@@ -112,15 +106,15 @@ onMounted(() => {
             <el-option label="已结束" value="2" />
           </el-select>
         </el-form-item>
-        <el-form-item class="search-actions">
+        <el-form-item>
           <el-button type="primary" :icon="Search" @click="fetchCompList">搜索</el-button>
           <el-button :icon="Refresh" @click="handleReset">重置</el-button>
         </el-form-item>
       </el-form>
     </div>
 
-    <div class="competition-table-container">
-      <el-table v-loading="loading" :data="compList" stripe style="width: 100%" height="calc(100vh - 360px)">
+    <ListTableCard>
+      <el-table v-loading="loading" :data="compList" stripe height="100%">
         <el-table-column label="赛事名称" min-width="260" show-overflow-tooltip align="center">
           <template #default="scope">
             {{ scope.row.comp_name || '-' }}
@@ -156,8 +150,9 @@ onMounted(() => {
         </template>
       </el-table>
 
-      <div class="pagination-wrapper">
+      <template #pagination>
         <el-pagination
+          background
           v-model:current-page="queryForm.page"
           v-model:page-size="queryForm.page_size"
           :page-sizes="[10, 20, 30, 50]"
@@ -166,48 +161,7 @@ onMounted(() => {
           @size-change="fetchCompList"
           @current-change="fetchCompList"
         />
-      </div>
-    </div>
+      </template>
+    </ListTableCard>
   </div>
 </template>
-
-<style scoped lang="scss">
-.competition-container {
-  width: 100%;
-  height: 100%;
-  background-color: var(--background-color);
-  padding: var(--container-padding);
-  box-sizing: border-box;
-}
-
-/* 筛选卡片外壳用全局 .filter-card；此页筛选条件多会换行，仅保留行间距与按钮位覆盖 */
-.filter-card {
-  .search-form {
-    .el-form-item {
-      margin-bottom: 15px;
-    }
-
-    .search-actions {
-      margin-left: 45px;
-
-      .el-button {
-        margin-right: 10px;
-      }
-    }
-  }
-}
-
-.competition-table-container {
-  box-sizing: border-box;
-  padding: 20px 20px 10px 20px;
-  background-color: #ffffff;
-  box-shadow: var(--card-shadow);
-  border-radius: var(--card-radius);
-}
-
-.pagination-wrapper {
-  margin-top: 12px;
-  display: flex;
-  justify-content: center;
-}
-</style>
