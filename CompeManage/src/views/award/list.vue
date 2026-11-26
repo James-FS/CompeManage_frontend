@@ -35,6 +35,11 @@ const loadCollegeList = async () => {
   } catch (e) { console.error('加载所属单位失败', e) }
 }
 loadCollegeList()
+const competitionStatuses = {
+  0: { label: '未开始', type: 'info' },
+  1: { label: '进行中', type: 'success' },
+  2: { label: '已结束', type: 'info' },
+}
 const buildListParams = () => {
   const { keyword, level, year, status, college } = filters.value
   const params = { page: queryParams.value.page, size: queryParams.value.size }
@@ -178,6 +183,7 @@ onMounted(fetchList)
         </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="filters.status" placeholder="全部状态" clearable style="width: 130px" @change="applyFilters">
+            <el-option label="未开始" value="upcoming" />
             <el-option label="进行中" value="ongoing" />
             <el-option label="已结束" value="ended" />
           </el-select>
@@ -214,30 +220,28 @@ onMounted(fetchList)
         <div class="comp-info">
           <div class="name-row">
             <el-tag
-              v-if="item.status !== 2"
-              type="success"
+              :type="competitionStatuses[item.status]?.type || 'info'"
               effect="dark"
               size="small"
               class="status-badge"
-              >进行中</el-tag
             >
-            <el-tag v-else type="info" effect="dark" size="small" class="status-badge"
-              >已结束</el-tag
-            >
+              {{ competitionStatuses[item.status]?.label || '状态待确认' }}
+            </el-tag>
 
             <h3 class="comp-name">{{ item.comp_name }}</h3>
           </div>
 
           <div class="meta-row">
             <el-tag effect="plain" type="primary" size="small" class="level-tag">
-              {{ item.comp_level }}
+              {{ item.comp_level || '级别待补充' }}
             </el-tag>
 
-            <span class="divider"></span>
-
-            <span class="meta-text">
-              <el-icon><User /></el-icon> {{ item.organizer }}
-            </span>
+            <template v-if="item.organizer">
+              <span class="divider"></span>
+              <span class="meta-text">
+                <el-icon><User /></el-icon> {{ item.organizer }}
+              </span>
+            </template>
 
             <span class="divider"></span>
 
@@ -268,7 +272,7 @@ onMounted(fetchList)
         </div>
       </div>
     </div>
-    <div class="pagination-container">
+    <div v-if="total > 0" class="pagination-container">
       <el-pagination
         v-model:current-page="queryParams.page"
         v-model:page-size="queryParams.size"

@@ -35,6 +35,7 @@ const form = reactive({
     comp_name: '', comp_level: '', comp_type: '', organizer: '',
     undertaker: '', manager: '', manager_id: '', college: '', desc: '', year: ''
 });
+const collegeList = ref([]);
 const rules = {
     //blur: 输入框失去焦点时触发验证  change: 选择框值变化时触发验证
     comp_name: [{ required: true, message: '请输入赛事名称', trigger: 'blur' }],
@@ -70,6 +71,7 @@ const handleSubmit = async (formEl) => {
 const handleReset = (formEl) => {
     if (!formEl) return;
     formEl.resetFields();
+    form.manager_id = '';
 };
 
 // Tab 2 从往年赛事复用
@@ -82,7 +84,14 @@ const selectedHistoryRows = ref([]);
 const importList = ref([]); // 导入列表，用于第二步编辑
 const yearOptions = ref([]); // 年份选项列表
 const yearsLoading = ref(false); // 年份加载状态
-const collegeList = ref([]); // 学院列表
+const loadColleges = async () => {
+    try {
+        const res = await api.getCollegeList();
+        if (res.code === 0 || res.code === 200) collegeList.value = res.data || [];
+    } catch (error) {
+        console.error('加载所属单位失败:', error);
+    }
+};
 
 // 下载年份列表
 const initializeYears = async () => {
@@ -99,18 +108,6 @@ const initializeYears = async () => {
         console.error('获取年份列表失败:', error);
     }
     yearsLoading.value = false;
-};
-
-// 加载学院列表
-const loadColleges = async () => {
-    try {
-        const res = await api.getCollegeList();
-        if (res.code === 0 || res.code === 200) {
-            collegeList.value = res.data || [];
-        }
-    } catch (error) {
-        console.error('加载学院列表失败:', error);
-    }
 };
 
 const departmentList = ref([])
@@ -160,7 +157,7 @@ const fetchHistoryData = () => {
                 undertaker: item.undertaker,
                 manager: item.manager?.realname || '',
                 manager_id: item.manager?.id || '',
-                college: item.college_info?.name || '',
+                college: item.manager?.college || '',
                 year: item.year || '',
                 desc: item.desc || ''
             }));
@@ -247,15 +244,6 @@ const handleFinalImport = () => {
         return;
     }
 
-    // 校验学院是否在数据库中存在
-    if (collegeList.value.length > 0) {
-        const collegeNames = new Set(collegeList.value.map(c => c.name));
-        const invalidItem = importList.value.find(item => item.college && !collegeNames.has(item.college));
-        if (invalidItem) {
-            ElMessage.error(`赛事"${invalidItem.comp_name}"的学院"${invalidItem.college}"不存在，请检查后重试`);
-            return;
-        }
-    }
 
     ElMessageBox.confirm(
         `确认将这 ${importList.value.length} 项赛事导入到本年度赛事库吗？`,
@@ -375,6 +363,7 @@ const selectTeacher = (row) => {
         if (currentManagerEditIndex.value !== -1 && excelList.value[currentManagerEditIndex.value]) {
             excelList.value[currentManagerEditIndex.value].manager = row.name;
             excelList.value[currentManagerEditIndex.value].manager_id = row.id;
+            excelList.value[currentManagerEditIndex.value].college = row.college || '';
             // Excel 导入时，自动更新工号
             excelList.value[currentManagerEditIndex.value].work_id = row.work_id || '';
         }
@@ -382,11 +371,13 @@ const selectTeacher = (row) => {
         // 手动录入 Tab
         form.manager = row.name;
         form.manager_id = row.id;
+        form.college = row.college || '';
     } else {
         // 往年复用 Tab (旧逻辑)
         if (importList.value[currentManagerEditIndex.value]) {
             importList.value[currentManagerEditIndex.value].manager = row.name;
             importList.value[currentManagerEditIndex.value].manager_id = row.id;
+            importList.value[currentManagerEditIndex.value].college = row.college || '';
         }
     }
     managerDialogVisible.value = false;
@@ -402,13 +393,14 @@ const selectTeacher = (row) => {
 const excelList = ref([]); // 存放解析后的 Excel 数据
 const excelLoading = ref(false); // 解析 loading 状态
 const excelImportSubmitting = ref(false); // 正在提交批量导入
+const allowIncompleteExcel = ref(false);
 
 // 模板下载
 const downloadTemplate = () => {
     // 这里可以使用 xlsx 生成一个空模板，或者请求后端静态资源
     const header = ['赛事名称', '赛事级别', '赛事类型', '主办单位', '承办单位', '赛事负责人工号', '赛事负责人姓名', '所属单位', '年份', '备注'];
     const data = [
-        ['示例：xx大赛', '校级', '学科竞赛', 'xx大学', 'xx学院', '2026001', '张三', 'xx学院', '2026', '无']
+        ['示例：xx大赛', '校级', '学科竞赛', 'xx大学', 'xx学院', '2026001', '张三', '', '2026', '无']
     ];
     const ws = XLSX.utils.aoa_to_sheet([header, ...data]);
     // 设置列宽
@@ -438,6 +430,7 @@ const autoMatchManagersByWorkIds = async (items) => {
             if (manager) {
                 item.manager = manager.name;
                 item.manager_id = manager.id;
+                item.college = manager.college || '';
             }
         }
     } catch (error) {
@@ -483,7 +476,7 @@ const handleUploadChange = (file) => {
                 work_id: row[5] ? String(row[5]) : '', // 读取工号
                 manager: row[6] || '',                 // 读取姓名
                 manager_id: '',
-                college: row[7] || '',
+                college: '',
                 year: String(row[8] ?? '').trim() || new Date().getFullYear().toString(),
                 desc: row[9] || ''
             }));
@@ -527,10 +520,19 @@ const handleExcelImportSubmit = () => {
         return;
     }
     // 校验：检查是否有必要字段为空
-    const invalidItem = excelList.value.find(item => !item.comp_name?.trim() || !item.comp_level || !item.manager_id);
+    const allowIncomplete = allowIncompleteExcel.value;
+    const invalidItem = excelList.value.find(item => !item.comp_name?.trim() ||
+        (!allowIncomplete && (!item.comp_level || !item.manager_id)));
     if (invalidItem) {
         ElMessage.error('存在赛事名称、级别或负责人为空的数据，请补充完整');
         return;
+    }
+    if (allowIncomplete) {
+        const unmatchedManager = excelList.value.find(item => !item.manager_id && (item.work_id || item.manager));
+        if (unmatchedManager) {
+            ElMessage.error(`赛事「${unmatchedManager.comp_name}」的负责人未匹配，请选择系统中的人员或在 Excel 中留空后重新上传`);
+            return;
+        }
     }
 
     const invalidYear = excelList.value.find(item => item.year?.trim() && !competitionYearPattern.test(item.year.trim()));
@@ -539,15 +541,6 @@ const handleExcelImportSubmit = () => {
         return;
     }
 
-    // 校验学院是否在数据库中存在
-    if (collegeList.value.length > 0) {
-        const collegeNames = new Set(collegeList.value.map(c => c.name));
-        const badCollege = excelList.value.find(item => item.college && !collegeNames.has(item.college));
-        if (badCollege) {
-            ElMessage.error(`赛事"${badCollege.comp_name}"的学院"${badCollege.college}"不存在，请检查后重试`);
-            return;
-        }
-    }
 
     ElMessageBox.confirm(
         `确认导入这 ${excelList.value.length} 条赛事数据吗？`,
@@ -556,7 +549,10 @@ const handleExcelImportSubmit = () => {
     ).then(async () => {
         excelImportSubmitting.value = true;
         try {
-            await api.batchImportCompetition({ items: excelList.value });
+            await api.batchImportCompetition({
+                items: excelList.value.map(item => ({ ...item, manager_id: item.manager_id || 0 })),
+                ...(allowIncomplete ? { allow_incomplete: true } : {}),
+            });
             ElMessage.success('批量导入成功');
             router.push({ name: 'CompetitionList' });
         } catch (error) {
@@ -587,11 +583,13 @@ const queryManagerByWorkId = async (row) => {
             const teacher = res.data.list[0];
             row.manager = teacher.name; // 自动回填姓名
             row.manager_id = teacher.id; // 自动回填ID
+            row.college = teacher.college || '';
             ElMessage.success(`已匹配负责人：${teacher.name}`);
         } else {
             ElMessage.warning(`工号 ${row.work_id} 未匹配到教职工，请点击选择按钮手工指定`);
             // 可以选择清空姓名，或者保留Excel里的原值
             row.manager_id = '';
+            row.college = '';
         }
     } catch (error) {
         console.error('查询负责人失败', error);
@@ -860,7 +858,7 @@ const queryManagerByWorkId = async (row) => {
                     </template>
                     <div class="import-container">
                         <div class="import-header">
-                            <el-alert title="请先下载模板，按格式填入数据后上传。" type="info" show-icon :closable="false"
+                            <el-alert title="请下载模板后填写并上传。所属单位根据赛事负责人自动带出，可以留空。" type="info" show-icon :closable="false"
                                 class="import-title" />
                             <div class="action-bar">
                                 <el-button type="primary" plain @click="downloadTemplate">
@@ -881,12 +879,13 @@ const queryManagerByWorkId = async (row) => {
                                     @select="handleUploadChange"
                                 />
                                 <el-button type="success" @click="handleExcelImportSubmit"
-                                    :disabled="excelList.length === 0 || excelImportSubmitting"
+                                    :disabled="excelList.length === 0 || excelLoading || excelImportSubmitting"
                                     :loading="excelImportSubmitting">
                                     <el-icon class="el-icon--left">
                                         <Check />
                                     </el-icon>确认导入
                                 </el-button>
+                                <el-checkbox v-model="allowIncompleteExcel">允许暂缺级别和负责人</el-checkbox>
                             </div>
                         </div>
                         <el-table v-if="excelList.length > 0" :data="excelList" border stripe height="450"

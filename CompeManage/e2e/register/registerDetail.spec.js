@@ -657,7 +657,7 @@ test.describe('报名详情页面 - 分页组件', () => {
       await page.waitForTimeout(500)
 
       // 选择学院筛选
-      const collegeSelect = page.locator('.el-dialog .el-select[placeholder="选择学院"]')
+      const collegeSelect = page.locator('.el-dialog .el-select[placeholder="选择单位"]')
       if (await collegeSelect.isVisible({ timeout: 3000 }).catch(() => false)) {
         await collegeSelect.click()
         await page.waitForTimeout(300)

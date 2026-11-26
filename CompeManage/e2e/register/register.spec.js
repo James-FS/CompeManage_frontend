@@ -25,6 +25,35 @@ async function selectFilter(page, label, optionText) {
   return formItem
 }
 
+test('没有赛事时隐藏分页，重置筛选有结果时重新显示', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('token', 'registration-pagination-test')
+    localStorage.setItem('role', 'school_admin')
+    localStorage.setItem('userInfo', JSON.stringify({ id: 1, name: '管理员' }))
+  })
+  await page.route(url => url.pathname.startsWith('/api/'), route => {
+    const url = new URL(route.request().url())
+    if (url.pathname !== '/api/comp/list') {
+      return route.fulfill({ json: { code: 200, data: {} } })
+    }
+    const list = url.searchParams.get('comp_name') ? [] : [{ id: 1, comp_name: '测试赛事' }]
+    return route.fulfill({ json: { code: 200, data: { list, total: list.length } } })
+  })
+
+  await page.goto('/#/register')
+  const pager = page.locator('.pagination-container')
+  await expect(pager).toBeVisible()
+
+  await page.getByPlaceholder('请输入赛事名称').fill('无匹配的赛事')
+  await page.getByRole('button', { name: '搜索' }).click()
+  await expect(page.getByText('暂无可报名的赛事')).toBeVisible()
+  await expect(pager).toHaveCount(0)
+
+  await page.getByRole('button', { name: '重置' }).click()
+  await expect(page.getByRole('heading', { name: '测试赛事' })).toBeVisible()
+  await expect(pager).toBeVisible()
+})
+
 test.describe('报名列表页面测试', () => {
   test.beforeEach(async ({ page }) => {
     await loginAndNavigate(page)
@@ -40,9 +69,6 @@ test.describe('报名列表页面测试', () => {
     // 验证筛选下拉
     await expect(page.locator('.filter-card .el-form-item').filter({ hasText: '赛事级别' }).locator('.el-select')).toBeVisible()
     await expect(page.locator('.filter-card .el-form-item').filter({ hasText: '状态' }).locator('.el-select')).toBeVisible()
-
-    // 验证分页组件
-    await expect(page.locator('.el-pagination')).toBeVisible()
   })
 
   test('搜索功能 - 输入关键词搜索', async ({ page }) => {
@@ -215,11 +241,6 @@ test.describe('报名列表页面测试', () => {
         expect(currentUrl.includes('detail') || currentUrl.includes('register')).toBeTruthy()
       }
     }
-  })
-
-  test('分页 - 验证分页组件', async ({ page }) => {
-    // 验证分页元素存在
-    await expect(page.locator('.pagination-container .el-pagination')).toBeVisible()
   })
 
   test('分页 - 切换页码', async ({ page }) => {

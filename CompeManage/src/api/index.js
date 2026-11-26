@@ -33,7 +33,19 @@ export const api = {
   getDepartmentList: () => get('/api/department/list'),
 
   // ==================== 竞赛相关 ====================
+  getCompetitionUnits: async () => {
+    const results = await Promise.allSettled([api.getCollegeList(), api.getDepartmentList()])
+    const units = results.flatMap(result =>
+      result.status === 'fulfilled' && Array.isArray(result.value?.data) ? result.value.data : [],
+    )
+    return [...new Set(units.map(unit => unit.name).filter(Boolean))]
+  },
   getCompetitionList: (params) => get('/api/comp/list', params),
+  exportCompetitionDirectory: (params) => get('/api/comp/export', params, {
+    responseType: 'blob',
+    timeout: 240000,
+    validateStatus: status => (status >= 200 && status < 300) || status === 504,
+  }),
   createCompetition: (data) => post('/api/comp/create', data),
   batchImportCompetition: (data) => post('/api/comp/batch-import', data, { timeout: 120000 }),
   deleteCompetition: (id) => del(`/api/comp/${id}`),
@@ -93,7 +105,7 @@ export const api = {
   deleteNotice: (id) => del(`/api/notice/${id}`),
   // ==================== 获奖相关 ====================
   getAwardCompList: (params) => get('/api/award/list', params),
-  getCompAwards: (comp_id) => get(`/api/award/comp-awards?comp_id=${comp_id}`),
+  getCompAwards: (comp_id, params) => get(`/api/award/comp-awards?comp_id=${comp_id}`, params),
   deleteAward: (id) => del(`/api/award/${id}`),
   batchDeleteAwards: (comp_id, ids) => post('/api/award/batch-delete', { comp_id: Number(comp_id), ids }),
   getAwardTemplate: (comp_id) => get(`/api/award/export-template?comp_id=${comp_id}`, {}, { responseType: 'blob' }),
@@ -126,6 +138,7 @@ export const api = {
 
   // ==================== 数据看板相关 ====================
   getStatisticsDashboard: (params) => get('/api/statistics/dashboard', params),
+  getDashboardCompetitionStats: (params) => get('/api/statistics/dashboard/competitions', params),
 
   // ==================== 通用上传 ====================
   uploadFile: (file, type, config = {}) => {

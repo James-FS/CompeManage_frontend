@@ -21,7 +21,16 @@ async function setup(page, opts = {}) {
     const p = url.pathname
     if (p === '/api/award/audit/list') {
       state.lastListUrl = url.toString()
-      await route.fulfill({ json: { code: 200, message: 'success', data: { list: ROWS, total: ROWS.length } } })
+      const source = opts.many
+        ? Array.from({ length: 12 }, (_, index) => ({ ...ROWS[index % ROWS.length], id: index + 1, comp_name: `分页审核赛事 ${index + 1}` }))
+        : ROWS
+      const filtered = source.filter(row =>
+        row.comp_name.includes(url.searchParams.get('comp_name') || '') &&
+        row.student_name.includes(url.searchParams.get('keyword') || ''))
+      const current = Number(url.searchParams.get('page'))
+      const size = Number(url.searchParams.get('page_size'))
+      const list = filtered.slice((current - 1) * size, current * size)
+      await route.fulfill({ json: { code: 200, message: 'success', data: { list, total: filtered.length } } })
       return
     }
     if (p === '/api/award/audit/batch/pass') {
@@ -42,10 +51,10 @@ async function setup(page, opts = {}) {
       await route.fulfill({ json: { code: 200, message: 'success', data: {} } })
       return
     }
-    await route.fallback()
+    await route.fulfill({ json: { code: 200, data: {} } })
   })
   await page.goto('/#/award/audit')
-  await expect(page.locator('.el-table__body tr')).toHaveCount(3)
+  await expect(page.locator('.el-table__body tr')).toHaveCount(opts.many ? 10 : 3)
   return state
 }
 
@@ -126,9 +135,19 @@ test('筛选重置清空条件并刷新列表', async ({ page }) => {
   await page.getByPlaceholder('请输入赛事名称').fill('审核赛事A')
   await page.getByPlaceholder('请输入姓名或学号').fill('学生甲')
   await page.getByRole('button', { name: /搜索/ }).click()
-  await expect.poll(() => state.lastListUrl).toContain('keyword=')
+  await expect.poll(() => new URL(state.lastListUrl).searchParams.get('keyword')).toBe('学生甲')
 
   await page.getByRole('button', { name: '重置' }).click()
   await toast(page, '筛选条件已重置')
-  await expect.poll(() => state.lastListUrl).not.toContain('keyword=学生甲')
+  await expect.poll(() => new URL(state.lastListUrl).searchParams.get('keyword') || '').toBe('')
+})
+
+test('翻到第二页后搜索，审核列表返回第一页', async ({ page }) => {
+  const state = await setup(page, { many: true })
+  await page.locator('.el-pagination .btn-next').click()
+  await expect(page.getByText('分页审核赛事 12', { exact: true })).toBeVisible()
+  await page.getByPlaceholder('请输入赛事名称').fill('分页审核赛事 1')
+  await page.getByRole('button', { name: '搜索' }).click()
+  await expect.poll(() => new URL(state.lastListUrl).searchParams.get('page')).toBe('1')
+  await expect(page.locator('.el-table__body tr')).toHaveCount(4)
 })

@@ -3,7 +3,7 @@
  * 1. 健康检查后端 + 校管理员登录
  * 2. SQL 幂等播种 20 个 college_admin + 20 个学生（密码均为 "123"）
  * 3. 通过 API 给 20 个账号分配 college_admin 角色并绑定管理学院
- * 4. 校管理员创建：1 个校级共享赛事 + 2 个学院专属省级赛事（隔离用）
+ * 4. 由各学院账号申报，校管理员审批入库，覆盖项目来源与负责人单位不同的情况
  * 5. 关闭"导入需报名"，并清理历史 E2E 赛事
  *
  * 数据库：本地 MySQL root/lhh5555 库 CompeManage（与 .env / config-dev 一致）。
@@ -21,18 +21,18 @@ const MYSQL_ARGS = ['-uroot', '-plhh5555', '--default-character-set=utf8mb4', 'C
 export default async function globalSetup() {
   const token = await ensureBackend()
   await seedAccounts()
-  await ensureCollegeAdminRoles(token)
-  const comps = await ensureCompetitions(token)
+  const managerIds = await ensureCollegeAdminRoles(token)
+  const comps = await ensureCompetitions(token, managerIds)
   await ensureImportSettings(token)
   cleanupStale()
   // 写入共享状态文件（globalSetup 与 worker 是不同进程，env 不互通）
   writeState({
-    sharedCompId: comps.shared.id,
+    sourceCompetitions: comps.byCollege,
     collegeACompId: comps.collegeA.id,
     collegeBCompId: comps.collegeB.id,
     runTag: RUN_TAG,
   })
-  console.log(`[multi-college] 准备完成 RUN_TAG=${RUN_TAG} shared=${comps.shared.id} A=${comps.collegeA.id} B=${comps.collegeB.id}`)
+  console.log(`[multi-college] 准备完成 RUN_TAG=${RUN_TAG} 项目来源赛事 ${comps.byCollege.length} 项`)
 }
 
 async function ensureBackend() {
@@ -102,6 +102,7 @@ async function ensureCollegeAdminRoles(token) {
   const collegeRole = (roleBody.data || []).find(r => r.role_code === 'college_admin')
   if (!collegeRole) throw new Error('未找到 college_admin 角色')
 
+  const managerIds = []
   let assigned = 0
   for (let i = 0; i < COLLEGES.length; i++) {
     const admin = collegeAdmin(i)
@@ -112,6 +113,7 @@ async function ensureCollegeAdminRoles(token) {
     const listBody = await listRes.json()
     const user = (listBody.data?.list || []).find(u => u.username === admin.username)
     if (!user) throw new Error(`用户 ${admin.username} 不存在，播种失败`)
+    managerIds.push(user.id)
 
     const putRes = await fetch(`${BACKEND_URL}/api/perm/member/${user.id}/role`, {
       method: 'PUT',
@@ -133,23 +135,27 @@ async function ensureCollegeAdminRoles(token) {
     }
   }
   console.log(`[multi-college] college_admin 角色处理完成（成功 ${assigned}/${COLLEGES.length}）`)
+  return managerIds
 }
 
-async function createComp(token, payload) {
-  const res = await fetch(`${BACKEND_URL}/api/comp/create`, {
+async function post(path, payload, token) {
+  const res = await fetch(`${BACKEND_URL}${path}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     body: JSON.stringify(payload),
   })
   const body = await res.json().catch(() => ({}))
   if (!res.ok || body.code !== 200) {
-    throw new Error(`创建赛事「${payload.comp_name}」失败：${JSON.stringify(body)}`)
+    throw new Error(`${path} 请求失败：HTTP ${res.status} ${body.message || ''}`)
   }
-  return body.data.competition || body.data
+  return body.data
 }
 
 async function findCompByName(token, name) {
-  const res = await fetch(`${BACKEND_URL}/api/comp/list?page=1&page_size=50&comp_name=${encodeURIComponent(name)}`, {
+  const res = await fetch(`${BACKEND_URL}/api/comp/list?page=1&page_size=50&year=${YEAR}&comp_name=${encodeURIComponent(name)}`, {
     headers: { Authorization: `Bearer ${token}` },
   })
   const body = await res.json().catch(() => ({}))
@@ -157,62 +163,37 @@ async function findCompByName(token, name) {
   return list.find(c => c.comp_name === name) || null
 }
 
-async function ensureCompetitions(token) {
-  // 优先用 competition_manager / 教师账号当负责人，避免院管"只能管本学院"校验挡路
-  const managerRes = await fetch(`${BACKEND_URL}/api/comp/manager/list?page=1&page_size=50`, {
-    headers: { Authorization: `Bearer ${token}` },
-  })
-  const managerBody = await managerRes.json()
-  const managers = managerBody.data?.list || []
-  // manager/list 返回扁平 role_code；跳过 college_admin（只能管本学院赛事）
-  const preferred = managers.find(m => m.role_code === 'competition_manager')
-    || managers.find(m => m.role_code === 'teacher')
-    || managers.find(m => m.role_code !== 'college_admin')
-    || managers[0]
-  if (!preferred) throw new Error('无可用赛事负责人')
-  const managerId = preferred.id
-  console.log(`[multi-college] 赛事负责人使用 ${preferred.username || preferred.realname}#${managerId}`)
-
-  const sharedName = `${RUN_TAG}多学院并行·校级共享赛`
-  const collegeAName = `${RUN_TAG}多学院并行·甲学院省赛`
-  const collegeBName = `${RUN_TAG}多学院并行·乙学院省赛`
-
-  let shared = await findCompByName(token, sharedName)
-  if (!shared) {
-    shared = await createComp(token, {
-      comp_name: sharedName, comp_level: '校级', comp_type: '学科竞赛',
-      organizer: '校教务处', undertaker: '教务处',
-      manager_id: managerId, year: YEAR, desc: '多学院并行填报 E2E 共享赛事',
-    })
+async function ensureCompetitions(token, managerIds) {
+  const collegeTokens = await Promise.all(COLLEGES.map(async (_, index) => {
+    const { username, password } = collegeAdmin(index)
+    const login = await post('/api/login', { username, password })
+    return login.token
+  }))
+  const createCompetition = async (sourceIndex, hostIndex, suffix, level) => {
+    const name = `${RUN_TAG}多学院并行·${suffix}`
+    const creator = collegeTokens[sourceIndex]
+    const { declaration } = await post('/api/declare', {
+      comp_name: name, comp_level: level, comp_type: '学科竞赛',
+      organizer: 'E2E 测试单位', undertaker: COLLEGES[hostIndex].name,
+      manager_id: managerIds[hostIndex], college_id: COLLEGES[sourceIndex].id, year: Number(YEAR),
+    }, creator)
+    await post(`/api/declare/${declaration.id}/submit`, {}, creator)
+    await post('/api/declare/audit', { declare_id: declaration.id, audit_status: 2 }, token)
+    const competition = await findCompByName(token, name)
+    if (!competition || competition.project_source !== COLLEGES[sourceIndex].name) {
+      throw new Error(`赛事「${name}」入库后项目来源不匹配`)
+    }
+    return { id: competition.id, name }
   }
-
-  let collegeA = await findCompByName(token, collegeAName)
-  if (!collegeA) {
-    collegeA = await createComp(token, {
-      comp_name: collegeAName, comp_level: '省级', comp_type: '学科竞赛',
-      organizer: '省教务厅', undertaker: COLLEGES[0].name,
-      manager_id: managerId, college: COLLEGES[0].name, year: YEAR,
-      desc: '仅甲学院可见的隔离赛事',
-    })
+  const byCollege = []
+  for (let i = 0; i < COLLEGES.length; i++) {
+    const source = COLLEGES[i]
+    byCollege.push(await createCompetition(i, (i + 1) % COLLEGES.length, `${source.short}来源校赛`, '校级'))
   }
-
-  let collegeB = await findCompByName(token, collegeBName)
-  if (!collegeB) {
-    collegeB = await createComp(token, {
-      comp_name: collegeBName, comp_level: '省级', comp_type: '学科竞赛',
-      organizer: '省教务厅', undertaker: COLLEGES[1].name,
-      manager_id: managerId, college: COLLEGES[1].name, year: YEAR,
-      desc: '仅乙学院可见的隔离赛事',
-    })
-  }
-
-  console.log(
-    `[multi-college] 赛事就绪 shared#${shared.id} A#${collegeA.id}(${COLLEGES[0].name}) B#${collegeB.id}(${COLLEGES[1].name})`,
-  )
   return {
-    shared: { id: shared.id, name: sharedName },
-    collegeA: { id: collegeA.id, name: collegeAName },
-    collegeB: { id: collegeB.id, name: collegeBName },
+    byCollege,
+    collegeA: await createCompetition(0, 0, '甲学院省赛', '省级'),
+    collegeB: await createCompetition(1, 1, '乙学院省赛', '省级'),
   }
 }
 

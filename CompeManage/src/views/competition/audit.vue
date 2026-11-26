@@ -12,7 +12,8 @@ const userStore = useUserStore();
 const currentRole = computed(() => userStore.role);
 
 // 顶部 Tab 选项卡
-const activeTab = ref('pending'); // pending: 待审核/草稿, history: 审核记录/已发布
+const activeTab = ref(currentRole.value === 'college_admin' ? 'mine' : 'pending');
+const isAuditView = computed(() => ['pending', 'history'].includes(activeTab.value));
 
 // 搜索表单数据
 const searchForm = reactive({
@@ -65,15 +66,16 @@ const handleCurrentChange = (val) => {
 // 表格数据
 // 审核状态字典：0-草稿(未提交), 1-待审核, 2-已通过(入库), 3-已驳回
 const tableData = ref([]);
+let searchRequest = 0;
 
 // 搜索和获取列表
 const handleSearch = async () => {
+    const request = ++searchRequest;
     loading.value = true;
     try {
         let res;
         
-        if (currentRole.value === 'school_admin') {
-            // 校级管理员：根据 Tab 调用不同接口
+        if (isAuditView.value) {
             if (activeTab.value === 'pending') {
                 // 待审核申报
                 res = await api.getPendingDeclares({
@@ -96,8 +98,8 @@ const handleSearch = async () => {
             }
         } else {
             // 院级管理员：根据 Tab 调用不同接口
-            if (activeTab.value === 'pending') {
-                // 我的待审核申报
+            if (activeTab.value === 'mine') {
+                // 我的草稿、已提交和驳回申报
                 res = await api.getMyPendingDeclares({
                     page: current_page.value,
                     page_size: page_size.value,
@@ -115,13 +117,14 @@ const handleSearch = async () => {
             }
         }
         
-        if (res.code === 200 && res.data) {
+        if (request === searchRequest && res.code === 200 && res.data) {
             // 转换 API 数据格式
             tableData.value = res.data.items.map(item => ({
                 id: item.id,
                 comp_name: item.comp_name,
                 comp_level: item.comp_level,
                 college: item.college_info?.name || '',
+                projectSource: item.project_source || '',
                 applicant: item.declarer?.realname || '',
                 apply_time: new Date(item.create_time).toLocaleDateString('zh-CN'),
                 audit_status: item.declare_status,
@@ -132,10 +135,12 @@ const handleSearch = async () => {
             total.value = res.data.total || 0;
         }
     } catch (error) {
-        ElMessage.error('获取申报列表失败');
-        console.error(error);
+        if (request === searchRequest) {
+            ElMessage.error('获取申报列表失败');
+            console.error(error);
+        }
     } finally {
-        loading.value = false;
+        if (request === searchRequest) loading.value = false;
     }
 };
 
@@ -159,7 +164,7 @@ const filteredTableData = computed(() => {
 });
 
 
-// [校管理员] 通过审核
+// 通过审核
 const handleApprove = (row) => {
     ElMessageBox.confirm(
         `确定通过 "${row.comp_name}" 吗？通过后将自动加入本年年度赛事目录。`,
@@ -184,7 +189,7 @@ const handleApprove = (row) => {
     }).catch(() => {});
 };
 
-// [校管理员] 批量通过
+// 批量通过
 const handleBatchApprove = () => {
     if (batchAuditing.value) return;
     if (multipleSelection.value.length === 0) {
@@ -366,6 +371,9 @@ onMounted(() => {
 // 监听 Tab 切换，重新加载数据
 watch(() => activeTab.value, () => {
     current_page.value = 1; // 重置分页
+    tableData.value = [];
+    multipleSelection.value = [];
+    total.value = 0;
     handleSearch();
 });
 </script>
@@ -378,7 +386,8 @@ watch(() => activeTab.value, () => {
                     <el-input v-model="searchForm.comp_name" placeholder="请输入赛事名称" clearable style="width: 220px" @keyup.enter="handleSearch" @clear="handleSearch" />
                 </el-form-item>
                 <el-form-item label="所属单位" v-if="currentRole === 'school_admin'">
-                    <el-select v-model="searchForm.college" placeholder="全部学院" clearable style="width: 220px" fit-input-width @change="handleSearch">
+                    <el-select v-model="searchForm.college" placeholder="全部单位" clearable filterable
+                        style="width: 220px" fit-input-width @change="handleSearch">
                         <el-option
                             v-for="college in collegeList"
                             :key="college.id"
@@ -389,7 +398,7 @@ watch(() => activeTab.value, () => {
                         </el-option>
                     </el-select>
                 </el-form-item>
-                <el-form-item label="审核状态" v-if="currentRole === 'school_admin' && activeTab === 'history'">
+                <el-form-item label="审核状态" v-if="activeTab === 'history'">
                     <el-select v-model="searchForm.status" placeholder="全部状态" clearable style="width: 150px" @change="handleSearch">
                         <el-option label="已通过" :value="2" />
                         <el-option label="已驳回" :value="3" />
@@ -404,20 +413,22 @@ watch(() => activeTab.value, () => {
 
         <div class="content-card">
             <el-tabs v-model="activeTab" class="custom-tabs">
-                <el-tab-pane :label="currentRole === 'school_admin' ? '待审核申报' : '我的申报列表'" name="pending"></el-tab-pane>
-                <el-tab-pane :label="currentRole === 'school_admin' ? '审核记录' : '已发布/历史'" name="history"></el-tab-pane>
+                <el-tab-pane v-if="currentRole === 'college_admin'" label="我的申报列表" name="mine" />
+                <el-tab-pane v-if="currentRole === 'college_admin'" label="我的已发布申报" name="published" />
+                <el-tab-pane label="待审核申报" name="pending" />
+                <el-tab-pane label="审核记录" name="history" />
             </el-tabs>
 
             <div class="toolbar">
                 <div class="left-actions">
-                    <template v-if="currentRole === 'school_admin' && activeTab === 'pending'">
+                    <template v-if="activeTab === 'pending'">
                         <el-button type="success" :icon="Check" :loading="batchAuditing" @click="handleBatchApprove"
                             :disabled="multipleSelection.length === 0">
                             批量通过
                         </el-button>
                     </template>
 
-                    <template v-if="currentRole === 'college_admin' && activeTab === 'pending'">
+                    <template v-if="currentRole === 'college_admin' && activeTab === 'mine'">
                         <el-button type="primary" :icon="Promotion" @click="router.push({ name: 'CompetitionDeclare' })">
                             新增申报
                         </el-button>
@@ -439,8 +450,9 @@ watch(() => activeTab.value, () => {
                 <!-- 列宽合计控制在 980px 内（卡片可用宽度），避免表格出现横向滚动条 -->
                 <el-table-column prop="comp_name" label="赛事名称" min-width="120" show-overflow-tooltip align="center"/>
                 <el-table-column prop="comp_level" label="级别" width="70" align="center" />
-                <el-table-column prop="college" label="申报学院" min-width="110" show-overflow-tooltip align="center" />
-                <el-table-column v-if="currentRole === 'school_admin'" prop="applicant" label="申报人" width="80" align="center" />
+                <el-table-column prop="college" label="申报单位" min-width="110" show-overflow-tooltip align="center" />
+                <el-table-column prop="projectSource" label="项目来源" min-width="110" show-overflow-tooltip align="center" />
+                <el-table-column v-if="isAuditView" prop="applicant" label="申报人" width="80" align="center" />
                 <el-table-column prop="manager" label="赛事负责人" width="95" align="center" />
                 <el-table-column prop="apply_time" label="申报时间" width="110" show-overflow-tooltip align="center" />
                 <el-table-column label="备注/原因" width="120" show-overflow-tooltip align="center">
@@ -452,19 +464,19 @@ watch(() => activeTab.value, () => {
 
                 <el-table-column label="操作" width="240" align="center" fixed="right">
                     <template #default="{ row }">
-                        <div v-if="currentRole === 'school_admin' && row.audit_status === 1">
+                        <div v-if="activeTab === 'pending' && row.audit_status === 1">
                             <el-button link type="info" :icon="View" @click="handleViewDetail(row)">详情</el-button>
                             <el-button link type="success" :icon="Check" @click="handleApprove(row)">通过</el-button>
                             <el-button link type="danger" :icon="Close" @click="openRejectDialog(row)">驳回</el-button>
                         </div>
 
-                        <div v-else-if="currentRole === 'college_admin' && [0, 3].includes(row.audit_status)">
+                        <div v-else-if="activeTab === 'mine' && [0, 3].includes(row.audit_status)">
                             <el-button link type="primary" :icon="Edit" @click="handleEdit(row)">编辑</el-button>
                             <el-button link type="success" :icon="Promotion" @click="handleSubmitAudit(row)">提交</el-button>
                             <el-button link type="danger" :icon="Delete" @click="handleDeleteDraft(row)">删除</el-button>
                         </div>
 
-                        <div v-else-if="currentRole === 'college_admin' && row.audit_status === 1">
+                        <div v-else-if="activeTab === 'mine' && row.audit_status === 1">
                             <el-button link type="warning" :icon="Refresh" @click="handleRevoke(row)">撤回</el-button>
                             <el-button link type="info" :icon="View" @click="handleViewDetail(row)">详情</el-button>
                         </div>

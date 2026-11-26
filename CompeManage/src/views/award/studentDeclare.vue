@@ -768,6 +768,7 @@ onMounted(async () => {
             v-model="searchForm.college"
             placeholder="选择学院"
             clearable
+            filterable
             fit-input-width
             @change="fetchStudentList"
             @clear="fetchStudentList"

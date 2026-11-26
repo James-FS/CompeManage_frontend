@@ -267,7 +267,7 @@ onBeforeUnmount(() => {
             v-model="filters.college_id"
             clearable
             filterable
-            placeholder="全部学院"
+            placeholder="全部单位"
             fit-input-width
             @change="handleFilterChange"
           >
@@ -318,6 +318,7 @@ onBeforeUnmount(() => {
           <el-empty v-if="!userList.length" description="暂无用户" />
         </div>
         <el-pagination
+          v-if="total > 0"
           class="pagination"
           background
           layout="prev, pager, next"
