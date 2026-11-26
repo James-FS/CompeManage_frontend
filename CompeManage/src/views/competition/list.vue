@@ -287,7 +287,7 @@ const handleBatchDelete = async () => {
     }).catch(() => { });
 };
 
-// 负责老师学院：显示创建/负责老师所属学院；缺少老师学院信息时回退到承办学院。
+// 项目来源：显示创建/负责老师所属学院；缺少老师学院信息时回退到承办学院。
 // 注意：赛事归属按"承办学院"（college_id）过滤，本列仅供了解负责老师来源。
 const getProjectSourceText = (competition) =>
     competition?.manager?.college || competition?.college_info?.name || '-';
@@ -337,7 +337,7 @@ const handleExport = async () => {
                 '承办单位': item.undertaker || '-',
                 '赛事负责人': item.manager?.realname || '-',
                 '所属单位': item.college_info?.name || '-',
-                '负责老师学院': getProjectSourceText(item),
+                '项目来源': getProjectSourceText(item),
                 '状态': statusText,
             };
         });
@@ -635,7 +635,7 @@ onMounted(async () => {
                         {{ scope.row.college_info?.name || '-' }}
                     </template>
                 </el-table-column>
-                <el-table-column label="负责老师学院" min-width="140" align="center" show-overflow-tooltip>
+                <el-table-column label="项目来源" min-width="140" align="center" show-overflow-tooltip>
                     <template #default="scope">
                         {{ getProjectSourceText(scope.row) }}
                     </template>
