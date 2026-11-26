@@ -42,7 +42,7 @@ test.describe('通知详情页面 - 基本功能', () => {
     await page.fill('input[placeholder="请填写主办单位"]', '测试主办方')
 
     // 选择学院
-    const collegeSelect = page.locator('.el-form-item').filter({ hasText: '所属学院' }).locator('.el-select')
+    const collegeSelect = page.locator('.el-form-item').filter({ hasText: '所属单位' }).locator('.el-select')
     await collegeSelect.click()
     await page.waitForTimeout(300)
     await page.getByRole('option').first().click()

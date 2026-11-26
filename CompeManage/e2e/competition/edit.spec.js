@@ -42,7 +42,7 @@ async function createTestCompetition(page) {
   await selectElOption(page, '赛事类型', '学科竞赛')
 
   // 选择学院
-  const collegeSelect = page.locator('.el-form-item').filter({ hasText: '所属学院' }).locator('.el-select').first()
+  const collegeSelect = page.locator('.el-form-item').filter({ hasText: '所属单位' }).locator('.el-select').first()
   await collegeSelect.click()
   await page.waitForTimeout(400)
   await page.getByRole('option').first().click()
@@ -105,7 +105,7 @@ test.describe('编辑赛事页面 - 页面加载与数据回显', () => {
     await expect(page.locator('.el-form-item').filter({ hasText: '赛事名称' })).toBeVisible()
     await expect(page.locator('.el-form-item').filter({ hasText: '赛事级别' })).toBeVisible()
     await expect(page.locator('.el-form-item').filter({ hasText: '赛事类型' })).toBeVisible()
-    await expect(page.locator('.el-form-item').filter({ hasText: '所属学院' })).toBeVisible()
+    await expect(page.locator('.el-form-item').filter({ hasText: '所属单位' })).toBeVisible()
     await expect(page.locator('.el-form-item').filter({ hasText: '主办单位' })).toBeVisible()
     await expect(page.locator('.el-form-item').filter({ hasText: '承办单位' })).toBeVisible()
     await expect(page.locator('.el-form-item').filter({ hasText: '赛事负责人' })).toBeVisible()
@@ -141,11 +141,11 @@ test.describe('编辑赛事页面 - 页面加载与数据回显', () => {
     console.log(`回显赛事类型: ${selectedText.trim()}`)
   })
 
-  test('数据回显 - 所属学院', async ({ page }) => {
-    const collegeFormItem = page.locator('.el-form-item').filter({ hasText: '所属学院' })
+  test('数据回显 - 所属单位', async ({ page }) => {
+    const collegeFormItem = page.locator('.el-form-item').filter({ hasText: '所属单位' })
     const selectedText = await collegeFormItem.locator('.el-select__placeholder span').textContent()
     expect(selectedText.trim().length).toBeGreaterThan(0)
-    console.log(`回显所属学院: ${selectedText.trim()}`)
+    console.log(`回显所属单位: ${selectedText.trim()}`)
   })
 
   test('数据回显 - 赛事负责人', async ({ page }) => {
@@ -214,8 +214,8 @@ test.describe('编辑赛事页面 - 表单编辑操作', () => {
     expect(selectedText.trim()).toBe('创新创业竞赛')
   })
 
-  test('修改所属学院', async ({ page }) => {
-    const collegeFormItem = page.locator('.el-form-item').filter({ hasText: '所属学院' })
+  test('修改所属单位', async ({ page }) => {
+    const collegeFormItem = page.locator('.el-form-item').filter({ hasText: '所属单位' })
     const collegeSelect = collegeFormItem.locator('.el-select').first()
     await collegeSelect.click()
     await page.waitForTimeout(400)
@@ -523,10 +523,10 @@ test.describe('编辑赛事页面 - 表单验证', () => {
     expect(errorCount).toBeGreaterThan(0)
   })
 
-  test('清空所属学院后提交触发验证', async ({ page }) => {
+  test('清空所属单位后提交触发验证', async ({ page }) => {
     // college 的 el-select 有 clearable
     // Element Plus Select 的 clear 按钮在 hover 时出现在 .el-select__wrapper 内
-    const collegeFormItem = page.locator('.el-form-item').filter({ hasText: '所属学院' })
+    const collegeFormItem = page.locator('.el-form-item').filter({ hasText: '所属单位' })
     const collegeWrapper = collegeFormItem.locator('.el-select__wrapper').first()
 
     // hover 在 wrapper 上触发 clear 按钮

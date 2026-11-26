@@ -4,7 +4,7 @@ import * as XLSX from 'xlsx'
 // competition/add.vue Excel 批量导入 Tab 定向覆盖：
 // 解析/格式校验/自动匹配负责人、工号回车匹配、提交校验三分支、确认导入成功与失败
 
-const HEADER = ['赛事名称', '赛事级别', '赛事类型', '主办单位', '承办单位', '赛事负责人工号', '赛事负责人姓名', '所属学院', '年份', '备注']
+const HEADER = ['赛事名称', '赛事级别', '赛事类型', '主办单位', '承办单位', '赛事负责人工号', '赛事负责人姓名', '所属单位', '年份', '备注']
 
 function excelBuffer(rows) {
   const wb = XLSX.utils.book_new()
@@ -101,7 +101,7 @@ test('格式校验与空表拦截', async ({ page }) => {
   await toast(page, '表格内容为空')
 })
 
-test('提交校验：字段缺失、学院不存在和非法年份', async ({ page }) => {
+test('提交校验：字段缺失和非法年份，所属单位从负责人读取', async ({ page }) => {
   const state = await setup(page)
   // 缺级别/负责人
   await uploadExcel(page, [['缺字段赛事', '', '学科竞赛', '主办', '承办', 'T2023012', '', '计算机学院', '2026', '']])
@@ -110,15 +110,10 @@ test('提交校验：字段缺失、学院不存在和非法年份', async ({ pa
   await toast(page, '存在赛事名称、级别或负责人为空的数据')
   expect(state.imported).toBeUndefined()
 
-  // 学院不存在（先回填负责人保证通过前置校验）
-  await uploadExcel(page, [['学院错误赛事', '校级', '学科竞赛', '主办', '承办', 'T2023012', '', '不存在学院', '2026', '']])
-  await page.getByRole('button', { name: /确认导入/ }).click()
-  await toast(page, '不存在，请检查后重试')
-  expect(state.imported).toBeUndefined()
-
-  await uploadExcel(page, [['年份错误赛事', '校级', '学科竞赛', '主办', '承办', 'T2023012', '', '计算机学院', 0, '']])
+  await uploadExcel(page, [['年份错误赛事', '校级', '学科竞赛', '主办', '承办', 'T2023012', '', '旧表中的单位', 0, '']])
   await expect(page.getByPlaceholder('年份')).toHaveValue('0')
   await expect(page.getByPlaceholder('自动匹配或点击选择')).toHaveValue('何老师')
+  await expect(page.getByRole('cell', { name: '计算机学院', exact: true })).toBeVisible()
   await page.getByRole('button', { name: /确认导入/ }).click()
   await toast(page, '所属年份须为1000至9999的4位数字')
   expect(state.imported).toBeUndefined()
@@ -143,6 +138,19 @@ test('确认导入成功与失败', async ({ page }) => {
   await page.getByRole('button', { name: /确认导入/ }).click()
   await page.locator('.el-message-box').getByRole('button', { name: /确认|确定/ }).click()
   await toast(page, /导入服务不可用|导入失败/)
+})
+
+test('允许暂缺级别和负责人时，将赛事提交至目录', async ({ page }) => {
+  const state = await setup(page)
+  await uploadExcel(page, [['待补充级别的赛事', '', '', '', '', '', '', '计算机学院', '2026', '']])
+  await page.getByText('允许暂缺级别和负责人', { exact: true }).click()
+  await page.getByRole('button', { name: /确认导入/ }).click()
+  await page.locator('.el-message-box').getByRole('button', { name: /确认|确定/ }).click()
+  await expect.poll(() => state.imported).toMatchObject({
+    allow_incomplete: true,
+    items: [{ comp_name: '待补充级别的赛事', comp_level: '', manager_id: 0, year: '2026' }],
+  })
+  await page.waitForURL(/\/competition\/list/)
 })
 
 test('工号回车匹配与未匹配提示', async ({ page }) => {

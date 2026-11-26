@@ -58,7 +58,7 @@ test('看板一键导出 2025 上报 Excel：三表结构与数据量', async ({
 
   const ws3 = wb.Sheets['汇总表']
   const aoa3 = XLSX.utils.sheet_to_json(ws3, { header: 1, raw: false })
-  const sumHeader = aoa3.find(r => r.some(c => String(c || '').includes('承办学院')))
+  const sumHeader = aoa3.find(r => r.some(c => String(c || '').includes('所属单位')))
   expect(sumHeader.join('|')).toContain('竞赛名称')
   expect(sumHeader.join('|')).toContain('合计')
   const sumRows = aoa3.filter(r => r[0] !== undefined && r[0] !== '' && !Number.isNaN(Number(r[0])))

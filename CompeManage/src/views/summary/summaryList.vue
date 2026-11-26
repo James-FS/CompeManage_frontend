@@ -191,7 +191,7 @@ onMounted(() => {
                 <el-table-column prop="comp_name" label="赛事名称" min-width="160" show-overflow-tooltip align="center" />
                 <el-table-column prop="organizer" label="主办单位" min-width="120" show-overflow-tooltip align="center" />
                 <el-table-column prop="undertaker" label="承办单位" min-width="120" show-overflow-tooltip align="center" />
-                <el-table-column label="所属学院" min-width="140" align="center" show-overflow-tooltip>
+                <el-table-column label="所属单位" min-width="140" align="center" show-overflow-tooltip>
                     <template #default="scope">
                         {{ scope.row.college_info?.name || '-' }}
                     </template>

@@ -52,7 +52,7 @@ test('看板详细统计：转化率列、柱状图与三合一导出', async ({
   const s1 = XLSX.utils.sheet_to_json(wb.Sheets['附件1'], { header: 1 })
   expect(s1[2]).toContain('上报学院')
   const s3 = XLSX.utils.sheet_to_json(wb.Sheets['汇总表'], { header: 1 })
-  expect(s3[1]).toContain('承办学院')
+  expect(s3[1]).toContain('所属单位')
   expect(s3[1]).toContain('合计')
   console.log('✅ 三合一导出 UI 链路通过：附件1/附件2/汇总表')
 })

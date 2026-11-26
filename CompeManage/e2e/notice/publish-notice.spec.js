@@ -62,10 +62,10 @@ test.describe('赛事通知发布 E2E 测试', () => {
     await page.fill('input[placeholder="请填写主办单位"]', 'E2E测试主办方')
     await page.fill('input[placeholder="请填写承办单位"]', 'E2E测试承办方')
 
-    // 选择所属学院
+    // 选择所属单位
     const collegeSelect = page
       .locator('.el-form-item')
-      .filter({ hasText: '所属学院' })
+      .filter({ hasText: '所属单位' })
       .locator('.el-select')
     await collegeSelect.click()
     const firstCollegeOption = page.getByRole('option').first()
@@ -259,7 +259,7 @@ test.describe('赛事通知发布 E2E 测试', () => {
 
     const collegeSelect = page
       .locator('.el-form-item')
-      .filter({ hasText: '所属学院' })
+      .filter({ hasText: '所属单位' })
       .locator('.el-select')
     await collegeSelect.click()
     const firstOpt = page.getByRole('option').first()
@@ -367,7 +367,7 @@ test.describe('赛事通知发布 E2E 测试', () => {
 
     const collegeSelect = page
       .locator('.el-form-item')
-      .filter({ hasText: '所属学院' })
+      .filter({ hasText: '所属单位' })
       .locator('.el-select')
     await collegeSelect.click()
     const firstOpt = page.getByRole('option').first()

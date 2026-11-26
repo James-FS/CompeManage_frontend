@@ -16,6 +16,7 @@ async function setup(page, opts = {}) {
     localStorage.setItem('userInfo', JSON.stringify({ id: 1, name: '管理员', username: 'T2023001' }))
   })
   const state = { audits: [], lastListUrl: '' }
+  const rows = opts.rows ?? ROWS
   await page.route((url) => url.pathname.startsWith('/api/'), async (route) => {
     const req = route.request(), url = new URL(req.url())
     const p = url.pathname
@@ -25,7 +26,11 @@ async function setup(page, opts = {}) {
         await route.fulfill({ json: { code: 500, message: '列表服务不可用' } })
         return
       }
-      await route.fulfill({ json: { code: 200, message: 'success', data: { list: ROWS, total: ROWS.length } } })
+      await route.fulfill({ json: { code: 200, message: 'success', data: { list: rows, total: rows.length } } })
+      return
+    }
+    if (p === '/api/reg/detail' && opts.detail) {
+      await route.fulfill({ json: { code: 200, message: 'success', data: opts.detail } })
       return
     }
     if (p === '/api/reg/audit') {
@@ -40,12 +45,35 @@ async function setup(page, opts = {}) {
     await route.fulfill({ json: { code: 200, message: 'success', data: { capabilities: { can_edit_registration: true } } } })
   })
   await page.goto('/#/register/audit')
-  if (!opts.listFail) await expect(page.locator('.el-table__body tr')).toHaveCount(3)
+  if (!opts.listFail) await expect(page.locator('.el-table__body tr')).toHaveCount(rows.length)
   return state
 }
 
 async function toast(page, text) {
   await expect(page.locator('.el-message').filter({ hasText: text }).first()).toBeVisible()
+}
+
+for (const [status, label] of [
+  [3, '补录待审核'],
+  [4, '补录已通过'],
+  [5, '补录已驳回'],
+  [99, '未知'],
+]) {
+  test(`报名状态 ${status} 可以打开详情`, async ({ page }) => {
+    const row = { ...ROWS[0], status }
+    await setup(page, {
+      rows: [row],
+      detail: { ...row, team_name: '报名详情队伍', reject_reason: '请补充材料' },
+    })
+    const listRow = page.locator('.el-table__body tr').first()
+    const listStatus = await listRow.locator('.status-dot-wrapper').innerText()
+    await listRow.getByRole('button', { name: '详情' }).click()
+    await expect.soft(page.getByText('报名详情队伍', { exact: true })).toBeVisible()
+    await expect.soft(page.locator('.status-tag')).toHaveText(label)
+    expect(listStatus).toBe(label)
+    await expect(page.locator('.action-footer')).toHaveCount(0)
+    if (status === 5) await expect(page.getByText('请补充材料')).toBeVisible()
+  })
 }
 
 test('快捷通过：确认后置状态、失败回滚并提示', async ({ page }) => {

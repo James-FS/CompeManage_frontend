@@ -800,10 +800,10 @@ onMounted(async () => {
                   </el-form-item>
                 </el-col>
                 <el-col :span="8" :xs="24">
-                  <el-form-item label="所属学院" prop="leader.college">
+                  <el-form-item label="所属单位" prop="leader.college">
                     <el-input
                       v-model="formData.leader.college"
-                      placeholder="所属学院"
+                      placeholder="所属单位"
                       :disabled="true"
                     />
                   </el-form-item>
@@ -908,13 +908,13 @@ onMounted(async () => {
 
                     <el-col :span="8" :xs="24">
                       <el-form-item
-                        label="所属学院"
+                        label="所属单位"
                         :prop="'members.' + i + '.college'"
-                        :rules="{ required: true, message: '请输入所属学院', trigger: 'blur' }"
+                        :rules="{ required: true, message: '请输入所属单位', trigger: 'blur' }"
                       >
                         <el-input
                           v-model="m.college"
-                          placeholder="所属学院"
+                          placeholder="所属单位"
                           :disabled="true"
                         />
                       </el-form-item>
@@ -968,7 +968,7 @@ onMounted(async () => {
                       </el-form-item>
                     </el-col>
                     <el-col :span="8" :xs="24">
-                      <el-form-item label="所属部门">
+                      <el-form-item label="所属单位">
                         <el-input :model-value="advisor.college" disabled />
                       </el-form-item>
                     </el-col>
@@ -1031,11 +1031,12 @@ onMounted(async () => {
             style="width: 120px"
           />
         </el-form-item>
-        <el-form-item :label="isSelectingAdvisor ? '所属部门' : '所属学院'">
+        <el-form-item :label="isSelectingAdvisor ? '所属部门' : '所属单位'">
           <el-select
             v-model="searchForm.college"
-            :placeholder="isSelectingAdvisor ? '选择部门' : '选择学院'"
+            :placeholder="isSelectingAdvisor ? '选择部门' : '选择单位'"
             clearable
+            filterable
             @change="fetchStudentList"
             @clear="fetchStudentList"
             popper-class="dept-select-popper"
@@ -1066,7 +1067,7 @@ onMounted(async () => {
     >
       <el-table-column prop="username" :label="isSelectingAdvisor ? '工号' : '学号'" width="120" align="center" />
       <el-table-column prop="name" label="姓名" width="120" align="center" />
-      <el-table-column prop="college" :label="isSelectingAdvisor ? '所属部门' : '所属学院'" min-width="200" align="center" />
+      <el-table-column prop="college" :label="isSelectingAdvisor ? '所属部门' : '所属单位'" min-width="200" align="center" />
       <el-table-column label="操作" width="100" align="center" fixed="right">
         <template #default="{ row }">
           <el-button type="primary" link @click="selectStudent(row)">选择</el-button>

@@ -262,12 +262,12 @@ onBeforeUnmount(() => {
             <el-option v-for="item in identityOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
         </el-form-item>
-        <el-form-item label="所属学院">
+        <el-form-item label="所属单位">
           <el-select
             v-model="filters.college_id"
             clearable
             filterable
-            placeholder="全部学院"
+            placeholder="全部单位"
             fit-input-width
             @change="handleFilterChange"
           >
@@ -318,6 +318,7 @@ onBeforeUnmount(() => {
           <el-empty v-if="!userList.length" description="暂无用户" />
         </div>
         <el-pagination
+          v-if="total > 0"
           class="pagination"
           background
           layout="prev, pager, next"

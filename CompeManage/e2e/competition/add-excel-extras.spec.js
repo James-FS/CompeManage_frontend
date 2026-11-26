@@ -4,7 +4,7 @@ import * as XLSX from 'xlsx'
 // add.vue Excel 簇残余：行内负责人选择（excel 分支）、行移除、解析失败、
 // 弹窗列表失败双分支、提交守卫
 
-const HEADER = ['赛事名称', '赛事级别', '赛事类型', '主办单位', '承办单位', '赛事负责人工号', '赛事负责人姓名', '所属学院', '年份', '备注']
+const HEADER = ['赛事名称', '赛事级别', '赛事类型', '主办单位', '承办单位', '赛事负责人工号', '赛事负责人姓名', '所属单位', '年份', '备注']
 
 function excelBuffer(rows) {
   const wb = XLSX.utils.book_new()

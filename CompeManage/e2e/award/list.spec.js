@@ -5,6 +5,39 @@ import { login } from '../helpers/auth'
 
 const LIST_URL = '/#/award/list'
 
+test('筹备赛事在获奖填报显示未开始，进行中筛选只显示已开始的赛事', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('token', 'award-status-test')
+    localStorage.setItem('role', 'school_admin')
+    localStorage.setItem('userInfo', JSON.stringify({ id: 1, username: 'school-admin' }))
+  })
+  const events = [
+    { id: 1, comp_name: '待补全赛事', comp_level: '', status: 0, year: 2026 },
+    { id: 2, comp_name: '已开始赛事', comp_level: '省级', status: 1, year: 2026 },
+    { id: 3, comp_name: '已结束赛事', comp_level: '校级', status: 2, year: 2026 },
+  ]
+  await page.route(url => url.pathname.startsWith('/api/'), async route => {
+    const url = new URL(route.request().url())
+    if (url.pathname !== '/api/award/list') {
+      await route.fulfill({ json: { code: 200, data: { capabilities: {} } } })
+      return
+    }
+    const status = url.searchParams.get('status')
+    const list = status === 'ongoing' ? events.filter(event => event.status === 1) : events
+    await route.fulfill({ json: { code: 200, data: { list, total: list.length } } })
+  })
+
+  await page.goto(LIST_URL)
+  const draft = page.locator('.comp-card').filter({ hasText: '待补全赛事' })
+  await expect(draft.locator('.status-badge')).toHaveText('未开始')
+  await expect(draft.locator('.level-tag')).toHaveText('级别待补充')
+  await expect(draft.getByRole('button', { name: '导入获奖名单' })).toBeVisible()
+  await expect(page.locator('.comp-card').filter({ hasText: '已结束赛事' }).locator('.status-badge')).toHaveText('已结束')
+
+  await page.getByText('全部状态', { exact: true }).click()
+  await page.getByRole('option', { name: '进行中' }).click()
+  await expect(page.locator('.comp-card .status-badge')).toHaveText(['进行中'])
+})
 
 
 async function waitForListLoad(page) {
@@ -36,10 +69,6 @@ test.describe('获奖填报列表页面', () => {
 
     // 验证卡片列表容器
     await expect(page.locator('.comp-list')).toBeVisible()
-
-    // 验证分页器
-    await expect(page.locator('.pagination-container')).toBeVisible()
-    await expect(page.locator('.el-pagination')).toBeVisible()
   })
 
   test('数据加载验证', async ({ page }) => {
@@ -94,7 +123,7 @@ test.describe('获奖填报列表页面', () => {
 
       if (hasBadge) {
         const badgeText = await badge.textContent()
-        const isvalid = badgeText.trim() === '进行中' || badgeText.trim() === '已结束'
+        const isvalid = ['未开始', '进行中', '已结束'].includes(badgeText.trim())
         expect(isvalid).toBe(true)
         console.log(`第 ${i + 1} 张卡片状态: ${badgeText.trim()}`)
       }
@@ -190,6 +219,10 @@ test.describe('获奖填报列表页面', () => {
 
     // 验证分页器可见
     const pagination = page.locator('.pagination-container .el-pagination')
+    if (await page.getByText('暂无可填报的赛事').isVisible()) {
+      await expect(pagination).toHaveCount(0)
+      return
+    }
     await expect(pagination).toBeVisible()
 
     // 读取总数

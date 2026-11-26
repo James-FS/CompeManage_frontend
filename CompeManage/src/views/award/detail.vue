@@ -24,7 +24,10 @@ const userStore = useUserStore()
 const dataLoaded = ref(false)
 const competitionName = ref('')
 const teams = ref([])
+const teamCount = ref(0)
+const studentCount = ref(0)
 const keyword = ref('')
+const searchKeyword = ref('')
 const categoryFilter = ref('')
 const levelFilter = ref('')
 const page = ref(1)
@@ -36,69 +39,32 @@ const teamEdit = ref(null)
 const teamAdvisorsChanged = ref(false)
 const memberEdit = ref(null)
 const saving = ref(false)
+const exporting = ref(false)
 const deletingAwardID = ref('')
 const colleges = ref([])
 const competitionOptions = ref([])
 let competitionSearchTimer = null
 let competitionSearchRequest = 0
 let awardDataRequest = 0
-const awardLevelMatches = (awardName, selectedLevel) => {
-  if (!selectedLevel) return true
-  const value = String(awardName || '').replace(/[\s\u3000（）()]/g, '')
-  const aliases = {
-    一等奖: ['一等奖', '一等', '冠军', '金奖', '特等奖'],
-    金奖: ['一等奖', '一等', '冠军', '金奖', '特等奖'],
-    冠军: ['一等奖', '一等', '冠军', '金奖', '特等奖'],
-    二等奖: ['二等奖', '二等', '亚军', '银奖'],
-    银奖: ['二等奖', '二等', '亚军', '银奖'],
-    亚军: ['二等奖', '二等', '亚军', '银奖'],
-    三等奖: ['三等奖', '三等', '季军', '铜奖'],
-    铜奖: ['三等奖', '三等', '季军', '铜奖'],
-    季军: ['三等奖', '三等', '季军', '铜奖'],
-  }
-  return (aliases[selectedLevel] || [selectedLevel]).some(alias => value.includes(alias))
-}
-const awardCategoryMatches = (category, selectedCategory) => {
-  if (!selectedCategory) return true
-  if (selectedCategory === '校级') return ['校级', '校赛'].includes(category)
-  if (selectedCategory === '国家级') return ['国家级', '国际级'].includes(category)
-  return category === selectedCategory
-}
-const filteredTeams = computed(() => teams.value.filter(t => {
-  const searchText = keyword.value.trim().toLowerCase()
-  const advisorText = [
-    advisorNames(t.advisor_info),
-    ...(t.advisors || []).flatMap(advisor => [advisor.name, advisor.username, advisor.college]),
-  ].join(' ').toLowerCase()
-  const keywordMatches = !searchText || [
-    t.project_name,
-    ...((t.members || []).map(m => `${m.name} ${m.student_id} ${m.college}`)),
-    advisorText,
-  ].some(value => String(value || '').toLowerCase().includes(searchText))
-  return keywordMatches
-    && awardCategoryMatches(t.award_category, categoryFilter.value)
-    && awardLevelMatches(t.award_name, levelFilter.value)
-}))
-const pagedTeams = computed(() => filteredTeams.value.slice((page.value - 1) * pageSize.value, page.value * pageSize.value))
+const awardFilters = () => ({
+  keyword: searchKeyword.value,
+  category: categoryFilter.value,
+  level: levelFilter.value,
+})
 const handleAwardSelectionChange = selection => { selectedAwards.value = selection }
 const isAwardSelectable = row => !!row.can_delete && !deletingAwardID.value
 const clearAwardSelection = () => {
   awardTable.value?.clearSelection()
   selectedAwards.value = []
 }
-const adjustPageAfterDeletion = () => {
-  const lastPage = Math.max(1, Math.ceil(filteredTeams.value.length / pageSize.value))
-  if (page.value > lastPage) page.value = lastPage
-}
-watch([keyword, categoryFilter, levelFilter], () => {
+watch(keyword, (value, _, onCleanup) => {
+  const timer = setTimeout(() => { searchKeyword.value = value.trim() }, 250)
+  onCleanup(() => clearTimeout(timer))
+})
+watch([searchKeyword, categoryFilter, levelFilter, pageSize], () => {
   page.value = 1
   clearAwardSelection()
-})
-watch(pageSize, () => {
-  page.value = 1
-  clearAwardSelection()
-})
-const studentCount = computed(() => filteredTeams.value.reduce((n, t) => n + t.members.length, 0))
+}, { flush: 'sync' })
 const errorMessage = e => e.response?.data?.message || e.message || '操作失败'
 const upsertCompetitionOption = competition => {
   if (!competition?.id) return
@@ -156,12 +122,20 @@ const fetchCompetitionName = async id => {
   }
 }
 const fetchData = async (id = compID.value) => {
+  if (!id) return
   const requestID = ++awardDataRequest
   dataLoaded.value = false
   try {
-    const res = await api.getCompAwards(id)
+    const res = await api.getCompAwards(id, { ...awardFilters(), page: page.value, page_size: pageSize.value })
     if (id !== compID.value || requestID !== awardDataRequest) return
     teams.value = res.data.list || []
+    teamCount.value = Number(res.data.team_count ?? teams.value.length)
+    studentCount.value = Number(res.data.student_count ?? 0)
+    const lastPage = Math.max(1, Math.ceil(teamCount.value / pageSize.value))
+    if (!teams.value.length && page.value > lastPage) {
+      page.value = lastPage
+      return
+    }
     if (memberTeam.value) memberTeam.value = teams.value.find(team => team.id === memberTeam.value.id) || null
   } catch (e) {
     if (id === compID.value && requestID === awardDataRequest) ElMessage.error(errorMessage(e))
@@ -256,7 +230,6 @@ const deleteAward = async row => {
     if (teamEdit.value?.id === row.id) teamEdit.value = null
     clearAwardSelection()
     await fetchData()
-    adjustPageAfterDeletion()
     ElMessage.success('获奖信息已删除')
   } catch (e) {
     if (!e.messageShown) ElMessage.error(errorMessage(e))
@@ -289,7 +262,6 @@ const deleteSelectedAwards = async () => {
     await api.batchDeleteAwards(compID.value, rows.map(row => row.id))
     clearAwardSelection()
     await fetchData()
-    adjustPageAfterDeletion()
     ElMessage.success(`已删除 ${rows.length} 个获奖项目`)
   } catch (e) {
     if (!e.messageShown) ElMessage.error(errorMessage(e))
@@ -298,15 +270,26 @@ const deleteSelectedAwards = async () => {
   }
 }
 const handleExport = async () => {
-  if (!studentCount.value) { ElMessage.warning('暂无可导出的成员数据'); return }
-  const exportTeams = filteredTeams.value
+  if (exporting.value) return
+  const id = compID.value
   const safeCompetitionName = (competitionName.value || `赛事${compID.value}`).replace(/[\\/:*?"<>|]/g, '_').trim()
-  let ExcelJS
-  try { ({ default: ExcelJS } = await import('exceljs')) }
-  catch (e) { ElMessage.error(errorMessage(e)); return }
+  exporting.value = true
+  try {
+    const res = await api.getCompAwards(id, { ...awardFilters(), keyword: keyword.value.trim() })
+    const exportTeams = res.data.list || []
+    if (!exportTeams.some(team => team.members.length)) {
+      ElMessage.warning('暂无可导出的成员数据')
+      return
+    }
+    await exportAwardWorkbook(exportTeams, safeCompetitionName)
+  } catch (e) { ElMessage.error(errorMessage(e)) }
+  finally { exporting.value = false }
+}
+const exportAwardWorkbook = async (exportTeams, safeCompetitionName) => {
+  const { default: ExcelJS } = await import('exceljs')
   const workbook = new ExcelJS.Workbook()
   const sheet = workbook.addWorksheet('获奖名单')
-  const headers = ['序号', '学号', '学生姓名', '所属学院', '所在专业', '参赛项目名称', '获奖时间（年/月）', '获奖类别', '获奖等级', '指导老师', '备注']
+  const headers = ['序号', '学号', '学生姓名', '所属单位', '所在专业', '参赛项目名称', '获奖时间（年/月）', '获奖类别', '获奖等级', '指导老师', '备注']
   const widths = [7, 15, 12, 23, 21, 38, 15, 13, 13, 24, 14]
   sheet.columns = headers.map((header, i) => ({ header, width: widths[i] }))
   sheet.getColumn(2).numFmt = '@'
@@ -332,15 +315,17 @@ const handleExport = async () => {
       cell.alignment = { horizontal: cell.col === 6 && !isHeader ? 'left' : 'center', vertical: 'middle', wrapText: true }
     })
   })
-  try { saveAs(new Blob([await workbook.xlsx.writeBuffer()]), `${safeCompetitionName}获奖名单.xlsx`) }
-  catch (e) { ElMessage.error(errorMessage(e)) }
+  saveAs(new Blob([await workbook.xlsx.writeBuffer()]), `${safeCompetitionName}获奖名单.xlsx`)
 }
 watch(() => route.params.id, id => {
   const nextID = String(id || '')
   if (!nextID) return
   competitionName.value = ''
   teams.value = []
+  teamCount.value = 0
+  studentCount.value = 0
   keyword.value = ''
+  searchKeyword.value = ''
   categoryFilter.value = ''
   levelFilter.value = ''
   page.value = 1
@@ -351,8 +336,9 @@ watch(() => route.params.id, id => {
   teamEdit.value = null
   memberEdit.value = null
   upsertCompetitionOption({ id: nextID, comp_name: `赛事 ${nextID}` })
-  Promise.all([fetchData(nextID), fetchCompetitionName(nextID)])
+  fetchCompetitionName(nextID)
 }, { immediate: true })
+watch([compID, page, pageSize, searchKeyword, categoryFilter, levelFilter], () => fetchData(), { immediate: true })
 watch(() => route.query.year, () => loadCompetitionOptions(''))
 onMounted(async () => {
   loadCompetitionOptions('')
@@ -388,7 +374,7 @@ onUnmounted(() => clearTimeout(competitionSearchTimer))
             </el-select>
             <span>获奖名单</span>
           </div>
-          <span>{{ filteredTeams.length }} 个团队项目 · {{ studentCount }} 名获奖学生</span>
+          <span>{{ teamCount }} 个团队项目 · {{ studentCount }} 名获奖学生</span>
         </div>
       </template>
       <div class="toolbar">
@@ -411,10 +397,10 @@ onUnmounted(() => clearTimeout(competitionSearchTimer))
           <el-option label="季军" value="季军" />
         </el-select>
         <el-button type="primary" :icon="Upload" @click="router.push({ name: 'AwardImport', params: { id: compID } })">导入获奖名单</el-button>
-        <el-button type="success" :icon="Download" @click="handleExport">导出 Excel</el-button>
+        <el-button type="success" :icon="Download" :loading="exporting" @click="handleExport">导出 Excel</el-button>
         <el-button v-if="selectedAwards.length" type="danger" plain :icon="Delete" :loading="deletingAwardID === 'batch'" @click="deleteSelectedAwards">删除选中（{{ selectedAwards.length }}）</el-button>
       </div>
-      <el-table ref="awardTable" :data="pagedTeams" row-key="id" border :header-cell-style="{ textAlign: 'center' }" :cell-style="{ textAlign: 'center' }" style="margin-top: 18px" max-height="calc(100vh - 260px)" @selection-change="handleAwardSelectionChange">
+      <el-table ref="awardTable" v-loading="!dataLoaded" :data="teams" row-key="id" border :header-cell-style="{ textAlign: 'center' }" :cell-style="{ textAlign: 'center' }" style="margin-top: 18px" max-height="calc(100vh - 260px)" @selection-change="handleAwardSelectionChange">
         <el-table-column type="selection" width="46" align="center" reserve-selection :selectable="isAwardSelectable" />
         <el-table-column prop="project_name" label="参赛项目名称" min-width="200" show-overflow-tooltip align="center" />
         <el-table-column prop="award_category" label="获奖类别" width="100" align="center" />
@@ -426,7 +412,7 @@ onUnmounted(() => clearTimeout(competitionSearchTimer))
         <el-table-column label="操作" width="190" align="center"><template #default="{ row }"><el-button v-if="row.can_edit_team" link type="primary" :icon="Edit" @click="openTeam(row)">修改</el-button><el-button v-if="row.can_delete" link type="danger" :icon="Delete" :loading="deletingAwardID === String(row.id)" :disabled="!!deletingAwardID && deletingAwardID !== String(row.id)" @click="deleteAward(row)">删除</el-button></template></el-table-column>
         <template #empty><el-empty v-if="dataLoaded" description="暂无数据" /></template>
       </el-table>
-      <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="filteredTeams.length" :page-sizes="[10,20,50]" layout="total, sizes, prev, pager, next" style="margin-top: 18px; justify-content: flex-end" />
+      <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="teamCount" :page-sizes="[10,20,50]" layout="total, sizes, prev, pager, next" style="margin-top: 18px; justify-content: flex-end" />
     </el-card>
     <el-dialog :model-value="!!memberTeam" title="获奖成员" width="1000px" @close="memberTeam = null">
       <template v-if="memberTeam">
@@ -434,7 +420,7 @@ onUnmounted(() => clearTimeout(competitionSearchTimer))
         <el-table :data="memberTeam.members" border :header-cell-style="{ textAlign: 'center' }" :cell-style="{ textAlign: 'center' }">
           <el-table-column prop="student_id" label="学号" width="150" />
           <el-table-column prop="name" label="姓名" width="110" />
-          <el-table-column prop="college" label="所属学院" min-width="200" />
+          <el-table-column prop="college" label="所属单位" min-width="200" />
           <el-table-column prop="major" label="专业" min-width="180" />
           <el-table-column prop="remark" label="备注" min-width="180" />
           <el-table-column label="填报归属" width="150"><template #default="{ row }">{{ row.submitted_college_name || colleges.find(c => c.id === row.submitted_college_id)?.name || (row.submitted_college_id ? '已确认' : '待校管理员确认') }}</template></el-table-column>

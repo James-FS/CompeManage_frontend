@@ -13,7 +13,7 @@ const TEACHERS = Array.from({ length: 15 }, (_, i) => ({
   college: '计算机学院',
 }))
 
-const HEADERS = ['序号', '学号', '学生姓名', '所属学院', '所在专业', '参赛项目名称', '获奖时间（年/月）', '获奖类别', '获奖等级', '指导教师工号', '备注']
+const HEADERS = ['序号', '学号', '学生姓名', '所属单位', '所在专业', '参赛项目名称', '获奖时间（年/月）', '获奖类别', '获奖等级', '指导教师工号', '备注']
 
 function excelBuffer(advisor = '') {
   const wb = XLSX.utils.book_new()

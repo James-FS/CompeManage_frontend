@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Search, Refresh, CircleCheck, CircleClose, Trophy, Filter } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -10,6 +10,7 @@ const awardList = ref([])
 const total = ref(0)
 const loading = ref(false)
 const selectedRows = ref([])
+let listRequest = 0
 
 // --- 状态字典 ---
 const statusMap = {
@@ -47,7 +48,7 @@ function handleReset() {
   queryForm.award_level = ''
   queryForm.comp_name = ''
   ElMessage.info('筛选条件已重置')
-  fetchAwardList()
+  applyAwardFilters()
 }
 
 const handleSelectionChange = (val) => {
@@ -76,7 +77,7 @@ const handleBatchPass = async () => {
       if (res.code === 200) {
         ElMessage.success(`成功通过 ${pendingItems.length} 条记录`)
         selectedRows.value = []
-        fetchAwardList()
+        await fetchAwardList()
       }
     } catch (error) {
       console.error(error)
@@ -112,7 +113,7 @@ const handleBatchReject = async () => {
       ElMessage.success(`成功驳回 ${pendingItems.length} 条记录`)
       batchRejectDialogVisible.value = false
       selectedRows.value = []
-      fetchAwardList()
+      await fetchAwardList()
     }
   } catch (error) {
     console.error(error)
@@ -148,6 +149,7 @@ function navigateToDetail(row) {
 
 // --- 数据获取 ---
 async function fetchAwardList() {
+  const request = ++listRequest
   loading.value = true
   try {
     const params = {
@@ -159,20 +161,27 @@ async function fetchAwardList() {
       comp_name: queryForm.comp_name,
     }
     const res = await api.getAwardAuditList(params)
+    if (request !== listRequest) return
     if (res.code === 200) {
       awardList.value = res.data.list || []
       total.value = res.data.total || 0
+      const lastPage = Math.max(1, Math.ceil(total.value / queryForm.pageSize))
+      if (queryForm.page > lastPage) queryForm.page = lastPage
     }
   } catch (err) {
-    if (!err.messageShown) ElMessage.error(err.message || '获取申报列表失败')
+    if (request === listRequest && !err.messageShown) ElMessage.error(err.message || '获取申报列表失败')
   } finally {
-    loading.value = false
+    if (request === listRequest) loading.value = false
   }
 }
 
-onMounted(() => {
-  fetchAwardList()
-})
+function applyAwardFilters() {
+  if (queryForm.page === 1) fetchAwardList()
+  else queryForm.page = 1
+}
+
+watch(() => queryForm.pageSize, () => { queryForm.page = 1 }, { flush: 'sync' })
+watch([() => queryForm.page, () => queryForm.pageSize], fetchAwardList, { immediate: true })
 </script>
 
 <template>
@@ -182,16 +191,16 @@ onMounted(() => {
       <el-form :inline="true" :model="queryForm" class="filter-form">
         <el-form-item label="赛事名称">
           <el-input v-model="queryForm.comp_name" placeholder="请输入赛事名称" style="width: 200px" clearable
-            @keyup.enter="fetchAwardList" @clear="fetchAwardList" />
+            @keyup.enter="applyAwardFilters" @clear="applyAwardFilters" />
         </el-form-item>
 
         <el-form-item label="学生姓名">
           <el-input v-model="queryForm.keyword" placeholder="请输入姓名或学号" style="width: 180px" clearable
-            @keyup.enter="fetchAwardList" @clear="fetchAwardList" />
+            @keyup.enter="applyAwardFilters" @clear="applyAwardFilters" />
         </el-form-item>
 
         <el-form-item label="获奖等级">
-          <el-select v-model="queryForm.award_level" placeholder="全部等级" style="width: 140px" clearable @change="fetchAwardList">
+          <el-select v-model="queryForm.award_level" placeholder="全部等级" style="width: 140px" clearable @change="applyAwardFilters">
             <el-option label="国家级一等奖" value="国家级一等奖" />
             <el-option label="国家级二等奖" value="国家级二等奖" />
             <el-option label="国家级三等奖" value="国家级三等奖" />
@@ -204,7 +213,7 @@ onMounted(() => {
         </el-form-item>
 
         <el-form-item label="审核状态">
-          <el-select v-model="queryForm.status" placeholder="全部状态" style="width: 120px" clearable @change="fetchAwardList">
+          <el-select v-model="queryForm.status" placeholder="全部状态" style="width: 120px" clearable @change="applyAwardFilters">
             <el-option label="待审核" :value="0" />
             <el-option label="已通过" :value="1" />
             <el-option label="已驳回" :value="2" />
@@ -212,7 +221,7 @@ onMounted(() => {
         </el-form-item>
 
         <el-form-item class="filter-actions">
-          <el-button type="primary" class="search-btn" :icon="Search" @click="fetchAwardList">
+          <el-button type="primary" class="search-btn" :icon="Search" @click="applyAwardFilters">
             搜索
           </el-button>
           <el-button :icon="Refresh" @click="handleReset">重置</el-button>
@@ -305,8 +314,7 @@ onMounted(() => {
       <!-- 分页 -->
       <div class="pagination-bar">
         <el-pagination background layout="total, sizes, prev, pager, next, jumper" :total="total"
-          v-model:current-page="queryForm.page" v-model:page-size="queryForm.pageSize" @current-change="fetchAwardList"
-          @size-change="fetchAwardList" />
+          v-model:current-page="queryForm.page" v-model:page-size="queryForm.pageSize" />
       </div>
     </div>
 

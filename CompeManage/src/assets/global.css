@@ -56,6 +56,28 @@
     margin-bottom: 0;
 }
 
+.table-list-page {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: var(--container-padding);
+}
+
+.table-list-page > .filter-card {
+    flex-shrink: 0;
+}
+
+.table-list-page .table-list-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 24px;
+}
+
+.table-list-page .table-list-filters .el-form-item {
+    margin: 0;
+}
+
 /* ================== 键盘可达性：统一焦点环 ==================
    仅键盘聚焦（:focus-visible）时显示，鼠标点击不触发。
    颜色用 currentColor 自适应背景（Element Plus 组件自带更高优先级的

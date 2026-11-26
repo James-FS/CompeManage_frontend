@@ -18,6 +18,7 @@ import api from '@/api/index'
 
 const router = useRouter()
 const loading = ref(false)
+const overviewError = ref('')
 const trendLoading = ref(false)
 const trendMonthsRange = ref(6)
 const trendRangeError = ref('')
@@ -34,7 +35,17 @@ const stats = reactive({
 })
 
 const todoList = ref([])
-const competitionStats = ref([]) // 新增：用于存储单个比赛的统计列表
+const competitionStats = ref([])
+const competitionRanking = ref([])
+const awardCompetitionCount = ref(0)
+const detailTotal = ref(0)
+const detailLoading = ref(false)
+const detailError = ref('')
+const rankingLoading = ref(false)
+const rankingError = ref('')
+const detailSearchName = ref('')
+const levelFilterOptions = ref([])
+const competitionCollegeOptions = ref([])
 // 所有待办计数都为 0 时视为「暂无待办」，展示空状态
 const hasTodoItems = computed(() => todoList.value.some((item) => safeNumber(item?.value) > 0))
 const collegeList = ref([])
@@ -64,25 +75,6 @@ const chartInstances = reactive({
 
 const safeArray = (value) => (Array.isArray(value) ? value : [])
 const safeNumber = (value) => Number(value || 0)
-const ratioToPercent = (numerator, denominator) => {
-  if (!denominator) return 0
-  return Number(((numerator / denominator) * 100).toFixed(2))
-}
-
-const extractList = (res) => {
-  if (!res || res.code !== 200) return []
-  if (Array.isArray(res.data?.list)) return res.data.list
-  if (Array.isArray(res.data)) return res.data
-  return []
-}
-
-const extractTotal = (res, fallbackList = []) => {
-  if (!res || res.code !== 200) return fallbackList.length
-  if (typeof res.data?.total === 'number') return res.data.total
-  if (typeof res.total === 'number') return res.total
-  return fallbackList.length
-}
-
 const initOrUpdateChart = (key, domRef, option) => {
   if (!domRef?.value) return
   if (!chartInstances[key]) {
@@ -92,47 +84,6 @@ const initOrUpdateChart = (key, domRef, option) => {
 }
 
 const hasPositiveValue = (values) => values.some((value) => safeNumber(value) > 0)
-
-const buildLevelPieData = (competitionList) => {
-  const map = {}
-  competitionList.forEach((item) => {
-    const level = item?.comp_level || item?.detail?.comp_level || '未分类'
-    map[level] = (map[level] || 0) + 1
-  })
-  const data = Object.keys(map).map((key) => ({ name: key, value: map[key] }))
-  if (!data.length) {
-    return [
-      { name: '校级', value: 0 },
-      { name: '省级', value: 0 },
-      { name: '国家级', value: 0 }
-    ]
-  }
-  return data
-}
-
-const buildCollegeBarData = (registerList) => {
-  const map = {}
-  registerList.forEach((item) => {
-    const collegeName = normalizeCollegeText(item?.college_name || item?.leader?.college?.name)
-    map[collegeName] = (map[collegeName] || 0) + 1
-  })
-
-  const sorted = Object.entries(map)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 8)
-
-  if (!sorted.length) {
-    return {
-      labels: ['暂无数据'],
-      values: [0]
-    }
-  }
-
-  return {
-    labels: sorted.map((item) => item[0]),
-    values: sorted.map((item) => item[1])
-  }
-}
 
 const buildLevelPieOption = (data) => {
   const total = data.reduce((sum, item) => sum + safeNumber(item?.value), 0)
@@ -241,23 +192,6 @@ const setProcessStageStats = (items) => {
   }))
 }
 
-const buildRecentMonths = (monthCount = trendMonthsRange.value) => {
-  const months = []
-  const now = new Date()
-  for (let i = monthCount - 1; i >= 0; i -= 1) {
-    const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
-    months.push(`${date.getFullYear()}-${`${date.getMonth() + 1}`.padStart(2, '0')}`)
-  }
-  return months
-}
-
-const normalizeMonth = (timeString) => {
-  if (!timeString) return ''
-  const date = new Date(timeString)
-  if (Number.isNaN(date.getTime())) return ''
-  return `${date.getFullYear()}-${`${date.getMonth() + 1}`.padStart(2, '0')}`
-}
-
 const normalizeText = (value) => String(value || '').trim()
 const escapeChartText = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({
   '&': '&amp;',
@@ -274,77 +208,73 @@ const normalizeCollegeText = (value) => {
 
 const getCompetitionName = (item) => normalizeText(item?.comp_name || item?.name)
 
-const getCompetitionLevel = (item) => normalizeText(item?.comp_level || item?.detail?.comp_level || '未分类')
-
-const getCompetitionCollege = (item) => normalizeCollegeText(
-  item?.college_info?.name || item?.college_name || item?.college?.name || item?.organizer_college || item?.leader?.college?.name
-)
-
-const levelFilterOptions = computed(() => {
-  const set = new Set()
-  competitionStats.value.forEach((item) => {
-    set.add(getCompetitionLevel(item))
-  })
-  return Array.from(set).filter(Boolean)
-})
-
-const competitionCollegeOptions = computed(() => {
-  const set = new Set()
-  competitionStats.value.forEach((item) => {
-    set.add(getCompetitionCollege(item))
-  })
-  return Array.from(set).filter(Boolean)
-})
+const getCompetitionCollege = (item) => normalizeCollegeText(item?.college_name)
 
 const collegeFilterOptions = computed(() => {
-  if (collegeList.value.length) {
-    return collegeList.value.map((item) => normalizeCollegeText(item?.name)).filter(Boolean)
-  }
-  return competitionCollegeOptions.value
+  const options = collegeList.value.length
+    ? collegeList.value.map(item => item.name)
+    : competitionCollegeOptions.value
+  return [...new Set(options.map(normalizeCollegeText).filter(Boolean))]
 })
 
-const filteredCompetitionStats = computed(() => {
-  const nameKeyword = normalizeText(detailFilters.name).toLowerCase()
-  const levelKeyword = normalizeText(detailFilters.level)
-  const collegeKeyword = normalizeText(detailFilters.college)
+const chartCompetitionStats = computed(() => competitionRanking.value.slice(0, chartLimit.value))
+const detailSearchParams = computed(() => ({
+  name: detailSearchName.value,
+  level: detailFilters.level,
+  college: detailFilters.college,
+}))
+let detailRequest = 0
+let rankingRequest = 0
 
-  return competitionStats.value.filter((item) => {
-    const name = getCompetitionName(item).toLowerCase()
-    const level = getCompetitionLevel(item)
-    const college = getCompetitionCollege(item)
-
-    const matchName = !nameKeyword || name.includes(nameKeyword)
-    const matchLevel = !levelKeyword || level === levelKeyword
-    const matchCollege = !collegeKeyword || college === collegeKeyword
-    return matchName && matchLevel && matchCollege
-  })
-})
-
-const awardCompetitionCount = computed(() => filteredCompetitionStats.value
-  .filter((item) => safeNumber(item?.award_count) > 0).length)
-
-const chartCompetitionStats = computed(() => filteredCompetitionStats.value
-  .filter((item) => safeNumber(item?.award_count) > 0)
-  .slice()
-  .sort((a, b) => safeNumber(b?.award_count) - safeNumber(a?.award_count))
-  .slice(0, chartLimit.value))
-
-const sortedCompetitionStats = computed(() => {
-  const direction = tableSort.order === 'ascending' ? 1 : -1
-  return filteredCompetitionStats.value
-    .map((item, index) => ({ item, index }))
-    .sort((a, b) => {
-      const getValue = (row) => safeNumber(row?.[tableSort.prop])
-      const difference = (getValue(a.item) - getValue(b.item)) * direction
-      return difference || a.index - b.index
+const fetchCompetitionStats = async () => {
+  const request = ++detailRequest
+  detailLoading.value = true
+  detailError.value = ''
+  try {
+    const res = await api.getDashboardCompetitionStats({
+      ...detailSearchParams.value,
+      page: detailCurrentPage.value,
+      page_size: detailPageSize.value,
+      sort: tableSort.prop,
+      order: tableSort.order,
     })
-    .map(({ item }) => item)
-})
+    if (request !== detailRequest) return
+    competitionStats.value = safeArray(res.data?.list)
+    detailTotal.value = safeNumber(res.data?.total)
+    const lastPage = Math.max(1, Math.ceil(detailTotal.value / detailPageSize.value))
+    if (detailCurrentPage.value > lastPage) detailCurrentPage.value = lastPage
+  } catch {
+    if (request !== detailRequest) return
+    competitionStats.value = []
+    detailTotal.value = 0
+    detailError.value = '赛事明细加载失败'
+  } finally {
+    if (request === detailRequest) detailLoading.value = false
+  }
+}
 
-const paginatedCompetitionStats = computed(() => {
-  const start = (detailCurrentPage.value - 1) * detailPageSize.value
-  return sortedCompetitionStats.value.slice(start, start + detailPageSize.value)
-})
+const fetchCompetitionRanking = async () => {
+  const request = ++rankingRequest
+  rankingLoading.value = true
+  rankingError.value = ''
+  try {
+    const res = await api.getDashboardCompetitionStats({
+      ...detailSearchParams.value,
+      ranking: true,
+      page_size: 20,
+    })
+    if (request !== rankingRequest) return
+    competitionRanking.value = safeArray(res.data?.list)
+    awardCompetitionCount.value = safeNumber(res.data?.total)
+  } catch {
+    if (request !== rankingRequest) return
+    competitionRanking.value = []
+    awardCompetitionCount.value = 0
+    rankingError.value = '赛事排名加载失败'
+  } finally {
+    if (request === rankingRequest) rankingLoading.value = false
+  }
+}
 
 const handleCompetitionSortChange = ({ prop, order }) => {
   tableSort.prop = order && prop ? prop : 'award_count'
@@ -352,15 +282,14 @@ const handleCompetitionSortChange = ({ prop, order }) => {
   detailCurrentPage.value = 1
 }
 
-const handleDetailPageSizeChange = () => {
-  detailCurrentPage.value = 1
-}
-
-watch(filteredCompetitionStats, () => {
-  detailCurrentPage.value = 1
+watch(() => detailFilters.name, (name, _, onCleanup) => {
+  const timer = setTimeout(() => { detailSearchName.value = normalizeText(name) }, 250)
+  onCleanup(() => clearTimeout(timer))
 })
+watch([detailSearchParams, detailPageSize], () => { detailCurrentPage.value = 1 }, { flush: 'sync' })
+watch([detailSearchParams, detailCurrentPage, detailPageSize, () => tableSort.prop, () => tableSort.order], fetchCompetitionStats)
+watch(detailSearchParams, fetchCompetitionRanking)
 
-// —— 各赛事详细统计：获奖人数柱状图（跟随筛选联动） ——
 const compBarChartRef = ref(null)
 const compBarChartHeight = computed(() => Math.max(220, chartCompetitionStats.value.length * 34 + 80))
 
@@ -452,28 +381,6 @@ const exportReport = async () => {
   }
 }
 
-const buildTrendData = (registerList, awardList, monthCount = trendMonthsRange.value) => {
-  const months = buildRecentMonths(monthCount)
-  const regMap = Object.fromEntries(months.map((m) => [m, 0]))
-  const awardMap = Object.fromEntries(months.map((m) => [m, 0]))
-
-  registerList.forEach((item) => {
-    const month = normalizeMonth(item?.created_at || item?.CreatedAt)
-    if (month && month in regMap) regMap[month] += 1
-  })
-
-  awardList.forEach((item) => {
-    const month = normalizeMonth(item?.created_at || item?.CreatedAt)
-    if (month && month in awardMap) awardMap[month] += 1
-  })
-
-  return {
-    months,
-    regSeries: months.map((m) => regMap[m]),
-    awardSeries: months.map((m) => awardMap[m])
-  }
-}
-
 const buildTrendOption = (months, regSeries, awardSeries) => {
   const hasData = months.length > 0 && (hasPositiveValue(regSeries) || hasPositiveValue(awardSeries))
   return {
@@ -541,7 +448,8 @@ const normalizeDashboardPayload = (payload) => {
   stats.summaryArchiveRate = safeNumber(summary.summary_archive_rate)
 
   todoList.value = safeArray(payload?.todos)
-  competitionStats.value = safeArray(payload?.competition_stats)
+  competitionCollegeOptions.value = safeArray(payload?.competition_colleges)
+  levelFilterOptions.value = [...new Set(levelData.map(item => normalizeText(item.name) || '未分类'))]
 
   const pieData = levelData.length
     ? levelData.map((item) => ({ name: item.name || '未分类', value: safeNumber(item.value) }))
@@ -569,27 +477,21 @@ const normalizeDashboardPayload = (payload) => {
   setProcessStageStats(funnelData)
 }
 
-const renderCharts = ({ competitionList, registerList, awardList, funnelData }) => {
-  const pieData = buildLevelPieData(competitionList)
-  const barData = buildCollegeBarData(registerList)
-  const trendData = buildTrendData(registerList, awardList)
-
-  renderLevelPieChart(pieData)
-  renderCollegeBarChart(barData)
-  renderTrendChart(trendData.months, trendData.regSeries, trendData.awardSeries)
-
-  setProcessStageStats(funnelData)
-}
-
 const fetchStatistics = async ({ showLoading = true, showTrendLoading = false } = {}) => {
   const requestSequence = ++statisticsRequestSequence.value
-  if (showLoading) loading.value = true
+  if (showLoading) {
+    loading.value = true
+    overviewError.value = ''
+  }
   if (showTrendLoading) {
     trendLoading.value = true
     trendRangeError.value = ''
   }
   try {
-    const dashboardRes = await api.getStatisticsDashboard({ months: trendMonthsRange.value })
+    const dashboardRes = await api.getStatisticsDashboard({
+      months: trendMonthsRange.value,
+      include_competition_stats: false,
+    })
     if (requestSequence !== statisticsRequestSequence.value) return
     if (dashboardRes?.code === 200 && dashboardRes?.data) {
       const returnedMonths = safeArray(dashboardRes.data?.trend?.months).length
@@ -605,98 +507,11 @@ const fetchStatistics = async ({ showLoading = true, showTrendLoading = false } 
       return
     }
 
-    const [
-      compRes,
-      regRes,
-      declarePendingRes,
-      declareAllRes,
-      awardAuditRes,
-      summaryRes
-    ] = await Promise.allSettled([
-      api.getCompetitionList({ page: 1, page_size: 500 }),
-      api.getRegList({ page: 1, pageSize: 500 }),
-      api.getPendingDeclares({ page: 1, page_size: 500 }),
-      api.getAllDeclares({ page: 1, page_size: 500 }),
-      api.getAwardAuditList({ page: 1, page_size: 500 }),
-      api.getSummaryList({ page: 1, page_size: 500 })
-    ])
-    if (requestSequence !== statisticsRequestSequence.value) return
-
-    const competitionResp = compRes.status === 'fulfilled' ? compRes.value : null
-    const registerResp = regRes.status === 'fulfilled' ? regRes.value : null
-    const declarePendingResp = declarePendingRes.status === 'fulfilled' ? declarePendingRes.value : null
-    const declareAllResp = declareAllRes.status === 'fulfilled' ? declareAllRes.value : null
-    const awardResp = awardAuditRes.status === 'fulfilled' ? awardAuditRes.value : null
-    const summaryResp = summaryRes.status === 'fulfilled' ? summaryRes.value : null
-
-    const competitionList = extractList(competitionResp)
-    const registerList = extractList(registerResp)
-    const declareAllList = extractList(declareAllResp)
-    const awardList = extractList(awardResp)
-    const summaryList = extractList(summaryResp)
-
-    const totalCompetitions = extractTotal(competitionResp, competitionList)
-    const totalRegistrations = extractTotal(registerResp, registerList)
-    const declarePendingTotal = extractTotal(declarePendingResp, extractList(declarePendingResp))
-
-    const regPending = registerList.filter((item) => safeNumber(item?.status) === 0 || safeNumber(item?.status) === 3).length
-    const regPassed = registerList.filter((item) => safeNumber(item?.status) === 1 || safeNumber(item?.status) === 4).length
-
-    const awardPending = awardList.filter((item) => {
-      const status = item?.status
-      return status === 0 || status === '0' || status === 'pending' || status === 'draft'
-    }).length
-    const awardApproved = awardList.filter((item) => {
-      const status = item?.status
-      return status === 1 || status === '1' || status === 'approved'
-    }).length
-
-    const summaryArchived = summaryList.filter((item) => safeNumber(item?.status) === 1).length
-    const pendingAudits = declarePendingTotal + regPending + awardPending
-
-    stats.totalCompetitions = totalCompetitions
-    stats.totalRegistrations = totalRegistrations
-    stats.pendingAudits = pendingAudits
-    stats.totalAwards = awardApproved
-    stats.registrationPassRate = ratioToPercent(regPassed, totalRegistrations)
-    stats.summaryArchiveRate = ratioToPercent(summaryArchived, totalCompetitions)
-
-    todoList.value = [
-      {
-        title: '赛事申报待审核',
-        value: declarePendingTotal,
-        path: '/competition/audit'
-      },
-      {
-        title: '报名待审核',
-        value: regPending,
-        path: '/register/audit'
-      },
-      {
-        title: '获奖待审核',
-        value: awardPending,
-        path: '/award/audit'
-      },
-      {
-        title: '总结待归档',
-        value: Math.max(totalCompetitions - summaryArchived, 0),
-        path: '/summary/summary-list'
-      }
-    ]
-
-    const funnelData = [
-      { name: '已申报', value: extractTotal(declareAllResp, declareAllList) },
-      { name: '已报名', value: totalRegistrations },
-      { name: '已获奖', value: awardApproved },
-      { name: '已归档总结', value: summaryArchived }
-    ]
-
-    await nextTick()
-    if (requestSequence !== statisticsRequestSequence.value) return
-    renderCharts({ competitionList, registerList, awardList, funnelData })
+    throw new Error('统计看板数据为空')
   } catch (error) {
     if (requestSequence === statisticsRequestSequence.value) {
       console.error('获取统计数据失败', error)
+      if (showLoading) overviewError.value = '统计总览加载失败，请刷新页面重试。'
       if (showTrendLoading || !trendChartHasData.value) {
         trendRangeError.value = '趋势数据加载失败，请检查网络后重试。'
         renderTrendChart([], [], [])
@@ -743,10 +558,15 @@ const goPage = (path) => {
 onMounted(() => {
   loadCollegeList()
   fetchStatistics()
+  fetchCompetitionStats()
+  fetchCompetitionRanking()
   window.addEventListener('resize', handleResize)
 })
 
 onBeforeUnmount(() => {
+  detailRequest++
+  rankingRequest++
+  statisticsRequestSequence.value++
   window.removeEventListener('resize', handleResize)
   Object.keys(chartInstances).forEach((key) => {
     if (chartInstances[key]) {
@@ -759,6 +579,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="stats-container" v-loading="loading">
+    <el-alert v-if="overviewError" :title="overviewError" type="error" :closable="false" show-icon />
     <el-row :gutter="16" class="stat-cards">
       <el-col :span="4" v-for="(val, key) in {
         totalCompetitions: ['赛事总数', 'comp', Histogram],
@@ -909,9 +730,10 @@ onBeforeUnmount(() => {
             </el-select>
             <el-select
               v-model="detailFilters.college"
-              placeholder="按所属学院筛选"
-              aria-label="按所属学院筛选"
+              placeholder="按所属单位筛选"
+              aria-label="按所属单位筛选"
               clearable
+              filterable
               class="filter-item"
               fit-input-width
             >
@@ -950,6 +772,7 @@ onBeforeUnmount(() => {
           </div>
           <div
             v-if="chartCompetitionStats.length"
+            v-loading="rankingLoading"
             ref="compBarChartRef"
             class="chart-box comp-bar"
             role="img"
@@ -958,18 +781,20 @@ onBeforeUnmount(() => {
           ></div>
           <div
             v-else
+            v-loading="rankingLoading"
             class="chart-box comp-bar chart-empty"
             :style="{ height: `${compBarChartHeight}px` }"
           >
-            <el-empty description="当前筛选下暂无获奖赛事，全部赛事仍可在下方明细中查看。" :image-size="72" />
+            <el-empty v-if="!rankingLoading" :description="rankingError || '当前筛选下暂无获奖赛事，全部赛事仍可在下方明细中查看。'" :image-size="72" />
           </div>
 
           <div class="detail-table-heading">
             <h3>赛事明细</h3>
-            <span>共 {{ sortedCompetitionStats.length }} 项</span>
+            <span>共 {{ detailTotal }} 项</span>
           </div>
           <el-table
-            :data="paginatedCompetitionStats"
+            v-loading="detailLoading"
+            :data="competitionStats"
             :default-sort="{ prop: 'award_count', order: 'descending' }"
             @sort-change="handleCompetitionSortChange"
             border
@@ -982,7 +807,7 @@ onBeforeUnmount(() => {
                 <el-tag size="small" effect="plain">{{ scope.row.comp_level || '未分类' }}</el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="所属学院" min-width="160" align="center" show-overflow-tooltip>
+            <el-table-column label="所属单位" min-width="160" align="center" show-overflow-tooltip>
               <template #default="scope">
                 {{ getCompetitionCollege(scope.row) }}
               </template>
@@ -1004,18 +829,17 @@ onBeforeUnmount(() => {
               </template>
             </el-table-column>
             <template #empty>
-              <el-empty description="暂无数据" />
+              <el-empty v-if="!detailLoading" :description="detailError || '暂无数据'" />
             </template>
           </el-table>
-          <div v-if="sortedCompetitionStats.length" class="detail-pagination">
+          <div v-if="detailTotal" class="detail-pagination">
             <el-pagination
               v-model:current-page="detailCurrentPage"
               v-model:page-size="detailPageSize"
               :page-sizes="[10, 20, 50]"
-              :total="sortedCompetitionStats.length"
+              :total="detailTotal"
               layout="total, sizes, prev, pager, next, jumper"
               background
-              @size-change="handleDetailPageSizeChange"
             />
           </div>
         </el-card>

@@ -254,8 +254,8 @@ test.describe('团队赛报名测试', () => {
     await selectElOption(page, '赛事级别', '校级')
     await selectElOption(page, '赛事类型', '学科竞赛')
 
-    // 选择所属学院
-    const collegeSelect = page.locator('.el-form-item').filter({ hasText: '所属学院' }).locator('.el-select').first()
+    // 选择所属单位
+    const collegeSelect = page.locator('.el-form-item').filter({ hasText: '所属单位' }).locator('.el-select').first()
     await collegeSelect.click()
     await page.waitForTimeout(800)
     await page.evaluate(() => {

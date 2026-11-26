@@ -6,12 +6,12 @@ import { test, expect } from 'playwright-test-coverage'
 const ROWS = [
   {
     id: 1, comp_code: 'X2026001', comp_name: '行操作赛事甲', comp_level: '校级', organizer: '主办A', undertaker: '承办A',
-    manager: { realname: '何老师' }, college_info: { name: '计算机学院' }, source: 1, status: 1, year: 2026,
+    manager: { realname: '何老师', college: '网络空间安全学院' }, college_info: { name: '旧单位' }, project_source: '科研处', source: 1, status: 1, year: 2026,
     capabilities: { can_edit_competition: true },
   },
   {
     id: 2, comp_code: 'X2026002', comp_name: '行操作赛事乙', comp_level: '省级', organizer: '主办B', undertaker: '承办B',
-    manager: { realname: '张老师' }, college_info: { name: '数学学院' }, source: 2, status: 2, year: 2026,
+    manager: { realname: '张老师' }, college_info: { name: '旧单位' }, project_source: '数学学院', source: 2, status: 2, year: 2026,
     capabilities: { can_edit_competition: true },
   },
 ]
@@ -22,7 +22,7 @@ async function setup(page, opts = {}) {
     localStorage.setItem('role', 'school_admin')
     localStorage.setItem('userInfo', JSON.stringify({ id: 1, name: '管理员', username: 'T2023001' }))
   })
-  const state = { deletes: [], batchBody: undefined }
+  const state = { deletes: [], batchBody: undefined, exportParams: null }
   await page.route((url) => url.pathname.startsWith('/api/'), async (route) => {
     const req = route.request(), url = new URL(req.url())
     const p = url.pathname
@@ -37,6 +37,22 @@ async function setup(page, opts = {}) {
     if (p === '/api/comp/list') {
       const list = opts.emptyList ? [] : ROWS
       await route.fulfill({ json: { code: 200, message: 'success', data: { list, total: list.length } } })
+      return
+    }
+    if (p === '/api/comp/export') {
+      state.exportParams = url.searchParams
+      if (opts.exportTimeout === 'backend') {
+        await route.fulfill({ status: 504, json: { code: 504, message: '赛事目录导出超时，请缩小筛选范围后重试' } })
+      } else if (opts.exportTimeout === 'proxy') {
+        await route.fulfill({ status: 504, contentType: 'text/html', body: '<h1>Gateway timeout</h1>' })
+      } else if (opts.emptyList) {
+        await route.fulfill({ json: { code: 200, message: '暂无数据可导出' } })
+      } else {
+        await route.fulfill({
+          contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          body: Buffer.from('PK-mock-xlsx'),
+        })
+      }
       return
     }
     if (p.match(/^\/api\/comp\/\d+$/) && req.method() === 'DELETE') {
@@ -67,6 +83,19 @@ async function setup(page, opts = {}) {
 async function toast(page, text) {
   await expect(page.locator('.el-message').filter({ hasText: text }).first()).toBeVisible()
 }
+
+test('项目来源显示录入人单位，所属单位显示负责人单位', async ({ page }) => {
+  await setup(page)
+  await expect(page.getByRole('columnheader', { name: '所属单位', exact: true })).toBeVisible()
+  const first = page.getByRole('row').filter({ hasText: '行操作赛事甲' })
+  const unitColumn = await page.getByRole('columnheader', { name: '所属单位', exact: true }).evaluate(el => el.cellIndex)
+  const sourceColumn = await page.getByRole('columnheader', { name: '项目来源', exact: true }).evaluate(el => el.cellIndex)
+  await expect(first.getByRole('cell').nth(unitColumn)).toHaveText('网络空间安全学院')
+  await expect(first.getByRole('cell').nth(sourceColumn)).toHaveText('科研处')
+  const second = page.getByRole('row').filter({ hasText: '行操作赛事乙' })
+  await expect(second.getByRole('cell').nth(unitColumn)).toHaveText('-')
+  await expect(second.getByRole('cell').nth(sourceColumn)).toHaveText('数学学院')
+})
 
 test('单条删除：取消不删、确认删除、失败提示', async ({ page }) => {
   const state = await setup(page)
@@ -123,11 +152,15 @@ test('批量删除失败不误报成功', async ({ page }) => {
 })
 
 test('导出数据成功下载', async ({ page }) => {
-  await setup(page)
+  const state = await setup(page)
+  await page.getByPlaceholder('请输入赛事名称').fill('行操作赛事')
   const downloadEvent = page.waitForEvent('download')
   await page.getByRole('button', { name: '导出数据' }).click()
   const download = await downloadEvent
   expect(download.suggestedFilename()).toBe('赛事列表_2026年度.xlsx')
+  expect(state.exportParams.get('year')).toBe('2026')
+  expect(state.exportParams.get('comp_name')).toBe('行操作赛事')
+  expect(state.exportParams.has('page_size')).toBe(false)
   await toast(page, '导出成功')
 })
 
@@ -136,3 +169,17 @@ test('导出空数据提示', async ({ page }) => {
   await page.getByRole('button', { name: '导出数据' }).click()
   await toast(page, '暂无数据可导出')
 })
+
+for (const [kind, message] of [
+  ['backend', '赛事目录导出超时，请缩小筛选范围后重试'],
+  ['proxy', '导出未完成，请缩小筛选范围后重试'],
+]) {
+  test(`导出超时提示（${kind}）`, async ({ page }) => {
+    await setup(page, { exportTimeout: kind })
+    const downloads = []
+    page.on('download', download => downloads.push(download))
+    await page.getByRole('button', { name: '导出数据' }).click()
+    await toast(page, message)
+    expect(downloads).toHaveLength(0)
+  })
+}

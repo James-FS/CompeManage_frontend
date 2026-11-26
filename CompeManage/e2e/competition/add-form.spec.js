@@ -1,18 +1,18 @@
 import { test, expect } from 'playwright-test-coverage'
 
 // competition/add.vue 定向覆盖：手动新增（成功/校验/失败/重置）、往年复用（加载失败、
-// 勾选编辑导入、名称/学院校验、导入失败）、Excel 模板下载与空数据拦截
+// 勾选编辑导入、名称校验、导入失败）、Excel 模板下载与空数据拦截
 
 const MANAGER = { id: 65089, name: '何老师', work_id: 'T2023012', college: '计算机学院', role_code: 'teacher' }
 
 const HISTORY_LIST = [
   {
     id: 11, comp_name: '往年赛事甲', comp_level: '省级', organizer: '主办方甲', undertaker: '承办方甲',
-    manager: { realname: '何老师', id: 65089 }, college_info: { name: '计算机学院' }, year: 2025,
+    manager: { realname: '何老师', id: 65089, college: MANAGER.college }, college_info: { name: '计算机学院' }, year: 2025,
   },
   {
     id: 12, comp_name: '往年赛事乙', comp_level: '校级', organizer: '主办方乙', undertaker: '承办方乙',
-    manager: { realname: '何老师', id: 65089 }, college_info: { name: '数学学院' }, year: 2025,
+    manager: { realname: '何老师', id: 65089, college: MANAGER.college }, college_info: { name: '数学学院' }, year: 2025,
   },
 ]
 
@@ -32,6 +32,12 @@ async function setup(page, opts = {}) {
     if (p === '/api/department/list') data = [{ id: 1, name: '教务处' }]
     if (p === '/api/comp/manager/list') data = { list: [MANAGER], total: 1 }
     if (p === '/api/comp/list') data = { list: opts.history || HISTORY_LIST, total: HISTORY_LIST.length }
+    if (p === '/api/comp/392') data = {
+      ...HISTORY_LIST[0],
+      manager: { id: 999, realname: '原老师', college: '原负责人单位' },
+      college_info: { name: '历史单位' },
+      capabilities: { can_edit_competition: true, can_reassign_manager: true },
+    }
     if (p === '/api/comp/create' && req.method() === 'POST') {
       if (opts.createFail) {
         await route.fulfill({ json: { code: 500, message: '创建失败' } })
@@ -63,17 +69,27 @@ async function pickManager(page) {
   await expect(dialog).not.toBeVisible()
 }
 
+async function expectUnitAfterManager(page) {
+  const labels = await page.locator('.el-form-item__label:visible').allTextContents()
+  const managerIndex = labels.indexOf('赛事负责人')
+  const yearIndex = labels.indexOf('所属年份')
+  expect(yearIndex).toBeGreaterThanOrEqual(0)
+  expect(managerIndex).toBeGreaterThan(yearIndex)
+  expect(labels[managerIndex + 1]).toBe('所属单位')
+}
+
 async function fillManualForm(page) {
   await page.getByPlaceholder('请输入赛事名称').fill('新增测试赛事')
   await page.locator('.el-form-item').filter({ hasText: '赛事级别' }).locator('.el-select').click()
   await page.getByRole('option', { name: '校级' }).click()
   await page.locator('.el-form-item').filter({ hasText: '赛事类型' }).locator('.el-select').click()
   await page.getByRole('option', { name: '学科竞赛' }).click()
-  await page.locator('.el-form-item').filter({ hasText: '所属学院' }).locator('.el-select').click()
+  await page.locator('.el-form-item').filter({ hasText: '所属单位' }).locator('.el-select').click()
   await page.getByRole('option', { name: '计算机学院' }).click()
   await page.getByPlaceholder('请填写主办单位').fill('测试主办方')
   await page.getByPlaceholder('请填写承办单位').fill('测试承办方')
   await pickManager(page)
+  await expect(page.getByRole('textbox', { name: '所属单位', exact: true })).toHaveValue(MANAGER.college)
   await page.locator('.el-form-item').filter({ hasText: '所属年份' }).locator('.el-select').first().click()
   await page.getByRole('option', { name: '2026年', exact: true }).click()
 }
@@ -88,6 +104,7 @@ async function gotoCopyTab(page) {
 
 test('手动新增：全字段 + 负责人弹窗 → 创建成功并跳转列表', async ({ page }) => {
   const state = await setup(page)
+  await expectUnitAfterManager(page)
   await fillManualForm(page)
   await page.getByRole('button', { name: '创建', exact: true }).click()
   await expect.poll(() => state.created).toBeTruthy()
@@ -114,6 +131,17 @@ test('手动新增：必填校验拦截与创建失败提示', async ({ page }) 
   expect(state.created).toBeUndefined()
 })
 
+test('编辑赛事：读取原负责人单位，换人时自动更新', async ({ page }) => {
+  await setup(page)
+  await page.goto('/#/competition/edit/392')
+  const unit = page.getByRole('textbox', { name: '所属单位', exact: true })
+  await expect(unit).toHaveValue('原负责人单位')
+  await expectUnitAfterManager(page)
+  await expect(unit).toHaveAttribute('readonly', '')
+  await pickManager(page)
+  await expect(unit).toHaveValue(MANAGER.college)
+})
+
 test('重置表单清空已填字段', async ({ page }) => {
   await setup(page)
   await page.getByPlaceholder('请输入赛事名称').fill('待重置赛事')
@@ -134,7 +162,7 @@ test('往年复用：历史加载失败提示并清空表格', async ({ page }) 
   await expect(page.locator('.el-message').filter({ hasText: '获取历史数据失败，请稍后重试' })).toBeVisible()
 })
 
-test('往年复用全流程：勾选→编辑→名称/学院校验→确认导入', async ({ page }) => {
+test('往年复用全流程：校验名称并使用当前负责人单位', async ({ page }) => {
   const oldCollege = '已撤销学院'
   const state = await setup(page, {
     history: [{ ...HISTORY_LIST[0], college_info: { name: oldCollege } }, HISTORY_LIST[1]],
@@ -158,12 +186,7 @@ test('往年复用全流程：勾选→编辑→名称/学院校验→确认导�
   expect(state.imported).toBeUndefined()
 
   await importRows.first().getByPlaceholder('赛事名称').fill('复用后的新赛事')
-  await page.getByRole('button', { name: /确认导入/ }).click()
-  await expect(page.locator('.el-message').filter({ hasText: '不存在，请检查后重试' })).toBeVisible()
-  expect(state.imported).toBeUndefined()
-
-  await importRows.first().locator('.el-select').filter({ hasText: oldCollege }).click()
-  await page.getByRole('option', { name: '计算机学院', exact: true }).click()
+  await expect(importRows.first().getByText(MANAGER.college)).toBeVisible()
   await page.getByRole('button', { name: /确认导入/ }).click()
   const msgbox = page.locator('.el-message-box')
   await expect(msgbox).toBeVisible()

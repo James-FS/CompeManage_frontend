@@ -2,6 +2,7 @@
 import { ref, reactive, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import { saveAs } from 'file-saver';
 import { Search, Refresh, Download, Upload, Plus, Delete, ArrowDown, Edit, Setting } from '@element-plus/icons-vue';
 import { useUserStore } from '@/stores/user';
 import api from '@/api/index';
@@ -120,8 +121,18 @@ const loadYears = async (preferredYear = currentYear.value || new Date().getFull
     try {
         const response = await api.getCompetitionYears();
         yearList.value = (response.data?.years || []).map(String);
-        selectYear(yearList.value.includes(preferredYear) ? preferredYear
-            : yearList.value[0] || '');
+        // 2026-11-26 修复：当前年份不在年份列表时回退到第一个年份，并给出提示。
+        // 旧逻辑静默回退，老师不知道为何看不到赛事（其实是年份筛掉了往年数据）。
+        if (yearList.value.includes(preferredYear)) {
+            selectYear(preferredYear);
+        } else if (yearList.value.length > 0) {
+            selectYear(yearList.value[0]);
+            if (preferredYear) {
+                ElMessage.info(`当前年份（${preferredYear}）暂无赛事目录，已切换到 ${yearList.value[0]} 年`);
+            }
+        } else {
+            selectYear('');
+        }
         rebuildYearTable();
     } finally {
         yearLoading.value = false;
@@ -277,91 +288,37 @@ const handleBatchDelete = async () => {
     }).catch(() => { });
 };
 
-// 项目来源显示添加/负责老师所属学院；缺少老师学院信息时回退到赛事所属学院。
-const getProjectSourceText = (competition) =>
-    competition?.manager?.college || competition?.college_info?.name || '-';
-
 // 导出数据
+const exporting = ref(false);
 const handleExport = async () => {
+    if (!currentYear.value || exporting.value) return;
+    const params = {
+        year: currentYear.value,
+        comp_name: searchForm.comp_name,
+        comp_level: searchForm.comp_level,
+        college: searchForm.college,
+        manager: searchForm.manager,
+        status: searchForm.status,
+    };
+    exporting.value = true;
     try {
-        loading.value = true;
-        // 1. 构造查询参数，但将 page_size 设置得很大，或者后端支持 page_size=-1 代表全部
-        const params = {
-            page: 1,
-            page_size: 2000, // 获取所有数据
-            year: currentYear.value,
-            comp_name: searchForm.comp_name,
-            comp_level: searchForm.comp_level,
-            college: searchForm.college,
-            manager: searchForm.manager,
-            status: searchForm.status,
-        };
-
-        // 2. 调用 API 获取所有数据
-        const response = await api.getCompetitionList(params);
-
-        if (response.code !== 200 && response.code !== 0) {
-            throw new Error(response.message || '获取导出数据失败');
-        }
-
-        const allList = response.data.list || [];
-
-        if (allList.length === 0) {
-            ElMessage.warning('暂无数据可导出');
+        const file = await api.exportCompetitionDirectory(params);
+        if (file.type.includes('application/json')) {
+            const response = JSON.parse(await file.text());
+            if (response.code === 200) ElMessage.warning(response.message || '暂无数据可导出');
+            else ElMessage.error(response.message || '导出失败');
             return;
         }
-
-        // 3. 数据格式化
-        const dataTOExport = allList.map(item => {
-            let statusText = '';
-            if (item.status === 1) statusText = '进行中';
-            else if (item.status === 2) statusText = '已结束';
-            else statusText = '未开始';
-
-            return {
-                '赛事编号': item.comp_code || '-',
-                '赛事名称': item.comp_name || '-',
-                '赛事级别': item.comp_level || '-',
-                '主办单位': item.organizer || '-',
-                '承办单位': item.undertaker || '-',
-                '赛事负责人': item.manager?.realname || '-',
-                '所属学院': item.college_info?.name || '-',
-                '项目来源': getProjectSourceText(item),
-                '状态': statusText,
-            };
-        });
-
-        // 4.创建工作簿和工作表
-        const XLSX = await import('xlsx');
-        const worksheet = XLSX.utils.json_to_sheet(dataTOExport);
-        const workbook = XLSX.utils.book_new();
-
-        // 设置列宽
-        const wscols = [
-            { wch: 15 }, // 赛事编号
-            { wch: 30 }, // 赛事名称
-            { wch: 15 }, // 赛事级别
-            { wch: 25 }, // 主办单位
-            { wch: 25 }, // 承办单位
-            { wch: 20 }, // 赛事负责人
-            { wch: 25 }, // 所属学院
-            { wch: 25 }, // 项目来源
-            { wch: 10 }, // 状态
-        ];
-        worksheet['!cols'] = wscols;
-
-        // 将工作表添加到工作簿，命名为“赛事列表”
-        XLSX.utils.book_append_sheet(workbook, worksheet, '赛事列表');
-
-        // 5. 导出为Excel文件
-        XLSX.writeFile(workbook, `赛事列表_${params.year}年度.xlsx`);
-
+        if (!file.type.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')) {
+            ElMessage.error('导出未完成，请缩小筛选范围后重试');
+            return;
+        }
+        saveAs(file, `赛事列表_${params.year}年度.xlsx`);
         ElMessage.success('导出成功');
     } catch (error) {
-        console.error('导出失败：', error);
-        ElMessage.error('导出失败');
+        if (!error.messageShown) ElMessage.error('导出失败');
     } finally {
-        loading.value = false;
+        exporting.value = false;
     }
 };
 
@@ -423,6 +380,10 @@ const handleSearch = async () => {
             tableData.value = response.data.list || [];
             total.value = response.data.total || 0;
             console.log('数据加载成功，共', tableData.value.length, '条记录');
+            // 2026-11-26 修复：空列表时提示切换年份，避免老师误以为没权限/没数据。
+            if (tableData.value.length === 0 && currentYear.value) {
+                ElMessage.info(`${currentYear.value} 年暂无赛事数据，请切换年份查看其他年度`);
+            }
         } else {
             ElMessage.error(response.message || response.msg || '获取数据失败');
         }
@@ -436,16 +397,7 @@ const handleSearch = async () => {
 
 // 加载学院列表
 const loadCollegeList = async () => {
-    try {
-        const response = await api.getCollegeList();
-        if (response.code === 0 || response.code === 200) {
-            collegeList.value = response.data || [];
-        } else {
-            ElMessage.error('加载学院列表失败');
-        }
-    } catch (error) {
-        console.error('加载学院列表失败：', error);
-    }
+    collegeList.value = await api.getCompetitionUnits();
 };
 
 // 页面加载时初始化数据
@@ -479,11 +431,11 @@ onMounted(async () => {
                         <el-option label="国家级" value="国家级"></el-option>
                     </el-select>
                 </el-form-item>
-                <el-form-item label="所属学院">
-                    <el-select v-model="searchForm.college" placeholder="全部学院" clearable="true" style="width: 220px" fit-input-width @change="handleSearch">
-                        <el-option v-for="college in collegeList" :key="college.id" :label="college.name"
-                            :value="college.name">
-                            <span class="college-option-label" :title="college.name">{{ college.name }}</span>
+                <el-form-item label="所属单位">
+                    <el-select v-model="searchForm.college" placeholder="全部单位" clearable filterable
+                        style="width: 220px" fit-input-width @change="handleSearch">
+                        <el-option v-for="unit in collegeList" :key="unit" :label="unit" :value="unit">
+                            <span class="college-option-label" :title="unit">{{ unit }}</span>
                         </el-option>
                     </el-select>
                 </el-form-item>
@@ -517,7 +469,7 @@ onMounted(async () => {
                     </el-button>
                     <el-button v-if="userStore.role === 'school_admin'" type="danger" plain :icon="Delete"
                         @click="handleBatchDelete">批量删除</el-button>
-                    <el-button type="info" plain :icon="Download" :disabled="!currentYear || yearLoading" @click="handleExport">导出数据</el-button>
+                    <el-button type="info" plain :icon="Download" :disabled="!currentYear || yearLoading" :loading="exporting" @click="handleExport">导出数据</el-button>
                     <el-button v-if="userStore.role === 'school_admin'" type="default" :icon="Upload"
                         plain :disabled="!currentYear || yearLoading" @click="handleImport">导入数据</el-button>
                 </div>
@@ -615,14 +567,14 @@ onMounted(async () => {
                         {{ scope.row.manager?.realname || '-' }}
                     </template>
                 </el-table-column>
-                <el-table-column label="所属学院" min-width="140" align="center" show-overflow-tooltip>
+                <el-table-column label="所属单位" min-width="140" align="center" show-overflow-tooltip>
                     <template #default="scope">
-                        {{ scope.row.college_info?.name || '-' }}
+                        {{ scope.row.manager?.college || '-' }}
                     </template>
                 </el-table-column>
                 <el-table-column label="项目来源" min-width="140" align="center" show-overflow-tooltip>
                     <template #default="scope">
-                        {{ getProjectSourceText(scope.row) }}
+                        {{ scope.row.project_source || '-' }}
                     </template>
                 </el-table-column>
                 <el-table-column label="状态" width="80" align="center">

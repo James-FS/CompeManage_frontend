@@ -60,7 +60,7 @@ async function createCompetitionWithName(page, compName) {
 
   const collegeSelect = page
     .locator('.el-form-item')
-    .filter({ hasText: '所属学院' })
+    .filter({ hasText: '所属单位' })
     .locator('.el-select')
   await collegeSelect.click()
   const firstCollegeOption = page.getByRole('option').first()

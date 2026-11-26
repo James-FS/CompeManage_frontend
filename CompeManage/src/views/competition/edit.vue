@@ -31,8 +31,6 @@ const form = reactive({
 
 const rules = {
     comp_name: [{ required: true, message: '请输入赛事名称', trigger: 'blur' }],
-    comp_level: [{ required: true, message: '请选择赛事级别', trigger: 'change' }],
-    manager: [{ required: true, message: '请选择赛事负责人', trigger: 'change' }],
     year: [
         { required: true, message: '请输入所属年份', trigger: 'blur' },
         { pattern: competitionYearPattern, message: '所属年份须为1000至9999的4位数字', trigger: 'blur' }
@@ -55,11 +53,9 @@ const searchForm = reactive({
 const loadColleges = async () => {
     try {
         const res = await api.getCollegeList();
-        if (res.code === 0 || res.code === 200) {
-            collegeList.value = res.data || [];
-        }
+        if (res.code === 0 || res.code === 200) collegeList.value = res.data || [];
     } catch (error) {
-        console.error('加载学院失败:', error);
+        console.error('加载所属单位失败:', error);
     }
 };
 
@@ -105,7 +101,7 @@ const loadDetail = async () => {
         form.undertaker = data.undertaker || '';
         form.manager = managerInfo.realname || '';
         form.manager_id = data.manager_id || managerInfo.id || '';
-        form.college = collegeInfo.name || '';
+        form.college = collegeInfo.name || managerInfo.college || '';
         form.desc = data.desc || '';
         form.year = data.year ? String(data.year) : '';
     } catch (error) {
@@ -162,6 +158,7 @@ const openManagerSelect = () => {
 const selectTeacher = (row) => {
     form.manager = row.name;
     form.manager_id = row.id;
+    form.college = row.college || '';
     managerDialogVisible.value = false;
     if (row.role_code === 'teacher') {
         ElMessage.success(`已选择负责人：${row.name}（保存后该教师将自动设为赛事负责人）`);
@@ -208,10 +205,11 @@ const handleSubmit = async (formEl) => {
                 comp_type: form.comp_type,
                 organizer: form.organizer,
                 undertaker: form.undertaker,
-                manager_id: form.manager_id,
+                manager_id: form.manager_id || 0,
                 college: form.college,
                 desc: form.desc,
-                year: form.year
+                year: form.year,
+                ...(!form.comp_level || !form.manager_id ? { allow_incomplete: true } : {}),
             });
             ElMessage.success('修改成功！');
             router.push({ name: 'CompetitionList' });
@@ -229,7 +227,7 @@ const handleCancel = () => {
 };
 
 onMounted(async () => {
-    await loadColleges();
+    loadColleges();
     loadDepartments();
     if (compId) {
         await loadDetail();
@@ -259,6 +257,7 @@ onMounted(async () => {
                                 <el-option label="省级" value="省级" />
                                 <el-option label="省部级" value="省部级" />
                                 <el-option label="国家级" value="国家级" />
+                                <el-option label="国际级" value="国际级" />
                             </el-select>
                         </el-form-item>
                     </el-col>
@@ -276,7 +275,7 @@ onMounted(async () => {
                         </el-form-item>
                     </el-col>
                     <el-col :span="12">
-                        <el-form-item label="所属学院" prop="college">
+                        <el-form-item label="所属单位" prop="college">
                             <el-select v-model="form.college" :disabled="!capabilities.can_change_college" placeholder="请选择学院" style="width: 100%" clearable
                                 fit-input-width>
                                 <el-option v-for="college in collegeList" :key="college.id" :label="college.name"
@@ -334,8 +333,8 @@ onMounted(async () => {
                     <el-input v-model="searchForm.work_id" placeholder="输入工号" clearable @input="debouncedSearch"
                         @clear="onFilterChange" style="width: 120px;" />
                 </el-form-item>
-                <el-form-item label="所属部门">
-                    <el-select v-model="searchForm.college" placeholder="选择部门" clearable filterable
+                <el-form-item label="所属单位">
+                    <el-select v-model="searchForm.college" placeholder="选择所属单位" clearable filterable
                         @change="onFilterChange" @clear="onFilterChange"
                         popper-class="dept-select-popper" style="width: 330px;" fit-input-width>
                         <el-option v-for="dept in departmentList" :key="dept.id"
@@ -349,7 +348,7 @@ onMounted(async () => {
         <el-table :data="teacherList" border stripe v-loading="managerLoading" height="350" style="width: 100%">
             <el-table-column prop="work_id" label="工号" width="120" align="center" />
             <el-table-column prop="name" label="姓名" width="120" align="center" />
-            <el-table-column prop="college" label="所属部门" min-width="200" align="center" />
+            <el-table-column prop="college" label="所属单位" min-width="200" align="center" />
             <el-table-column label="当前角色" width="120" align="center">
                 <template #default="{ row }">
                     <el-tag v-if="row.role_code === 'school_admin'" type="danger" size="small">校级管理员</el-tag>

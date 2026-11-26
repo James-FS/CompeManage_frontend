@@ -167,7 +167,7 @@ onMounted(() => {
       </div>
     </div>
 
-    <div class="pagination-container">
+    <div v-if="total > 0" class="pagination-container">
       <el-pagination
         v-model:current-page="queryParams.page"
         v-model:page-size="queryParams.page_size"

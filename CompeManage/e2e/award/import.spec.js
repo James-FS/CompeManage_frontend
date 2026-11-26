@@ -1,7 +1,7 @@
 import { test, expect } from 'playwright-test-coverage'
 import * as XLSX from 'xlsx'
 import { mockAwardSession } from '../helpers/award-mock.js'
-const headers = ['序号', '学号', '学生姓名', '所属学院', '所在专业', '参赛项目名称', '获奖时间（年/月）', '获奖类别', '获奖等级', '备注']
+const headers = ['序号', '学号', '学生姓名', '所属单位', '所在专业', '参赛项目名称', '获奖时间（年/月）', '获奖类别', '获奖等级', '备注']
 function excelBuffer() {
   const wb = XLSX.utils.book_new()
   const rows = [headers, ['示例', '0000', '示例学生'], [1, '00123', '学生甲', '学院甲', '专业甲', '跨院项目', '2026-10', '国际级', '一等奖', '备注'], [], ['说明：1. 获奖类别'], ['2. 获奖等级'], ['3. 一行一个学生']]

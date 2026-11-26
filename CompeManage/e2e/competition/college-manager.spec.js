@@ -11,7 +11,7 @@ const caps = (allowed) => ({
 const comp = (id, allowed) => ({
   id, comp_code: `X202600${id}`, comp_name: allowed ? '本人负责的赛事' : '其他负责人赛事',
   comp_level: '校级', comp_type: 'A类', year: 2026, status: 2,
-  manager_id: allowed ? 10 : 11, manager: { id: allowed ? 10 : 11, realname: '负责人' },
+  manager_id: allowed ? 10 : 11, manager: { id: allowed ? 10 : 11, realname: '负责人', college: '学院甲' },
   college_id: 2, college_info: { id: 2, name: '学院甲' },
   capabilities: caps(allowed), detail: {}, summary_status: 0,
 })
@@ -27,7 +27,12 @@ test.beforeEach(async ({ page }) => {
     let data = []
     if (url.pathname === '/api/comp/years') data = { years: [2026] }
     else if (url.pathname === '/api/college/list') data = [{ id: 2, name: '学院甲' }]
+    else if (url.pathname === '/api/department/list') data = [{ id: 2, name: '工程训练中心' }]
     else if (url.pathname === '/api/comp/list' || url.pathname === '/api/summary/list') data = { list: [comp(1, true), comp(2, false)], total: 2 }
+    else if (url.pathname === '/api/reg/work/audit/comp/list') {
+      const row = { comp_id: 1, comp_name: '作品审核赛事', manager_name: '负责人', college_name: '工程训练中心', submit_count: 2 }
+      data = { list: [row], total: 1 }
+    }
     else if (/^\/api\/comp\/\d+$/.test(url.pathname)) data = comp(Number(url.pathname.split('/').pop()), url.pathname.endsWith('/1'))
     else if (url.pathname === '/api/reg/config/get') data = { comp_name: '赛事', capabilities: caps(url.searchParams.get('comp_id') === '1'), participant_type: 1, grade_requirement: [] }
     else if (/^\/api\/summary\/\d+$/.test(url.pathname)) data = { comp_name: '赛事总结', capabilities: caps(url.pathname.endsWith('/1')), award_stats: [], attachments: [], expenses: [] }
@@ -45,7 +50,7 @@ test('college administrator edits own competition without reassigning or moving 
   await expect(page).toHaveURL(/competition\/edit\/1/)
   await expect(page.getByPlaceholder('请输入赛事名称')).toBeEnabled()
   await expect(page.getByPlaceholder('请选择赛事负责人')).toBeDisabled()
-  await expect(page.getByRole('combobox', { name: '所属学院', exact: true })).toBeDisabled()
+  await expect(page.getByRole('combobox', { name: '所属单位', exact: true })).toBeDisabled()
   await expect(page.getByRole('button', { name: '保存', exact: true })).toBeEnabled()
 })
 
@@ -58,9 +63,25 @@ test('registration configuration for another competition is read only', async ({
   await page.goto('/#/register/edit')
   await expect(page.getByRole('button', { name: '报名设置', exact: true })).toHaveCount(1)
   await expect(page.getByRole('button', { name: '查看配置', exact: true })).toHaveCount(1)
-  await page.getByRole('button', { name: '查看配置', exact: true }).click()
+  const other = page.locator('.comp-item').filter({ hasText: '其他负责人赛事' })
+  await other.getByRole('button', { name: '查看配置', exact: true }).click()
+  await expect(page).toHaveURL(/register\/edit\/2$/)
+  await expect(page.getByText('当前赛事：赛事', { exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: '保存设置', exact: true })).toHaveCount(0)
   await expect(page.locator('.config-form input').first()).toBeDisabled()
+})
+
+test('作品审核显示负责人单位并支持按部门筛选', async ({ page }) => {
+  await page.goto('/#/register/work-audit')
+  const row = page.getByRole('row').filter({ hasText: '作品审核赛事' })
+  await expect(row.getByRole('cell', { name: '工程训练中心', exact: true })).toBeVisible()
+  await page.getByRole('combobox', { name: '所属单位', exact: true }).click()
+  const filtered = page.waitForRequest(request => {
+    const url = new URL(request.url())
+    return url.pathname === '/api/reg/work/audit/comp/list' && url.searchParams.get('college') === '工程训练中心'
+  })
+  await page.getByRole('option', { name: '工程训练中心', exact: true }).click()
+  await filtered
 })
 
 test('summary writing is shown only for own competition', async ({ page }) => {

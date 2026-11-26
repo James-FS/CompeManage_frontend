@@ -131,13 +131,15 @@ onMounted(() => {
           
           <div class="meta-row">
             <el-tag effect="plain" type="primary" size="small" class="level-tag">
-              {{ item.comp_level }}
+              {{ item.comp_level || '级别待补充' }}
             </el-tag>
 
-            <span class="divider"></span>
-            <span class="meta-text">
-              <el-icon><User /></el-icon> {{ item.organizer }}
-            </span>
+            <template v-if="item.organizer">
+              <span class="divider"></span>
+              <span class="meta-text">
+                <el-icon><User /></el-icon> {{ item.organizer }}
+              </span>
+            </template>
 
             <span class="divider"></span>
 
@@ -148,7 +150,7 @@ onMounted(() => {
           
          <div class="tag-row">
             <el-tag  size="small" type="info" class="extra-tag">
-              {{ getParticipantType(item.detail?.participant_type) }}
+              {{ item.detail?.participant_type ? getParticipantType(item.detail.participant_type) : '参赛形式待定' }}
             </el-tag>
           </div>
         </div>
@@ -174,7 +176,7 @@ onMounted(() => {
       </div>
     </div>
 
-    <div class="pagination-container">
+    <div v-if="total > 0" class="pagination-container">
         <el-pagination
           v-model:current-page="queryParams.page"
           v-model:page-size="queryParams.page_size"

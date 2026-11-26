@@ -54,10 +54,10 @@ test.describe('报名设置功能测试', () => {
     // 填写承办单位
     await page.fill('input[placeholder="请填写承办单位"]', 'E2E测试承办方')
 
-    // 选择所属学院
+    // 选择所属单位
     const collegeSelect = page
       .locator('.el-form-item')
-      .filter({ hasText: '所属学院' })
+      .filter({ hasText: '所属单位' })
       .locator('.el-select')
     await collegeSelect.click()
     // 等待可见的下拉选项出现

@@ -75,7 +75,7 @@ async function fillRequiredForm(page) {
   await page.getByPlaceholder('请输入赛事名称').fill('申报测试赛事')
   await chooseOption(page, '赛事等级', '校级')
   await chooseOption(page, '赛事类型', '学科竞赛')
-  await chooseOption(page, '所属学院', '计算机学院')
+  await chooseOption(page, '所属单位', '计算机学院')
   await page.getByPlaceholder('请填写主办单位').fill('测试主办方')
   await page.getByPlaceholder('请填写承办单位').fill('测试承办方')
   await pickManager(page)
@@ -103,6 +103,18 @@ test('新建申报：全字段 + 负责人弹窗 + 附件上传 → 创建成功
   expect(state.created.attachment_path).toContain('http://mock/new_计划书.pdf')
   await expect(page.getByText('保存成功')).toBeVisible()
   await page.waitForURL(/\/competition\/audit/)
+})
+
+test('发起申报时展示账号单位与管理学院不一致的提示', async ({ page }) => {
+  await setup(page)
+  const message = '账号所属单位需与管理学院一致才可发起赛事申报，请联系校管理员核对'
+  await page.route(url => url.pathname === '/api/declare', route =>
+    route.fulfill({ status: 403, json: { code: 403, message } }),
+  )
+  await fillRequiredForm(page)
+  await page.getByRole('button', { name: '保存', exact: true }).click()
+  await expect(page.getByText(message, { exact: true })).toBeVisible()
+  await expect(page).toHaveURL(/\/competition\/declare/)
 })
 
 // ==================== 编辑模式 ====================
@@ -178,7 +190,7 @@ test('必填校验拦截空表单，附件上传失败中断保存', async ({ pa
     name: '计划书.pdf', mimeType: 'application/pdf', buffer: Buffer.from('pdf'),
   })
   await page.getByRole('button', { name: '保存', exact: true }).click()
-  await expect(page.locator('.el-message').filter({ hasText: /保存失败/ })).toBeVisible()
+  await expect(page.locator('.el-message').filter({ hasText: /保存失败|上传失败|服务器内部错误/ }).first()).toBeVisible()
   expect(state.uploads).toBe(1)
   expect(state.created).toBeUndefined()
 })

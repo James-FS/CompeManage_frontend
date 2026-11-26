@@ -23,16 +23,31 @@ const createDefaultFilters = () => ({
   level: '',
   year: new Intl.DateTimeFormat('en', { timeZone: 'Asia/Hong_Kong', year: 'numeric' }).format(new Date()),
   status: '',
+  college: '',
 })
 const filters = ref(createDefaultFilters())
 const levelOptions = ['校级', '省部级', '省级', '国家级', '国际级']
+const collegeList = ref([])
+const loadCollegeList = async () => {
+  try {
+    const res = await api.getCollegeList()
+    if (res.code === 200 || res.code === 0) collegeList.value = res.data || []
+  } catch (e) { console.error('加载所属单位失败', e) }
+}
+loadCollegeList()
+const competitionStatuses = {
+  0: { label: '未开始', type: 'info' },
+  1: { label: '进行中', type: 'success' },
+  2: { label: '已结束', type: 'info' },
+}
 const buildListParams = () => {
-  const { keyword, level, year, status } = filters.value
+  const { keyword, level, year, status, college } = filters.value
   const params = { page: queryParams.value.page, size: queryParams.value.size }
   if (keyword.trim()) params.keyword = keyword.trim()
   if (level) params.level = level
   if (year) params.year = year
   if (status) params.status = status
+  if (college) params.college = college
   return params
 }
 
@@ -161,8 +176,14 @@ onMounted(fetchList)
             @change="applyFilters"
           />
         </el-form-item>
+        <el-form-item label="所属单位">
+          <el-select v-model="filters.college" placeholder="全部单位" clearable filterable style="width: 180px">
+            <el-option v-for="c in collegeList" :key="c.id" :label="c.name" :value="c.name" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="filters.status" placeholder="全部状态" clearable style="width: 130px" @change="applyFilters">
+            <el-option label="未开始" value="upcoming" />
             <el-option label="进行中" value="ongoing" />
             <el-option label="已结束" value="ended" />
           </el-select>
@@ -199,30 +220,28 @@ onMounted(fetchList)
         <div class="comp-info">
           <div class="name-row">
             <el-tag
-              v-if="item.status !== 2"
-              type="success"
+              :type="competitionStatuses[item.status]?.type || 'info'"
               effect="dark"
               size="small"
               class="status-badge"
-              >进行中</el-tag
             >
-            <el-tag v-else type="info" effect="dark" size="small" class="status-badge"
-              >已结束</el-tag
-            >
+              {{ competitionStatuses[item.status]?.label || '状态待确认' }}
+            </el-tag>
 
             <h3 class="comp-name">{{ item.comp_name }}</h3>
           </div>
 
           <div class="meta-row">
             <el-tag effect="plain" type="primary" size="small" class="level-tag">
-              {{ item.comp_level }}
+              {{ item.comp_level || '级别待补充' }}
             </el-tag>
 
-            <span class="divider"></span>
-
-            <span class="meta-text">
-              <el-icon><User /></el-icon> {{ item.organizer }}
-            </span>
+            <template v-if="item.organizer">
+              <span class="divider"></span>
+              <span class="meta-text">
+                <el-icon><User /></el-icon> {{ item.organizer }}
+              </span>
+            </template>
 
             <span class="divider"></span>
 
@@ -253,7 +272,7 @@ onMounted(fetchList)
         </div>
       </div>
     </div>
-    <div class="pagination-container">
+    <div v-if="total > 0" class="pagination-container">
       <el-pagination
         v-model:current-page="queryParams.page"
         v-model:page-size="queryParams.size"
