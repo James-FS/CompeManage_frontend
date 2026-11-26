@@ -95,7 +95,7 @@ test.describe('新增赛事页面 - 手动录入新赛事', () => {
     // 3. 选择赛事类型
     await selectElOption(page, '赛事类型', '学科竞赛')
 
-    // 4. 选择所属学院
+    // 4. 选择所属单位
     const collegeSelect = page.locator('.el-form-item').filter({ hasText: '所属单位' }).locator('.el-select').first()
     await collegeSelect.click()
     await page.waitForTimeout(400)
