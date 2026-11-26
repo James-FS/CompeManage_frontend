@@ -70,7 +70,7 @@ test.describe.serial('赛事申报审核功能测试', () => {
     // 赛事类型: 学科竞赛
     await selectElOption(page, '赛事类型', '学科竞赛')
 
-    // 所属学院
+    // 所属单位
     const collegeSelect = page
       .locator('.el-form-item')
       .filter({ hasText: '所属单位' })
