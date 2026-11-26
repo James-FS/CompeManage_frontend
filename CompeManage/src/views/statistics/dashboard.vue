@@ -909,8 +909,8 @@ onBeforeUnmount(() => {
             </el-select>
             <el-select
               v-model="detailFilters.college"
-              placeholder="按所属学院筛选"
-              aria-label="按所属学院筛选"
+              placeholder="按所属单位筛选"
+              aria-label="按所属单位筛选"
               clearable
               class="filter-item"
               fit-input-width
@@ -982,7 +982,7 @@ onBeforeUnmount(() => {
                 <el-tag size="small" effect="plain">{{ scope.row.comp_level || '未分类' }}</el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="所属学院" min-width="160" align="center" show-overflow-tooltip>
+            <el-table-column label="所属单位" min-width="160" align="center" show-overflow-tooltip>
               <template #default="scope">
                 {{ getCompetitionCollege(scope.row) }}
               </template>

@@ -219,7 +219,7 @@ const clearRows = () => {
 const baseColumns = [
   { key: 'student_id', label: '学号', width: 160 },
   { key: 'name', label: '学生姓名', width: 120 },
-  { key: 'college', label: '所属学院', width: 220 },
+  { key: 'college', label: '所属单位', width: 220 },
   { key: 'major', label: '所在专业', width: 200 },
   { key: 'project_name', label: '参赛项目名称', width: 260 },
   { key: 'award_month', label: '获奖时间', excelHeader: '获奖时间（年/月）', width: 140 },
@@ -802,7 +802,7 @@ watch(() => route.fullPath, () => {
         <el-table-column v-if="isUnified" prop="comp_name" label="赛事名称" min-width="200" />
         <el-table-column align="center" header-align="center" prop="student_id" label="学号" width="150" />
         <el-table-column align="center" header-align="center" prop="name" label="学生姓名" width="110" />
-        <el-table-column align="center" header-align="center" prop="college" label="所属学院" min-width="160" />
+        <el-table-column align="center" header-align="center" prop="college" label="所属单位" min-width="160" />
         <el-table-column align="center" header-align="center" prop="project_name" label="参赛项目名称" min-width="180" />
         <el-table-column align="center" header-align="center" prop="error" label="未导入原因" min-width="300" />
         <el-table-column align="center" header-align="center" label="操作" width="110" fixed="right"><template #default="{ row }"><el-button link type="primary" @click="locateReportRow(row)">定位修改</el-button></template></el-table-column>
@@ -820,7 +820,7 @@ watch(() => route.fullPath, () => {
       <el-table :data="advisorCandidates" border stripe v-loading="advisorLoading" height="350" style="width: 100%">
         <el-table-column prop="username" label="工号" width="140" align="center" />
         <el-table-column prop="name" label="姓名" width="120" align="center" />
-        <el-table-column prop="college" label="所属部门" min-width="200" align="center" />
+        <el-table-column prop="college" label="所属单位" min-width="200" align="center" />
         <el-table-column label="当前角色" width="130" align="center">
           <template #default="{ row }">
             <el-tag size="small">{{ advisorRoleLabel(row.role_code) }}</el-tag>

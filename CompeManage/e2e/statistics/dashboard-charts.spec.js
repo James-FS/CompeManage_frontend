@@ -139,7 +139,7 @@ test('明细统计筛选：名称/级别/学院与重置', async ({ page }) => {
   await expect(table.first()).toContainText('程序设计大赛')
 
   // 学院筛选（与级别组合）
-  await page.locator('.el-select').filter({ hasText: '按所属学院筛选' }).click()
+  await page.locator('.el-select').filter({ hasText: '按所属单位筛选' }).click()
   await page.getByRole('option', { name: '计算机学院' }).click()
   await page.getByRole('button', { name: '重置' }).click()
   await expect(table).toHaveCount(3)

@@ -42,7 +42,7 @@ async function createCompetitionAndGoToNoticeDetail(page) {
   await selectElOption(page, '赛事级别', '校级')
   await page.fill('input[placeholder="请填写主办单位"]', '测试主办方')
 
-  const collegeSelect = page.locator('.el-form-item').filter({ hasText: '所属学院' }).locator('.el-select')
+  const collegeSelect = page.locator('.el-form-item').filter({ hasText: '所属单位' }).locator('.el-select')
   await collegeSelect.click()
   await page.getByRole('option').first().waitFor({ state: 'visible', timeout: 5000 })
   await page.getByRole('option').first().click()

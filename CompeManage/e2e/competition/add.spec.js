@@ -39,7 +39,7 @@ async function selectManager(page, managerName) {
 
 // 生成测试用 Excel 文件
 function createTestExcelFile() {
-  const header = ['赛事名称', '赛事级别', '赛事类型', '主办单位', '承办单位', '赛事负责人工号', '赛事负责人姓名', '所属学院', '年份', '备注']
+  const header = ['赛事名称', '赛事级别', '赛事类型', '主办单位', '承办单位', '赛事负责人工号', '赛事负责人姓名', '所属单位', '年份', '备注']
   const data = [
     ['自动化测试Excel竞赛_' + Date.now(), '校级', '学科竞赛', '测试大学', '测试学院', 'T2023001', '系统管理员', '计算机科学与网络工程学院', '2026', 'E2E测试导入']
   ]
@@ -75,7 +75,7 @@ test.describe('新增赛事页面 - 手动录入新赛事', () => {
     await expect(page.locator('.el-form-item').filter({ hasText: '赛事名称' })).toBeVisible()
     await expect(page.locator('.el-form-item').filter({ hasText: '赛事级别' })).toBeVisible()
     await expect(page.locator('.el-form-item').filter({ hasText: '赛事类型' })).toBeVisible()
-    await expect(page.locator('.el-form-item').filter({ hasText: '所属学院' })).toBeVisible()
+    await expect(page.locator('.el-form-item').filter({ hasText: '所属单位' })).toBeVisible()
     await expect(page.locator('.el-form-item').filter({ hasText: '赛事负责人' })).toBeVisible()
 
     // 验证按钮
@@ -96,7 +96,7 @@ test.describe('新增赛事页面 - 手动录入新赛事', () => {
     await selectElOption(page, '赛事类型', '学科竞赛')
 
     // 4. 选择所属学院
-    const collegeSelect = page.locator('.el-form-item').filter({ hasText: '所属学院' }).locator('.el-select').first()
+    const collegeSelect = page.locator('.el-form-item').filter({ hasText: '所属单位' }).locator('.el-select').first()
     await collegeSelect.click()
     await page.waitForTimeout(400)
     const firstCollege = page.getByRole('option').first()
@@ -665,7 +665,7 @@ test.describe('新增赛事页面 - Excel批量导入', () => {
 
   test('Excel导入 - 确认导入提交', async ({ page }) => {
     // 创建测试Excel文件 - 使用系统中确实存在的工号
-    const header = ['赛事名称', '赛事级别', '赛事类型', '主办单位', '承办单位', '赛事负责人工号', '赛事负责人姓名', '所属学院', '年份', '备注']
+    const header = ['赛事名称', '赛事级别', '赛事类型', '主办单位', '承办单位', '赛事负责人工号', '赛事负责人姓名', '所属单位', '年份', '备注']
     const data = [
       ['自动化测试Excel竞赛_' + Date.now(), '校级', '学科竞赛', '测试大学', '测试学院', 'T2023001', '系统管理员', '计算机科学与网络工程学院', '2026', 'E2E测试导入']
     ]
@@ -942,7 +942,7 @@ test.describe('新增赛事页面 - Excel导入深度测试', () => {
 
   test('Excel导入 - 工号回填负责人功能', async ({ page }) => {
     // 创建一个包含有效工号的Excel
-    const header = ['赛事名称', '赛事级别', '赛事类型', '主办单位', '承办单位', '赛事负责人工号', '赛事负责人姓名', '所属学院', '年份', '备注']
+    const header = ['赛事名称', '赛事级别', '赛事类型', '主办单位', '承办单位', '赛事负责人工号', '赛事负责人姓名', '所属单位', '年份', '备注']
     const data = [
       ['测试竞赛_' + Date.now(), '校级', '学科竞赛', '测试大学', '测试学院', 'T2023001', '系统管理员', '计算机科学与网络工程学院', '2026', '测试']
     ]
@@ -983,7 +983,7 @@ test.describe('新增赛事页面 - Excel导入深度测试', () => {
 
   test('Excel导入 - 手动编辑负责人', async ({ page }) => {
     // 创建一个空的或不完整的Excel
-    const header = ['赛事名称', '赛事级别', '赛事类型', '主办单位', '承办单位', '赛事负责人工号', '赛事负责人姓名', '所属学院', '年份', '备注']
+    const header = ['赛事名称', '赛事级别', '赛事类型', '主办单位', '承办单位', '赛事负责人工号', '赛事负责人姓名', '所属单位', '年份', '备注']
     const data = [
       ['手动编辑竞赛_' + Date.now(), '校级', '学科竞赛', '测试大学', '测试学院', '', '', '计算机科学与网络工程学院', '2026', '测试']
     ]
@@ -1040,7 +1040,7 @@ test.describe('新增赛事页面 - Excel导入深度测试', () => {
 
   test('Excel导入 - 删除单行', async ({ page }) => {
     // 创建包含多条数据的Excel
-    const header = ['赛事名称', '赛事级别', '赛事类型', '主办单位', '承办单位', '赛事负责人工号', '赛事负责人姓名', '所属学院', '年份', '备注']
+    const header = ['赛事名称', '赛事级别', '赛事类型', '主办单位', '承办单位', '赛事负责人工号', '赛事负责人姓名', '所属单位', '年份', '备注']
     const data = [
       ['竞赛1_' + Date.now(), '校级', '学科竞赛', '测试大学', '测试学院', 'T2023001', '系统管理员', '计算机科学与网络工程学院', '2026', '测试1'],
       ['竞赛2_' + Date.now(), '校级', '学科竞赛', '测试大学', '测试学院', 'T2023001', '系统管理员', '计算机科学与网络工程学院', '2026', '测试2']
@@ -1106,7 +1106,7 @@ test.describe('新增赛事页面 - Excel导入深度测试', () => {
 
   test('Excel导入 - 空表格校验', async ({ page }) => {
     // 创建一个只有表头的Excel
-    const header = ['赛事名称', '赛事级别', '赛事类型', '主办单位', '承办单位', '赛事负责人工号', '赛事负责人姓名', '所属学院', '年份', '备注']
+    const header = ['赛事名称', '赛事级别', '赛事类型', '主办单位', '承办单位', '赛事负责人工号', '赛事负责人姓名', '所属单位', '年份', '备注']
     const ws = XLSX.utils.aoa_to_sheet([header])
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, "导入模板")

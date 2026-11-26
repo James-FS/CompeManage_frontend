@@ -377,7 +377,7 @@ watch(() => activeTab.value, () => {
                 <el-form-item label="赛事名称">
                     <el-input v-model="searchForm.comp_name" placeholder="请输入赛事名称" clearable style="width: 220px" @keyup.enter="handleSearch" @clear="handleSearch" />
                 </el-form-item>
-                <el-form-item label="所属学院" v-if="currentRole === 'school_admin'">
+                <el-form-item label="所属单位" v-if="currentRole === 'school_admin'">
                     <el-select v-model="searchForm.college" placeholder="全部学院" clearable style="width: 220px" fit-input-width @change="handleSearch">
                         <el-option
                             v-for="college in collegeList"

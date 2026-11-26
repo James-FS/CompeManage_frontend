@@ -120,8 +120,18 @@ const loadYears = async (preferredYear = currentYear.value || new Date().getFull
     try {
         const response = await api.getCompetitionYears();
         yearList.value = (response.data?.years || []).map(String);
-        selectYear(yearList.value.includes(preferredYear) ? preferredYear
-            : yearList.value[0] || '');
+        // 2026-11-26 修复：当前年份不在年份列表时回退到第一个年份，并给出提示。
+        // 旧逻辑静默回退，老师不知道为何看不到赛事（其实是年份筛掉了往年数据）。
+        if (yearList.value.includes(preferredYear)) {
+            selectYear(preferredYear);
+        } else if (yearList.value.length > 0) {
+            selectYear(yearList.value[0]);
+            if (preferredYear) {
+                ElMessage.info(`当前年份（${preferredYear}）暂无赛事目录，已切换到 ${yearList.value[0]} 年`);
+            }
+        } else {
+            selectYear('');
+        }
         rebuildYearTable();
     } finally {
         yearLoading.value = false;
@@ -277,7 +287,8 @@ const handleBatchDelete = async () => {
     }).catch(() => { });
 };
 
-// 项目来源显示添加/负责老师所属学院；缺少老师学院信息时回退到赛事所属学院。
+// 项目来源：显示创建/负责老师所属学院；缺少老师学院信息时回退到承办学院。
+// 注意：赛事归属按"承办学院"（college_id）过滤，本列仅供了解负责老师来源。
 const getProjectSourceText = (competition) =>
     competition?.manager?.college || competition?.college_info?.name || '-';
 
@@ -325,7 +336,7 @@ const handleExport = async () => {
                 '主办单位': item.organizer || '-',
                 '承办单位': item.undertaker || '-',
                 '赛事负责人': item.manager?.realname || '-',
-                '所属学院': item.college_info?.name || '-',
+                '所属单位': item.college_info?.name || '-',
                 '项目来源': getProjectSourceText(item),
                 '状态': statusText,
             };
@@ -344,7 +355,7 @@ const handleExport = async () => {
             { wch: 25 }, // 主办单位
             { wch: 25 }, // 承办单位
             { wch: 20 }, // 赛事负责人
-            { wch: 25 }, // 所属学院
+            { wch: 25 }, // 所属单位
             { wch: 25 }, // 项目来源
             { wch: 10 }, // 状态
         ];
@@ -423,6 +434,10 @@ const handleSearch = async () => {
             tableData.value = response.data.list || [];
             total.value = response.data.total || 0;
             console.log('数据加载成功，共', tableData.value.length, '条记录');
+            // 2026-11-26 修复：空列表时提示切换年份，避免老师误以为没权限/没数据。
+            if (tableData.value.length === 0 && currentYear.value) {
+                ElMessage.info(`${currentYear.value} 年暂无赛事数据，请切换年份查看其他年度`);
+            }
         } else {
             ElMessage.error(response.message || response.msg || '获取数据失败');
         }
@@ -479,7 +494,7 @@ onMounted(async () => {
                         <el-option label="国家级" value="国家级"></el-option>
                     </el-select>
                 </el-form-item>
-                <el-form-item label="所属学院">
+                <el-form-item label="所属单位">
                     <el-select v-model="searchForm.college" placeholder="全部学院" clearable="true" style="width: 220px" fit-input-width @change="handleSearch">
                         <el-option v-for="college in collegeList" :key="college.id" :label="college.name"
                             :value="college.name">
@@ -615,7 +630,7 @@ onMounted(async () => {
                         {{ scope.row.manager?.realname || '-' }}
                     </template>
                 </el-table-column>
-                <el-table-column label="所属学院" min-width="140" align="center" show-overflow-tooltip>
+                <el-table-column label="所属单位" min-width="140" align="center" show-overflow-tooltip>
                     <template #default="scope">
                         {{ scope.row.college_info?.name || '-' }}
                     </template>

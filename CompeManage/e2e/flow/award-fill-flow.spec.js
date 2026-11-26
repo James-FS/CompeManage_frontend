@@ -48,7 +48,7 @@ test('校管理员手动新建 3 个赛事', async ({ page }) => {
     await selectElOption(page, '赛事级别', comp.level)
     await selectElOption(page, '赛事类型', comp.type)
 
-    const collegeSelect = page.locator('.el-form-item').filter({ hasText: '所属学院' }).locator('.el-select').first()
+    const collegeSelect = page.locator('.el-form-item').filter({ hasText: '所属单位' }).locator('.el-select').first()
     await collegeSelect.click()
     await page.getByRole('option', { name: comp.college, exact: true }).first().click()
 

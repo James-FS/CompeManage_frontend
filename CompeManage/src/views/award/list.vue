@@ -23,16 +23,26 @@ const createDefaultFilters = () => ({
   level: '',
   year: new Intl.DateTimeFormat('en', { timeZone: 'Asia/Hong_Kong', year: 'numeric' }).format(new Date()),
   status: '',
+  college: '',
 })
 const filters = ref(createDefaultFilters())
 const levelOptions = ['校级', '省部级', '省级', '国家级', '国际级']
+const collegeList = ref([])
+const loadCollegeList = async () => {
+  try {
+    const res = await api.getCollegeList()
+    if (res.code === 200 || res.code === 0) collegeList.value = res.data || []
+  } catch (e) { console.error('加载所属单位失败', e) }
+}
+loadCollegeList()
 const buildListParams = () => {
-  const { keyword, level, year, status } = filters.value
+  const { keyword, level, year, status, college } = filters.value
   const params = { page: queryParams.value.page, size: queryParams.value.size }
   if (keyword.trim()) params.keyword = keyword.trim()
   if (level) params.level = level
   if (year) params.year = year
   if (status) params.status = status
+  if (college) params.college = college
   return params
 }
 
@@ -160,6 +170,11 @@ onMounted(fetchList)
             style="width: 130px"
             @change="applyFilters"
           />
+        </el-form-item>
+        <el-form-item label="所属单位">
+          <el-select v-model="filters.college" placeholder="全部单位" clearable filterable style="width: 180px">
+            <el-option v-for="c in collegeList" :key="c.id" :label="c.name" :value="c.name" />
+          </el-select>
         </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="filters.status" placeholder="全部状态" clearable style="width: 130px" @change="applyFilters">
