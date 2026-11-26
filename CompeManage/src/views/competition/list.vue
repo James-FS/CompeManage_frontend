@@ -287,7 +287,7 @@ const handleBatchDelete = async () => {
     }).catch(() => { });
 };
 
-// 项目来源：显示创建/负责老师所属学院；缺少老师学院信息时回退到承办学院。
+// 项目来源：显示创建/负责老师所属单位；缺少老师单位信息时回退到承办单位。
 // 注意：赛事归属按"承办学院"（college_id）过滤，本列仅供了解负责老师来源。
 const getProjectSourceText = (competition) =>
     competition?.manager?.college || competition?.college_info?.name || '-';

@@ -70,7 +70,7 @@ test.describe('完整流程: 创建赛事->配置报名->发布通知->学生报
     // 选择赛事类型
     await selectElOption(page, '赛事类型', '学科竞赛')
 
-    // 选择所属学院
+    // 选择所属单位
     const collegeSelect = page.locator('.el-form-item').filter({ hasText: '所属单位' }).locator('.el-select').first()
     await collegeSelect.click()
     await page.waitForTimeout(800)

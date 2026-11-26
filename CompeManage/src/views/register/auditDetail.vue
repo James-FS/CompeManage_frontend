@@ -258,7 +258,7 @@ onMounted(() => {
               <span class="value">{{ advisor.username || '-' }}</span>
             </div>
             <div class="grid-item">
-              <span class="label"><el-icon><Postcard /></el-icon> 所属学院</span>
+              <span class="label"><el-icon><Postcard /></el-icon> 所属单位</span>
               <span class="value">{{ advisor.college || '-' }}</span>
             </div>
             <div class="grid-item">
