@@ -4,7 +4,7 @@ import { mockAwardSession } from '../helpers/award-mock.js'
 
 function spreadsheet(size, invalidLevels = false, timeHeader = '获奖时间（年/月）') {
   const workbook = XLSX.utils.book_new()
-  const headers = ['序号', '学号', '学生姓名', '所属学院', '所在专业', '参赛项目名称', timeHeader, '获奖类别', '获奖等级', '备注']
+  const headers = ['序号', '学号', '学生姓名', '所属单位', '所在专业', '参赛项目名称', timeHeader, '获奖类别', '获奖等级', '备注']
   const rows = Array.from({ length: size }, (_, i) => [i + 1, String(i).padStart(6, '0'), `学生${i}`, '学院甲', '专业甲', `项目${i}`, '2026-10', '省级', invalidLevels && i >= size - 10 ? '国家级' : '一等奖', ''])
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([headers, ...rows]), '获奖名单')
   return { name: `${size}行.xlsx`, mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }) }

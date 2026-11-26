@@ -187,7 +187,7 @@ onMounted(() => {
           <el-descriptions-item label="学号" :span="1">
             {{ detail.student_id }}
           </el-descriptions-item>
-          <el-descriptions-item label="所属学院" :span="1">
+          <el-descriptions-item label="所属单位" :span="1">
             {{ detail.college || '未填写' }}
           </el-descriptions-item>
           <el-descriptions-item label="联系电话" :span="1">
@@ -247,7 +247,7 @@ onMounted(() => {
           <el-table-column type="index" label="序号" width="60" align="center" />
           <el-table-column prop="name" label="姓名" width="140" />
           <el-table-column prop="student_id" label="学号" width="160" />
-          <el-table-column prop="college" label="所属学院" />
+          <el-table-column prop="college" label="所属单位" />
           <el-table-column label="身份" width="90"><template #default="{ row }">{{ row.is_leader ? '队长' : '成员' }}</template></el-table-column>
           <el-table-column prop="phone" label="手机号" min-width="130" />
           <el-table-column prop="email" label="邮箱" min-width="180" />

@@ -13,7 +13,7 @@ const directory = [
 ]
 
 function spreadsheet(entries) {
-  const headers = ['序号', '赛事名称', '学号', '学生姓名', '所属学院', '所在专业', '参赛项目名称', '获奖时间（年/月）', '获奖类别', '获奖等级', '指导教师工号', '备注']
+  const headers = ['序号', '赛事名称', '学号', '学生姓名', '所属单位', '所在专业', '参赛项目名称', '获奖时间（年/月）', '获奖类别', '获奖等级', '指导教师工号', '备注']
   const rows = entries.map((entry, i) => [i + 1, entry[0], `00010${i}`, `学生${i}`, '学院甲', '专业甲', '同名项目', '2026-10', '省级', '一等奖', '', ''])
   const book = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(book, XLSX.utils.aoa_to_sheet([headers, ...rows]), '获奖名单')

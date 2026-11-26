@@ -689,10 +689,10 @@ onMounted(() => {
                   style="width: 120px"
                 />
               </el-form-item>
-              <el-form-item label="所属部门">
+              <el-form-item label="所属单位">
                 <el-select
                   v-model="expertFilters.college"
-                  placeholder="选择部门"
+                  placeholder="选择所属单位"
                   clearable
                   filterable
                   @change="handleExpertSearch"
@@ -718,7 +718,7 @@ onMounted(() => {
           >
             <el-table-column prop="username" label="工号" width="120" align="center" />
             <el-table-column prop="name" label="姓名" width="120" align="center" />
-            <el-table-column prop="college" label="所属部门" min-width="200" align="center" show-overflow-tooltip />
+            <el-table-column prop="college" label="所属单位" min-width="200" align="center" show-overflow-tooltip />
             <el-table-column label="当前角色" width="120" align="center">
               <template #default="{ row }">
                 <el-tag :type="expertRoleType(row.role_code)" size="small">

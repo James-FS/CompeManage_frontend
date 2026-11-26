@@ -98,7 +98,7 @@ onMounted(() => {
         <el-form-item label="赛事负责人">
           <el-input v-model="queryForm.manager" placeholder="请输入负责人" clearable style="width: 220px" @keyup.enter="fetchCompList" @clear="fetchCompList" />
         </el-form-item>
-        <el-form-item label="所属学院">
+        <el-form-item label="所属单位">
           <el-select v-model="queryForm.college" placeholder="全部学院" clearable style="width: 220px" fit-input-width @change="fetchCompList">
             <el-option v-for="college in collegeList" :key="college.id" :label="college.name" :value="college.name">
               <span class="college-option-label" :title="college.name">{{ college.name }}</span>
@@ -131,7 +131,7 @@ onMounted(() => {
             {{ scope.row.manager_name || '-' }}
           </template>
         </el-table-column>
-        <el-table-column label="所属学院" width="220" align="center" show-overflow-tooltip>
+        <el-table-column label="所属单位" width="220" align="center" show-overflow-tooltip>
           <template #default="scope">
             {{ scope.row.college_name || '-' }}
           </template>

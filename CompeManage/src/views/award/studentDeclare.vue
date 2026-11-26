@@ -661,7 +661,7 @@ onMounted(async () => {
               <el-row :gutter="20">
                 <el-col :span="8" :xs="24"><el-form-item label="姓名"><el-input v-model="advisor.name" disabled /></el-form-item></el-col>
                 <el-col :span="8" :xs="24"><el-form-item label="工号"><el-input v-model="advisor.username" disabled /></el-form-item></el-col>
-                <el-col :span="8" :xs="24"><el-form-item label="所属部门"><el-input v-model="advisor.college" disabled /></el-form-item></el-col>
+                <el-col :span="8" :xs="24"><el-form-item label="所属单位"><el-input v-model="advisor.college" disabled /></el-form-item></el-col>
               </el-row>
             </div>
           </div>
@@ -795,7 +795,7 @@ onMounted(async () => {
     >
       <el-table-column prop="username" :label="isSelectingAdvisor ? '工号' : '学号'" width="120" align="center" />
       <el-table-column prop="name" label="姓名" width="120" align="center" />
-      <el-table-column prop="college" :label="isSelectingAdvisor ? '所属部门' : '所属学院'" min-width="200" align="center" />
+      <el-table-column prop="college" :label="isSelectingAdvisor ? '所属部门' : '所属单位'" min-width="200" align="center" />
       <el-table-column label="操作" width="100" align="center" fixed="right">
         <template #default="{ row }">
           <el-button type="primary" link @click="selectStudent(row)">选择</el-button>

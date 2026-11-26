@@ -92,7 +92,7 @@ test.describe('奖项审计详情页面', () => {
 
     // 学生信息字段 - 验证表格包含这些文本
     const studentTable = page.locator('h3:has-text("学生信息") + * table')
-    const studentFields = ['姓名', '学号', '所属学院', '联系电话', '邮箱']
+    const studentFields = ['姓名', '学号', '所属单位', '联系电话', '邮箱']
     for (const field of studentFields) {
       await expect(studentTable).toContainText(field)
     }

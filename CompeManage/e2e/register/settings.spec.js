@@ -57,7 +57,7 @@ test.describe('报名设置功能测试', () => {
     // 选择所属学院
     const collegeSelect = page
       .locator('.el-form-item')
-      .filter({ hasText: '所属学院' })
+      .filter({ hasText: '所属单位' })
       .locator('.el-select')
     await collegeSelect.click()
     // 等待可见的下拉选项出现

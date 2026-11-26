@@ -45,7 +45,7 @@ test('college administrator edits own competition without reassigning or moving 
   await expect(page).toHaveURL(/competition\/edit\/1/)
   await expect(page.getByPlaceholder('请输入赛事名称')).toBeEnabled()
   await expect(page.getByPlaceholder('请选择赛事负责人')).toBeDisabled()
-  await expect(page.getByRole('combobox', { name: '所属学院', exact: true })).toBeDisabled()
+  await expect(page.getByRole('combobox', { name: '所属单位', exact: true })).toBeDisabled()
   await expect(page.getByRole('button', { name: '保存', exact: true })).toBeEnabled()
 })
 

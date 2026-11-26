@@ -262,7 +262,7 @@ onBeforeUnmount(() => {
             <el-option v-for="item in identityOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
         </el-form-item>
-        <el-form-item label="所属学院">
+        <el-form-item label="所属单位">
           <el-select
             v-model="filters.college_id"
             clearable

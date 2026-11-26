@@ -73,7 +73,7 @@ test.describe.serial('赛事申报审核功能测试', () => {
     // 所属学院
     const collegeSelect = page
       .locator('.el-form-item')
-      .filter({ hasText: '所属学院' })
+      .filter({ hasText: '所属单位' })
       .locator('.el-select')
     await collegeSelect.click()
     // 院管理员只能为所管理学院（计算机科学与网络工程学院）创建申报
@@ -296,7 +296,7 @@ test.describe.serial('赛事申报审核功能测试', () => {
 
     const collegeSelect = page
       .locator('.el-form-item')
-      .filter({ hasText: '所属学院' })
+      .filter({ hasText: '所属单位' })
       .locator('.el-select')
     await collegeSelect.click()
     // 院管理员只能为所管理学院（计算机科学与网络工程学院）创建申报

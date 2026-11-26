@@ -4,7 +4,7 @@ import * as XLSX from 'xlsx'
 // competition/add.vue Excel 批量导入 Tab 定向覆盖：
 // 解析/格式校验/自动匹配负责人、工号回车匹配、提交校验三分支、确认导入成功与失败
 
-const HEADER = ['赛事名称', '赛事级别', '赛事类型', '主办单位', '承办单位', '赛事负责人工号', '赛事负责人姓名', '所属学院', '年份', '备注']
+const HEADER = ['赛事名称', '赛事级别', '赛事类型', '主办单位', '承办单位', '赛事负责人工号', '赛事负责人姓名', '所属单位', '年份', '备注']
 
 function excelBuffer(rows) {
   const wb = XLSX.utils.book_new()

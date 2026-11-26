@@ -83,7 +83,7 @@ onMounted(() => {
                 <el-descriptions-item label="赛事名称">{{ detailData.comp_name }}</el-descriptions-item>
                 <el-descriptions-item label="主办单位">{{ detailData.organizer }}</el-descriptions-item>
                 <el-descriptions-item label="承办单位">{{ detailData.undertaker }}</el-descriptions-item>
-                <el-descriptions-item label="所属学院">{{ detailData.college_info?.name || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="所属单位">{{ detailData.college_info?.name || '-' }}</el-descriptions-item>
                 <el-descriptions-item label="赛事负责人">{{ detailData.manager }}</el-descriptions-item>
                 <el-descriptions-item label="举办时间" :span="2">{{ detailData.time_range }}</el-descriptions-item>
             </el-descriptions>

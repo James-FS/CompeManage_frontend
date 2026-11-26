@@ -124,7 +124,7 @@ test('提交校验与成功跳转、保存失败', async ({ page }) => {
   await page.getByRole('option', { name: /校级/ }).click()
   await page.locator('.el-select').filter({ hasText: '请选择类型' }).click()
   await page.getByRole('option', { name: /学科/ }).first().click()
-  await page.locator('.el-select').filter({ hasText: '请选择所属学院' }).click()
+  await page.locator('.el-select').filter({ hasText: '请选择所属单位' }).click()
   await page.getByRole('option', { name: '计算机学院' }).click()
   await page.getByPlaceholder('请填写主办单位').fill('主办单位')
   await page.getByPlaceholder('请填写承办单位').fill('承办单位')

@@ -406,7 +406,7 @@ const excelImportSubmitting = ref(false); // 正在提交批量导入
 // 模板下载
 const downloadTemplate = () => {
     // 这里可以使用 xlsx 生成一个空模板，或者请求后端静态资源
-    const header = ['赛事名称', '赛事级别', '赛事类型', '主办单位', '承办单位', '赛事负责人工号', '赛事负责人姓名', '所属学院', '年份', '备注'];
+    const header = ['赛事名称', '赛事级别', '赛事类型', '主办单位', '承办单位', '赛事负责人工号', '赛事负责人姓名', '所属单位', '年份', '备注'];
     const data = [
         ['示例：xx大赛', '校级', '学科竞赛', 'xx大学', 'xx学院', '2026001', '张三', 'xx学院', '2026', '无']
     ];
@@ -639,7 +639,7 @@ const queryManagerByWorkId = async (row) => {
                                     </el-form-item>
                                 </el-col>
                                 <el-col :span="12">
-                                    <el-form-item label="所属学院" prop="college">
+                                    <el-form-item label="所属单位" prop="college">
                                         <el-select v-model="form.college" placeholder="请选择学院" style="width: 100%"
                                             clearable :fit-input-width="true">
                                             <el-option v-for="college in collegeList" :key="college.id"
@@ -722,7 +722,7 @@ const queryManagerByWorkId = async (row) => {
                                 <el-table-column prop="organizer" label="主办单位" min-width="200" align="center" />
                                 <el-table-column prop="undertaker" label="承办单位" min-width="200" align="center" />
                                 <el-table-column prop="manager" label="赛事负责人" width="100" align="center" />
-                                <el-table-column prop="college" label="所属学院" min-width="220" align="center" />
+                                <el-table-column prop="college" label="所属单位" min-width="220" align="center" />
                                 <template #empty>
                                     <el-empty description="暂无数据" />
                                 </template>
@@ -791,7 +791,7 @@ const queryManagerByWorkId = async (row) => {
                                     </template>
                                 </el-table-column>
 
-                                <el-table-column label="所属学院" width="160" align="center">
+                                <el-table-column label="所属单位" width="160" align="center">
                                     <template #default="{ row }">
                                         <el-select v-model="row.college" placeholder="请选择学院" clearable filterable
                                             style="width: 100%" :fit-input-width="true">
@@ -957,7 +957,7 @@ const queryManagerByWorkId = async (row) => {
                                 </template>
                             </el-table-column>
 
-                            <el-table-column label="所属学院" width="160" align="center">
+                            <el-table-column label="所属单位" width="160" align="center">
                                 <template #default="{ row }">
                                     <el-select v-model="row.college" placeholder="选择学院" clearable
                                         :fit-input-width="true">
@@ -1001,8 +1001,8 @@ const queryManagerByWorkId = async (row) => {
                     <el-input v-model="searchForm.work_id" placeholder="输入工号" clearable @input="debouncedSearch"
                         @clear="onFilterChange" style="width: 120px;" />
                 </el-form-item>
-                <el-form-item label="所属部门">
-                    <el-select v-model="searchForm.college" placeholder="选择部门" clearable filterable
+                <el-form-item label="所属单位">
+                    <el-select v-model="searchForm.college" placeholder="选择所属单位" clearable filterable
                         @change="onFilterChange" @clear="onFilterChange"
                         popper-class="dept-select-popper" style="width: 330px;" fit-input-width>
                         <el-option v-for="dept in departmentList" :key="dept.id"
@@ -1016,7 +1016,7 @@ const queryManagerByWorkId = async (row) => {
         <el-table :data="teacherList" border stripe v-loading="managerLoading" height="350" style="width: 100%">
             <el-table-column prop="work_id" label="工号" width="120" align="center" />
             <el-table-column prop="name" label="姓名" width="120" align="center" />
-            <el-table-column prop="college" label="所属部门" min-width="200" align="center" />
+            <el-table-column prop="college" label="所属单位" min-width="200" align="center" />
             <el-table-column label="当前角色" width="120" align="center">
                 <template #default="{ row }">
                     <el-tag v-if="row.role_code === 'school_admin'" type="danger" size="small">校级管理员</el-tag>

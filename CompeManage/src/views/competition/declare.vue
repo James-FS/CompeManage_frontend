@@ -39,7 +39,7 @@ const rules = {
     comp_name: [{ required: true, message: '请输入赛事名称', trigger: 'blur' }],
     comp_level: [{ required: true, message: '请选择赛事等级', trigger: 'change' }],
     comp_type: [{ required: true, message: '请选择赛事类型', trigger: 'change' }],
-    college: [{ required: true, message: '请选择所属学院', trigger: 'change' }],
+    college: [{ required: true, message: '请选择所属单位', trigger: 'change' }],
     manager: [{ required: true, message: '请输入赛事负责人', trigger: 'change' }],
     organizer: [{ required: true, message: '请输入主办单位', trigger: 'blur' }],
     undertaker: [{ required: true, message: '请输入承办单位', trigger: 'blur' }],
@@ -350,8 +350,8 @@ const selectTeacher = (row) => {
                             </el-form-item>
                         </el-col>
                         <el-col :span="10">
-                            <el-form-item label="所属学院" prop="college">
-                                <el-select v-model="form.college" placeholder="请选择所属学院" clearable style="width: 100%" :disabled="isReadOnly"
+                            <el-form-item label="所属单位" prop="college">
+                                <el-select v-model="form.college" placeholder="请选择所属单位" clearable style="width: 100%" :disabled="isReadOnly"
                                     fit-input-width>
                                     <el-option v-for="college in collegeList" :key="college.id" :label="college.name"
                                         :value="college.id">
@@ -434,8 +434,8 @@ const selectTeacher = (row) => {
                     <el-input v-model="searchForm.work_id" placeholder="输入工号" clearable @input="debouncedSearch"
                         @clear="onFilterChange" style="width: 120px;" />
                 </el-form-item>
-                <el-form-item label="所属部门">
-                    <el-select v-model="searchForm.college" placeholder="选择部门" clearable filterable
+                <el-form-item label="所属单位">
+                    <el-select v-model="searchForm.college" placeholder="选择所属单位" clearable filterable
                         @change="onFilterChange" @clear="onFilterChange"
                         popper-class="dept-select-popper" style="width: 330px;" fit-input-width>
                         <el-option v-for="dept in departmentList" :key="dept.id"
@@ -449,7 +449,7 @@ const selectTeacher = (row) => {
         <el-table :data="teacherList" border stripe v-loading="managerLoading" height="350" style="width: 100%">
             <el-table-column prop="work_id" label="工号" width="120" align="center" />
             <el-table-column prop="name" label="姓名" width="120" align="center" />
-            <el-table-column prop="college" label="所属部门" min-width="200" align="center" />
+            <el-table-column prop="college" label="所属单位" min-width="200" align="center" />
             <el-table-column label="当前角色" width="120" align="center">
                 <template #default="{ row }">
                     <el-tag v-if="row.role_code === 'school_admin'" type="danger" size="small">校级管理员</el-tag>

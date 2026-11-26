@@ -71,7 +71,7 @@ test.describe('完整流程: 创建赛事->配置报名->发布通知->学生报
     await selectElOption(page, '赛事类型', '学科竞赛')
 
     // 选择所属学院
-    const collegeSelect = page.locator('.el-form-item').filter({ hasText: '所属学院' }).locator('.el-select').first()
+    const collegeSelect = page.locator('.el-form-item').filter({ hasText: '所属单位' }).locator('.el-select').first()
     await collegeSelect.click()
     await page.waitForTimeout(800)
     await page.evaluate(() => {

@@ -169,7 +169,7 @@ onMounted(() => {
             <el-descriptions-item label="赛事名称">{{ form.comp_name }}</el-descriptions-item>
             <el-descriptions-item label="主办单位">{{ form.organizer }}</el-descriptions-item>
             <el-descriptions-item label="承办单位">{{ form.undertaker }}</el-descriptions-item>
-            <el-descriptions-item label="所属学院">{{ form.college_info?.name || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="所属单位">{{ form.college_info?.name || '-' }}</el-descriptions-item>
             <el-descriptions-item label="赛事负责人">{{ form.manager }}</el-descriptions-item>
             <el-descriptions-item label="举办时间" :span="2">{{ form.time_range }}</el-descriptions-item>
           </el-descriptions>

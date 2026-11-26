@@ -306,7 +306,7 @@ const handleExport = async () => {
   catch (e) { ElMessage.error(errorMessage(e)); return }
   const workbook = new ExcelJS.Workbook()
   const sheet = workbook.addWorksheet('获奖名单')
-  const headers = ['序号', '学号', '学生姓名', '所属学院', '所在专业', '参赛项目名称', '获奖时间（年/月）', '获奖类别', '获奖等级', '指导老师', '备注']
+  const headers = ['序号', '学号', '学生姓名', '所属单位', '所在专业', '参赛项目名称', '获奖时间（年/月）', '获奖类别', '获奖等级', '指导老师', '备注']
   const widths = [7, 15, 12, 23, 21, 38, 15, 13, 13, 24, 14]
   sheet.columns = headers.map((header, i) => ({ header, width: widths[i] }))
   sheet.getColumn(2).numFmt = '@'
@@ -434,7 +434,7 @@ onUnmounted(() => clearTimeout(competitionSearchTimer))
         <el-table :data="memberTeam.members" border :header-cell-style="{ textAlign: 'center' }" :cell-style="{ textAlign: 'center' }">
           <el-table-column prop="student_id" label="学号" width="150" />
           <el-table-column prop="name" label="姓名" width="110" />
-          <el-table-column prop="college" label="所属学院" min-width="200" />
+          <el-table-column prop="college" label="所属单位" min-width="200" />
           <el-table-column prop="major" label="专业" min-width="180" />
           <el-table-column prop="remark" label="备注" min-width="180" />
           <el-table-column label="填报归属" width="150"><template #default="{ row }">{{ row.submitted_college_name || colleges.find(c => c.id === row.submitted_college_id)?.name || (row.submitted_college_id ? '已确认' : '待校管理员确认') }}</template></el-table-column>

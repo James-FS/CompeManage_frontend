@@ -75,7 +75,7 @@ async function fillRequiredForm(page) {
   await page.getByPlaceholder('请输入赛事名称').fill('申报测试赛事')
   await chooseOption(page, '赛事等级', '校级')
   await chooseOption(page, '赛事类型', '学科竞赛')
-  await chooseOption(page, '所属学院', '计算机学院')
+  await chooseOption(page, '所属单位', '计算机学院')
   await page.getByPlaceholder('请填写主办单位').fill('测试主办方')
   await page.getByPlaceholder('请填写承办单位').fill('测试承办方')
   await pickManager(page)

@@ -69,7 +69,7 @@ async function fillManualForm(page) {
   await page.getByRole('option', { name: '校级' }).click()
   await page.locator('.el-form-item').filter({ hasText: '赛事类型' }).locator('.el-select').click()
   await page.getByRole('option', { name: '学科竞赛' }).click()
-  await page.locator('.el-form-item').filter({ hasText: '所属学院' }).locator('.el-select').click()
+  await page.locator('.el-form-item').filter({ hasText: '所属单位' }).locator('.el-select').click()
   await page.getByRole('option', { name: '计算机学院' }).click()
   await page.getByPlaceholder('请填写主办单位').fill('测试主办方')
   await page.getByPlaceholder('请填写承办单位').fill('测试承办方')
