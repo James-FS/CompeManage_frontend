@@ -118,7 +118,15 @@ const fetchCompetitionName = async id => {
     competitionName.value = competition.comp_name || ''
     upsertCompetitionOption({ ...competition, id, comp_name: competitionName.value || `赛事 ${id}` })
   } catch (e) {
-    if (id === compID.value) ElMessage.error(errorMessage(e))
+    if (id === compID.value) {
+      // 2026-11-27 修复：详情接口失败时，从赛事列表（competitionOptions）回退取名称，
+      // 避免显示"赛事 123"占位符。找不到才用占位。
+      const existing = competitionOptions.value.find(item => String(item.id) === String(id))
+      const fallbackName = existing?.comp_name || `赛事 ${id}`
+      competitionName.value = existing?.comp_name || ''
+      upsertCompetitionOption({ id, comp_name: fallbackName, ...(existing || {}) })
+      ElMessage.error(errorMessage(e))
+    }
   }
 }
 const fetchData = async (id = compID.value) => {
@@ -272,7 +280,9 @@ const deleteSelectedAwards = async () => {
 const handleExport = async () => {
   if (exporting.value) return
   const id = compID.value
-  const safeCompetitionName = (competitionName.value || `赛事${compID.value}`).replace(/[\\/:*?"<>|]/g, '_').trim()
+  // 2026-11-27 修复：导出文件名也回退到列表数据，避免"赛事123"
+  const fallbackExportName = competitionOptions.value.find(item => String(item.id) === String(compID.value))?.comp_name || `赛事${compID.value}`
+  const safeCompetitionName = (competitionName.value || fallbackExportName).replace(/[\\/:*?"<>|]/g, '_').trim()
   exporting.value = true
   try {
     const res = await api.getCompAwards(id, { ...awardFilters(), keyword: keyword.value.trim() })
@@ -335,7 +345,9 @@ watch(() => route.params.id, id => {
   awardTable.value?.clearSelection()
   teamEdit.value = null
   memberEdit.value = null
-  upsertCompetitionOption({ id: nextID, comp_name: `赛事 ${nextID}` })
+  // 2026-11-27 修复：占位名称优先用已有列表数据，避免显示"赛事 123"
+  const existingOpt = competitionOptions.value.find(item => String(item.id) === nextID)
+  upsertCompetitionOption({ id: nextID, comp_name: existingOpt?.comp_name || `赛事 ${nextID}`, ...(existingOpt || {}) })
   fetchCompetitionName(nextID)
 }, { immediate: true })
 watch([compID, page, pageSize, searchKeyword, categoryFilter, levelFilter], () => fetchData(), { immediate: true })
